@@ -690,7 +690,7 @@ if (!isset($_SESSION['user_id'])) {
         </div>
         <div class="header-profile">
             <i class="fas fa-bell notification-icon"></i>
-            <img src="assets/logo.png" alt="Profile" class="profile-image">
+            <img src="../assets/logo.png" alt="Profile" class="profile-image">
         </div>
     </header>
 

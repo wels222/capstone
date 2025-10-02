@@ -438,7 +438,7 @@
         color: #3b82f6;
       }
 
-      /* Employees Section Styles */
+      /* Employees Section Styles - Kept for completeness but not fully used here */
       .employee-tabs {
         display: flex;
         gap: 1rem;
@@ -584,6 +584,10 @@
 
       .modal-overlay.show .modal-content {
         transform: scale(1);
+      }
+      /* Style for the specific confirmation modal content */
+      .confirmation-modal-content {
+        text-align: center;
       }
 
       .modal-close-btn {
@@ -748,22 +752,19 @@
                 ><i class="fas fa-th-large"></i> Dashboard</a
               >
             </li>
-            <li class="nav-item">
-              <a href="employees.html"
-                ><i class="fas fa-users"></i> Employees</a
+            <li class="nav-item active">
+              <a href="leave-status.html"
+                ><i class="fas fa-calendar-alt"></i> Leave Status</a
               >
             </li>
-            <li class="nav-item active">
-              <a href="#"><i class="fas fa-calendar-alt"></i> Leave Status</a>
+            <li class="nav-item">
+              <a href="task-status.html"
+                ><i class="fas fa-tasks"></i> Task Status</a
+              >
             </li>
             <li class="nav-item">
               <a href="leave-request.html"
                 ><i class="fas fa-calendar-plus"></i> Leave Request</a
-              >
-            </li>
-            <li class="nav-item">
-              <a href="add-event.html"
-                ><i class="fas fa-calendar-plus"></i> Add Event</a
               >
             </li>
           </ul>
@@ -819,7 +820,10 @@
                 Leave Requests
               </h3>
               <div class="bg-white rounded-xl shadow-md p-6">
-                <table class="w-full text-left table-auto">
+                <table
+                  id="leave-requests-table"
+                  class="w-full text-left table-auto"
+                >
                   <thead>
                     <tr class="text-gray-600 text-sm uppercase">
                       <th class="py-3 px-4">Employee</th>
@@ -831,10 +835,15 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr class="border-b border-gray-200 hover:bg-gray-100">
+                    <!-- Request 1 (Pending) -->
+                    <tr
+                      class="border-b border-gray-200 hover:bg-gray-100"
+                      data-request-id="1"
+                      data-employee-name="Anna Dela Cruz"
+                    >
                       <td class="py-4 px-4 flex items-center">
                         <img
-                          src="assets/profile-placeholder.png"
+                          src="https://placehold.co/32x32/93c5fd/1e40af?text=AD"
                           alt="Anna Dela Cruz"
                           class="w-8 h-8 rounded-full mr-3"
                         />
@@ -844,25 +853,38 @@
                       <td class="py-4 px-4">2025-01-20</td>
                       <td class="py-4 px-4">2025-01-24</td>
                       <td class="py-4 px-4">
-                        <span class="status-badge pending">Pending</span>
+                        <span
+                          class="status-badge pending"
+                          data-status-id="status-1"
+                          >Pending</span
+                        >
                       </td>
-                      <td class="py-4 px-4">
+                      <td class="py-4 px-4" data-actions-id="actions-1">
                         <button
-                          class="text-green-600 hover:text-green-800 transition-colors mr-2"
+                          data-action="approve"
+                          data-id="1"
+                          class="action-btn text-green-600 hover:text-green-800 transition-colors mr-2 font-semibold"
                         >
                           Approve
                         </button>
                         <button
-                          class="text-red-600 hover:text-red-800 transition-colors"
+                          data-action="deny"
+                          data-id="1"
+                          class="action-btn text-red-600 hover:text-red-800 transition-colors font-semibold"
                         >
                           Deny
                         </button>
                       </td>
                     </tr>
-                    <tr class="border-b border-gray-200 hover:bg-gray-100">
+                    <!-- Request 2 (Approved - Completed) -->
+                    <tr
+                      class="border-b border-gray-200 hover:bg-gray-100"
+                      data-request-id="2"
+                      data-employee-name="Jerome Fernandez"
+                    >
                       <td class="py-4 px-4 flex items-center">
                         <img
-                          src="assets/profile-placeholder.png"
+                          src="https://placehold.co/32x32/60a5fa/1e40af?text=JF"
                           alt="Jerome Fernandez"
                           class="w-8 h-8 rounded-full mr-3"
                         />
@@ -872,10 +894,16 @@
                       <td class="py-4 px-4">2025-02-05</td>
                       <td class="py-4 px-4">2025-02-05</td>
                       <td class="py-4 px-4">
-                        <span class="status-badge completed">Approved</span>
+                        <span
+                          class="status-badge completed"
+                          data-status-id="status-2"
+                          >Approved</span
+                        >
                       </td>
-                      <td class="py-4 px-4">
-                        <span class="text-gray-500">Completed</span>
+                      <td class="py-4 px-4" data-actions-id="actions-2">
+                        <span class="text-gray-500 text-sm"
+                          >Action Complete</span
+                        >
                       </td>
                     </tr>
                   </tbody>
@@ -887,12 +915,148 @@
       </main>
     </div>
 
+    <!-- Confirmation Modal Structure -->
+    <div id="confirmation-modal" class="modal-overlay">
+      <div class="modal-content max-w-sm confirmation-modal-content">
+        <button class="modal-close-btn" onclick="closeModal()">
+          <i class="fas fa-times"></i>
+        </button>
+        <div class="p-4">
+          <i id="modal-icon" class="fas text-4xl mb-4 text-gray-500"></i>
+          <h4 class="text-xl font-bold text-gray-800 mb-2">Confirm Action</h4>
+          <p id="modal-message" class="text-gray-600 mb-6">
+            Are you sure you want to proceed?
+          </p>
+          <div class="flex justify-center space-x-4">
+            <button
+              id="modal-cancel-btn"
+              onclick="closeModal()"
+              class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              id="modal-confirm-btn"
+              class="px-6 py-2 rounded-lg text-white transition-colors font-semibold"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
+      // --- Modal Control Functions ---
+      const modal = document.getElementById("confirmation-modal");
+      const modalMessage = document.getElementById("modal-message");
+      const modalIcon = document.getElementById("modal-icon");
+      const modalConfirmBtn = document.getElementById("modal-confirm-btn");
+      let currentRequestId = null;
+      let currentAction = null;
+
+      /**
+       * Closes the confirmation modal.
+       */
+      function closeModal() {
+        modal.classList.remove("show");
+        // Clear current action context
+        currentRequestId = null;
+        currentAction = null;
+      }
+
+      /**
+       * Shows the confirmation modal and sets the context for the action.
+       * @param {string} action - 'approve' or 'deny'.
+       * @param {string} id - The ID of the leave request.
+       * @param {string} employeeName - The name of the employee.
+       */
+      function showConfirmationModal(action, id, employeeName) {
+        currentRequestId = id;
+        currentAction = action;
+
+        if (action === "approve") {
+          modalMessage.innerHTML = `Are you sure you want to APPROVE the leave request for ${employeeName}?`;
+          modalIcon.className =
+            "fas fa-check-circle text-green-500 text-4xl mb-4";
+          modalConfirmBtn.textContent = "Yes, Approve";
+          modalConfirmBtn.className =
+            "px-6 py-2 rounded-lg text-white transition-colors font-semibold bg-green-500 hover:bg-green-600";
+        } else if (action === "deny") {
+          modalMessage.innerHTML = `Are you sure you want to DENY the leave request for ${employeeName}?`;
+          modalIcon.className =
+            "fas fa-times-circle text-red-500 text-4xl mb-4";
+          modalConfirmBtn.textContent = "Yes, Deny";
+          modalConfirmBtn.className =
+            "px-6 py-2 rounded-lg text-white transition-colors font-semibold bg-red-500 hover:bg-red-600";
+        }
+
+        modal.classList.add("show");
+      }
+
+      /**
+       * Handles the final confirmed action (Approve/Deny).
+       */
+      function handleConfirmedAction() {
+        closeModal();
+        if (!currentRequestId || !currentAction) {
+          console.error("No valid request ID or action set.");
+          return;
+        }
+
+        // Find the table elements for the specific request
+        const row = document.querySelector(
+          `tr[data-request-id="${currentRequestId}"]`
+        );
+        const statusCell = row ? row.querySelector("[data-status-id]") : null;
+        const actionCell = row ? row.querySelector("[data-actions-id]") : null;
+
+        if (row && statusCell && actionCell) {
+          console.log(
+            `Processing ${currentAction} for Request ID: ${currentRequestId}`
+          );
+
+          let newStatusText;
+          let newStatusClass;
+          let actionMessage;
+
+          if (currentAction === "approve") {
+            newStatusText = "Approved";
+            newStatusClass = "completed"; // Re-using completed class for approved look
+            actionMessage = "Successfully Approved.";
+          } else {
+            // deny
+            newStatusText = "Denied";
+            newStatusClass = "pending"; // Re-using pending class for denied/rejected look
+            actionMessage = "Successfully Denied.";
+          }
+
+          // 1. Update Status Badge
+          statusCell.innerHTML = `<span class="status-badge ${newStatusClass}">${newStatusText}</span>`;
+
+          // 2. Remove Action Buttons
+          actionCell.innerHTML = `<span class="text-gray-500 text-sm">${actionMessage}</span>`;
+
+          // Optional: Provide visual feedback (e.g., a temporary success message)
+          console.log(`Request ${currentRequestId} has been ${newStatusText}.`);
+        } else {
+          console.error(
+            `Could not find elements for Request ID: ${currentRequestId}`
+          );
+        }
+      }
+
+      // --- Main DOM Content Loaded Listener ---
       document.addEventListener("DOMContentLoaded", () => {
         const calendarGrid = document.getElementById("calendar-grid");
         const currentMonthYear = document.getElementById("currentMonthYear");
         const prevMonthBtn = document.getElementById("prevMonth");
         const nextMonthBtn = document.getElementById("nextMonth");
+        const leaveRequestsTable = document.getElementById(
+          "leave-requests-table"
+        );
+
+        // Existing calendar data (unchanged)
         const leaveEvents = [
           { type: "Vacation", date: "2025-01-20", duration: 5 },
           { type: "Sick", date: "2025-02-05", duration: 1 },
@@ -901,6 +1065,7 @@
 
         let currentDate = new Date();
 
+        // Existing calendar rendering logic (unchanged)
         const renderCalendar = (date) => {
           calendarGrid.innerHTML = "";
           const month = date.getMonth();
@@ -936,9 +1101,15 @@
               leaveDate.getMonth() === month &&
               leaveDate.getFullYear() === year
             ) {
-              const day = leaveDate.getDate();
+              // const day = leaveDate.getDate(); // unused
+              const leaveDateString = `${leaveDate.getFullYear()}-${String(
+                leaveDate.getMonth() + 1
+              ).padStart(2, "0")}-${String(leaveDate.getDate()).padStart(
+                2,
+                "0"
+              )}`;
               const dayCell = calendarGrid.querySelector(
-                `[data-date="${leaveEvent.date}"]`
+                `[data-date="${leaveDateString}"]`
               );
 
               if (dayCell) {
@@ -964,8 +1135,41 @@
           });
         }
 
+        // --- New Action Button Handler ---
+        if (leaveRequestsTable) {
+          leaveRequestsTable.addEventListener("click", (event) => {
+            const button = event.target.closest(".action-btn");
+            if (button) {
+              const action = button.dataset.action; // 'approve' or 'deny'
+              const id = button.dataset.id; // Request ID
+
+              // Find the employee name from the parent row
+              const row = button.closest("tr[data-request-id]");
+              const employeeName = row
+                ? row.dataset.employeeName
+                : "this employee";
+
+              if (action && id) {
+                showConfirmationModal(action, id, employeeName);
+              }
+            }
+          });
+        }
+
+        // Listener for the final confirmation button inside the modal
+        if (modalConfirmBtn) {
+          modalConfirmBtn.addEventListener("click", handleConfirmedAction);
+        }
+
         // Initial render
         renderCalendar(currentDate);
+
+        // Close modal if user clicks outside of the content
+        modal.addEventListener("click", (e) => {
+          if (e.target.id === "confirmation-modal") {
+            closeModal();
+          }
+        });
       });
     </script>
   </body>

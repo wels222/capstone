@@ -690,7 +690,7 @@ if (!isset($_SESSION['user_id'])) {
         </div>
         <div class="header-profile">
             <i class="fas fa-bell notification-icon"></i>
-            <img src="assets/logo.png" alt="Profile" class="profile-image">
+            <img src="../assets/logo.png" alt="Profile" class="profile-image">
         </div>
     </header>
 
@@ -699,19 +699,16 @@ if (!isset($_SESSION['user_id'])) {
             <nav class="nav-menu">
                 <ul>
                     <li class="nav-item active">
-                        <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+                        <a href="#"><i class="fas fa-th-large"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="employees.html"><i class="fas fa-users"></i> Employees</a>
+                        <a href="task-status.html"><i class="fas fa-users"></i> Task Status</a>
                     </li>
                     <li class="nav-item">
                         <a href="leave-status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
                     </li>
                     <li class="nav-item">
                         <a href="leave-request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="add-event.html"><i class="fas fa-calendar-plus"></i> Add Event</a>
                     </li>
                 </ul>
             </nav>

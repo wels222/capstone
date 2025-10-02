@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mi = $_POST['mi'] ?? '';
     $department = $_POST['department'] ?? '';
     $position = $_POST['position'] ?? '';
+    $status = $_POST['status'] ?? '';
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
@@ -16,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Passwords do not match.';
     } elseif (strlen($password) < 6) {
         $error = 'Password must be at least 6 characters.';
-    } elseif (empty($department) || empty($lastname) || empty($firstname) || empty($position) || empty($email)) {
+    } elseif (empty($department) || empty($lastname) || empty($firstname) || empty($position) || empty($status) || empty($email)) {
         $error = 'Please fill in all required fields.';
     } else {
         $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
@@ -25,8 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Email already registered.';
         } else {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position) VALUES (?, ?, ?, ?, ?, ?, ?)');
-            if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position])) {
+            $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+            if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position, $status])) {
                 $success = 'Registration successful! You can now <a href="index.php" style="color:#2563eb;">login</a>.';
             } else {
                 $error = 'Registration failed. Please try again.';
@@ -301,6 +302,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="HR">HR</option>
                                 <option value="Dept Head">Dept Head</option>
                                 <option value="Employee">Employee</option>
+                            </select>
+                        </div>
+                        <div class="input-block">
+                            <label for="status" class="input-label">Employee Status</label>
+                            <select name="status" id="status" required>
+                                <option value="">Select Status</option>
+                                <option value="Permanent">Permanent</option>
+                                <option value="Casual">Casual</option>
+                                <option value="JO">JO</option>
+                                <option value="OJT">OJT</option>
                             </select>
                         </div>
                         <div class="modal-buttons">
