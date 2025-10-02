@@ -296,7 +296,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div class="input-block">
                             <label for="position" class="input-label">Position</label>
-                            <input type="text" name="position" id="position" placeholder="Position" required>
+                            <select name="position" id="position" required>
+                                <option value="">Select Position</option>
+                                <option value="HR">HR</option>
+                                <option value="Dept Head">Dept Head</option>
+                                <option value="Employee">Employee</option>
+                            </select>
                         </div>
                         <div class="modal-buttons">
                             <button type="button" class="input-button" id="prev-2">Back</button>

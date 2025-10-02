@@ -2,20 +2,42 @@
 session_start();
 require_once 'db.php';
 // Redirect to dashboard if already logged in
-if (isset($_SESSION['user_id'])) {
-    header('Location: user/dashboard.php');
-    exit();
+$redirected = false;
+if (isset($_SESSION['user_id']) && isset($_SESSION['position'])) {
+    if ($_SESSION['position'] === 'HR') {
+        header('Location: hr/dashboard.php');
+        $redirected = true;
+    } elseif ($_SESSION['position'] === 'Dept Head') {
+        header('Location: dept_head/dashboard.php');
+        $redirected = true;
+    } elseif ($_SESSION['position'] === 'Employee') {
+        header('Location: employee/dashboard.php');
+        $redirected = true;
+    } else {
+        header('Location: dashboard.php');
+        $redirected = true;
+    }
+    if ($redirected) exit();
 }
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
-    $stmt = $pdo->prepare('SELECT id, password FROM users WHERE email = ?');
+    $stmt = $pdo->prepare('SELECT id, password, position FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $user = $stmt->fetch();
     if ($user && password_verify($password, $user['password'])) {
         $_SESSION['user_id'] = $user['id'];
-        header('Location: user/dashboard.php');
+        $_SESSION['position'] = $user['position'];
+        if ($user['position'] === 'HR') {
+            header('Location: hr/dashboard.php');
+        } elseif ($user['position'] === 'Dept Head') {
+            header('Location: dept_head/dashboard.php');
+        } elseif ($user['position'] === 'Employee') {
+            header('Location: employee/dashboard.php');
+        } else {
+            header('Location: dashboard.php');
+        }
         exit();
     } else {
         $error = 'Invalid email or password.';
