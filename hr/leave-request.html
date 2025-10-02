@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bayan ng Mabini | Employee System</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      /* All colors are shades of blue or neutral tones to match the request. */
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f0f4f8; /* A light blue-gray */
+        margin: 0;
+        padding: 0;
+      }
+
+      .container {
+        display: flex;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        width: 280px; /* Fixed width for desktop */
+        background-color: #ffffff;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 1.5rem 1rem;
+        border-right: 4px solid #3b82f6; /* Blue border */
+        flex-shrink: 0; /* Prevents sidebar from shrinking */
+        position: fixed; /* Fix the sidebar */
+        top: 60px; /* Adjust based on header height */
+        left: 0;
+        bottom: 0;
+        overflow-y: auto; /* Enable scrolling for sidebar content if needed */
+      }
+
+      .logo-container {
+        display: flex;
+        align-items: center;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #d1d5db;
+      }
+
+      .logo {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid #55a2ea;
+        padding: 3px;
+      }
+
+      .logo-text {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-left: 0.75rem;
+        color: #1e3a8a; /* Dark blue */
+        line-height: 1.25;
+      }
+
+      .nav-menu ul {
+        list-style: none;
+        padding: 0;
+        margin: 1rem 0;
+      }
+
+      .nav-item a {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        color: #4b5563;
+        text-decoration: none;
+        font-size: 0.95rem;
+        font-weight: 500;
+        border-radius: 0.5rem;
+        transition: background-color 0.2s, color 0.2s, transform 0.2s;
+      }
+
+      .nav-item a:hover,
+      .nav-item.active a {
+        background-color: #dbeafe; /* Light blue */
+        color: #1d4ed8;
+        font-weight: 600;
+        transform: translateY(-2px);
+      }
+
+      .nav-item a i {
+        width: 20px;
+        text-align: center;
+        margin-right: 1rem;
+      }
+
+      .sign-out {
+        margin-top: auto;
+      }
+
+      .sign-out a {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: #dc2626;
+        text-decoration: none;
+        font-size: 0.95rem;
+        font-weight: 500;
+        border-radius: 0.5rem;
+        transition: background-color 0.2s, transform 0.2s;
+      }
+
+      .sign-out a:hover {
+        background-color: #fee2e2;
+        transform: translateY(-2px);
+      }
+
+      .main-content {
+        flex-grow: 1;
+        padding: 2.5rem;
+        margin-left: 280px; /* Add margin to prevent content from going under the sidebar */
+        margin-top: 60px; /* Add margin to prevent content from going under the header */
+        overflow-y: auto;
+      }
+
+      .content-section {
+        display: none;
+      }
+
+      .content-section.active {
+        display: block;
+      }
+
+      .header-container {
+        display: grid;
+        grid-template-columns: repeat(
+          auto-fit,
+          minmax(200px, 1fr)
+        ); /* Adjusted for responsiveness */
+        gap: 1.5rem; /* Reduced gap for smaller screens */
+        margin-bottom: 2rem;
+      }
+
+      .header-box {
+        background-color: #fff;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        border-top: 4px solid;
+        width: 100%; /* Ensures it fills its grid cell */
+      }
+
+      .header-box:nth-child(1) {
+        border-color: #3b82f6;
+      }
+      .header-box:nth-child(2) {
+        border-color: #93c5fd;
+      }
+      .header-box:nth-child(3) {
+        border-color: #22d3ee;
+      }
+      .header-box:nth-child(4) {
+        border-color: #60a5fa;
+      }
+
+      .header-box .category {
+        font-size: 0.9rem;
+        color: #4b5563;
+        font-weight: 500;
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+
+      .header-box .count {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1f2937;
+      }
+
+      .header-box .active-count {
+        font-size: 0.8rem;
+        color: #9ca3af;
+        font-weight: 500;
+      }
+
+      .projects-events-container {
+        display: flex;
+        flex-wrap: wrap; /* Allows wrapping on smaller screens */
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .active-projects-box,
+      .events-box {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        flex: 1 1 45%; /* Flex-basis allows them to grow but wrap */
+        min-width: 300px; /* Ensures they don't get too narrow */
+      }
+
+      .active-projects-box h3,
+      .events-box h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1rem;
+      }
+
+      .export-report {
+        float: right;
+        font-size: 0.9rem;
+        color: #2563eb;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      th {
+        color: #6b7280;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .progress-bar {
+        background-color: #e5e7eb;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        width: 100px;
+      }
+
+      .progress-fill {
+        height: 100%;
+        border-radius: 4px;
+      }
+
+      .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      .status-badge.inprogress {
+        background-color: #dbeafe;
+        color: #1e40af;
+      }
+      .status-badge.pending {
+        background-color: #fef2f2;
+        color: #ef4444;
+      }
+      .status-badge.completed {
+        background-color: #f0fdf4;
+        color: #22c55e;
+      }
+
+      .event-item {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1rem 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .event-item:last-child {
+        border-bottom: none;
+      }
+
+      .event-date {
+        background-color: #e5e7eb;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        text-align: center;
+        line-height: 1;
+      }
+
+      .event-date .day {
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: block;
+      }
+
+      .event-date .month {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: #6b7280;
+      }
+
+      .event-details {
+        flex-grow: 1;
+      }
+
+      .event-details .event-title {
+        font-weight: 600;
+        color: #1f2937;
+      }
+
+      .event-details .event-location {
+        font-size: 0.9rem;
+        color: #6b7280;
+      }
+
+      .event-time {
+        font-size: 0.9rem;
+        color: #9ca3af;
+      }
+
+      .all-projects-chart {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center; /* Center content when stacked */
+        gap: 2rem;
+        flex-wrap: wrap; /* Allows chart and legend to wrap */
+      }
+
+      .chart-container {
+        width: 150px;
+        height: 150px;
+        position: relative;
+      }
+
+      .chart-legend h4 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.75rem;
+      }
+
+      .chart-legend ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .chart-legend li {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        color: #4b5563;
+      }
+
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-right: 0.75rem;
+      }
+
+      .legend-color.complete {
+        background-color: #2563eb;
+      }
+      .legend-color.pending {
+        background-color: #93c5fd;
+      }
+      .legend-color.not-start {
+        background-color: #60a5fa;
+      }
+
+      .top-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        background-color: #ffffff;
+        border-bottom: 1px solid #a7c4ff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+      }
+
+      .header-logo .logo-image {
+        width: 40px;
+        height: 40px;
+        margin-right: 10px;
+      }
+
+      .header-text {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #1e3a8a;
+      }
+
+      .header-profile {
+        display: flex;
+        align-items: center;
+      }
+
+      .header-profile .profile-image {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        cursor: pointer;
+        margin-left: 10px;
+      }
+
+      .header-profile .notification-icon {
+        font-size: 1.25rem;
+        color: #6b7280;
+        cursor: pointer;
+        transition: color 0.2s;
+      }
+
+      .header-profile .notification-icon:hover {
+        color: #3b82f6;
+      }
+
+      /* Employees Section Styles */
+      .employee-tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        overflow-x: auto;
+      }
+
+      .employee-tab-btn {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.95rem;
+        font-weight: 500;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s, transform 0.2s;
+        border: 1px solid #d1d5db;
+      }
+
+      .employee-tab-btn.active {
+        font-weight: 600;
+        transform: translateY(-2px);
+        color: #fff;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-color: transparent;
+      }
+
+      /* Category-specific button colors matching dashboard boxes */
+      .employee-tab-btn[data-category="Permanent"].active {
+        background-color: #3b82f6;
+      }
+      .employee-tab-btn[data-category="Casual"].active {
+        background-color: #93c5fd;
+      }
+      .employee-tab-btn[data-category="JO"].active {
+        background-color: #22d3ee;
+      }
+      .employee-tab-btn[data-category="OJT"].active {
+        background-color: #60a5fa;
+      }
+
+      .employee-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+      }
+
+      .employee-card {
+        background-color: #fff;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        text-align: center;
+        position: relative;
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+      }
+
+      .employee-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .employee-card .active-status {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 12px;
+        height: 12px;
+        background-color: #10b981; /* Green color for active status */
+        border-radius: 50%;
+        border: 2px solid #fff;
+      }
+
+      .employee-card .profile-image {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #e5e7eb;
+        margin-bottom: 1rem;
+      }
+
+      .employee-card .employee-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+      }
+
+      .employee-card .employee-category {
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+
+      /* Category-specific card colors */
+      .employee-card[data-category="Permanent"] .employee-category {
+        color: #3b82f6;
+      }
+      .employee-card[data-category="Casual"] .employee-category {
+        color: #93c5fd;
+      }
+      .employee-card[data-category="JO"] .employee-category {
+        color: #22d3ee;
+      }
+      .employee-card[data-category="OJT"] .employee-category {
+        color: #60a5fa;
+      }
+
+      /* Modal Popup Styles */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        z-index: 1001;
+      }
+
+      .modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .modal-content {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        width: 90%;
+        max-width: 500px;
+        position: relative;
+        transform: scale(0.9);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        max-height: 90vh; /* Limit height to prevent full screen takeover */
+        overflow-y: auto; /* Enable scrolling for modal content */
+      }
+
+      .modal-overlay.show .modal-content {
+        transform: scale(1);
+      }
+
+      .modal-close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #9ca3af;
+        cursor: pointer;
+        transition: color 0.2s;
+      }
+
+      .modal-close-btn:hover {
+        color: #ef4444;
+      }
+
+      .modal-profile-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        text-align: center;
+      }
+
+      .modal-profile-header img {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #3b82f6;
+        margin-bottom: 1rem;
+      }
+
+      .modal-profile-header h4 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+      }
+
+      .modal-profile-header .employee-details {
+        font-size: 1rem;
+        color: #6b7280;
+        margin-top: 0.5rem;
+      }
+
+      .modal-leave-credits {
+        margin-top: 1rem;
+        text-align: left;
+      }
+
+      .modal-leave-credits h5 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1rem;
+      }
+
+      .modal-leave-credits ul {
+        list-style: none;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+
+      .modal-leave-credits li {
+        background-color: #f3f4f6;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.95rem;
+        color: #374151;
+      }
+
+      .modal-leave-credits .credit-count {
+        font-weight: 600;
+        color: #1d4ed8;
+      }
+
+      @media (max-width: 1024px) {
+        .header-container {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .projects-events-container {
+          flex-direction: column;
+        }
+
+        .all-projects-chart {
+          flex-direction: column;
+          text-align: center;
+        }
+
+        .chart-legend {
+          margin-top: 2rem;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+          height: auto;
+        }
+
+        .sidebar {
+          width: 100%;
+          height: auto;
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem;
+          position: relative;
+          border-right: none;
+          border-bottom: 4px solid #3b82f6;
+        }
+
+        .nav-menu {
+          display: none;
+        }
+
+        .main-content {
+          padding: 1.5rem;
+          margin-left: 0;
+          margin-top: 60px;
+        }
+
+        .header-container {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+
+        .employee-tabs {
+          flex-wrap: nowrap;
+        }
+      }
+
+      /* Specific Leave Management Styles */
+      .tab-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap; /* Allows wrapping on smaller screens */
+      }
+
+      .tab-button {
+        padding: 0.75rem 2rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap; /* Prevents text from wrapping inside the button */
+      }
+
+      .tab-button.active {
+        background-color: #3b82f6;
+        color: #ffffff;
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+      }
+
+      .tab-button:not(.active) {
+        background-color: #dbeafe;
+        color: #60a5fa;
+      }
+
+      .tab-content {
+        display: none; /* Hide all content by default */
+      }
+
+      .tab-content.active {
+        display: block; /* Show active content */
+      }
+
+      .table-container {
+        background-color: #ffffff;
+        padding: 1.5rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        overflow-x: auto; /* Allows horizontal scrolling for table on small screens */
+      }
+
+      .table-header-controls {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .table-header-controls .filter-icon,
+      .table-header-controls .export-button {
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .table-header-controls .filter-icon {
+        color: #6b7280;
+        border: 1px solid #d1d5db;
+        background-color: #fff;
+      }
+
+      .table-header-controls .export-button {
+        background-color: #22c55e;
+        color: #ffffff;
+        border: none;
+      }
+
+      .table-actions {
+        position: relative;
+      }
+
+      .table-actions .actions-button {
+        background-color: #3b82f6;
+        color: #ffffff;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        border: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      .table-actions .actions-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background-color: #ffffff;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        z-index: 10;
+        display: none;
+        width: 150px;
+      }
+
+      .table-actions.open .actions-dropdown {
+        display: block;
+      }
+
+      .table-actions .dropdown-item {
+        display: block;
+        padding: 0.5rem 1rem;
+        color: #4b5563;
+        text-decoration: none;
+        transition: background-color 0.2s;
+        border-radius: 0.25rem;
+      }
+
+      .table-actions .dropdown-item:hover {
+        background-color: #f3f4f6;
+      }
+
+      /* Updated styling for the Recall button */
+      .recall-button {
+        background-color: #3b82f6;
+        color: #ffffff;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        border: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .recall-button:hover {
+        background-color: #2563eb;
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+      }
+
+      .view-link {
+        color: #3b82f6;
+        font-weight: 600;
+        text-decoration: underline;
+      }
+
+      /* Leave Recall Modal Specific Styles */
+      .leave-recall-modal .modal-content {
+        max-width: 600px;
+        text-align: left;
+      }
+
+      .leave-recall-modal h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+      }
+
+      .leave-recall-modal p {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+      }
+
+      .leave-recall-modal .form-group {
+        margin-bottom: 1rem;
+      }
+
+      .leave-recall-modal label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #4b5563;
+        margin-bottom: 0.25rem;
+      }
+
+      .leave-recall-modal input,
+      .leave-recall-modal textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+      }
+
+      .leave-recall-modal .form-row {
+        display: flex;
+        gap: 1rem;
+      }
+
+      .leave-recall-modal .form-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .leave-recall-modal .form-buttons button {
+        padding: 0.75rem 2rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        color: #ffffff;
+        border: none;
+      }
+
+      .leave-recall-modal .form-buttons .initiate-button {
+        background-color: #10b981;
+      }
+
+      .leave-recall-modal .form-buttons .cancel-button {
+        background-color: #ef4444;
+      }
+
+      .leave-recall-modal
+        input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+      }
+
+      .status-badge.approve {
+        background-color: #d1fae5;
+        color: #065f46;
+      }
+      .status-badge.decline {
+        background-color: #fee2e2;
+        color: #991b1b;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top-header">
+      <div class="header-left">
+        <div class="header-logo">
+          <img src="assets/logo.png" alt="Mabini Logo" class="logo-image" />
+        </div>
+        <span class="header-text">Bayan ng Mabini</span>
+      </div>
+      <div class="header-profile">
+        <i class="fas fa-bell notification-icon"></i>
+        <img src="assets/logo.png" alt="Profile" class="profile-image" />
+      </div>
+    </header>
+
+    <div class="container">
+      <aside class="sidebar">
+        <nav class="nav-menu">
+          <ul>
+            <li class="nav-item">
+              <a href="dashboard.php"
+                ><i class="fas fa-th-large"></i> Dashboard</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="employees.html"
+                ><i class="fas fa-users"></i> Employees</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="leave-status.html"
+                ><i class="fas fa-calendar-alt"></i> Leave Status</a
+              >
+            </li>
+            <li class="nav-item active">
+              <a href="#"><i class="fas fa-calendar-plus"></i> Leave Request</a>
+            </li>
+            <li class="nav-item">
+              <a href="add-event.html"
+                ><i class="fas fa-calendar-plus"></i> Add Event</a
+              >
+            </li>
+          </ul>
+        </nav>
+        <div class="sign-out">
+          <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="main-content-area">
+          <section id="leave-management-content" class="content-section active">
+            <h2 class="text-2xl font-bold mb-6">Leave Management</h2>
+
+            <div class="tab-buttons">
+              <button class="tab-button active" data-tab="leave-request">
+                Leave Request
+              </button>
+              <button class="tab-button" data-tab="leave-recall">
+                Leave Recall
+              </button>
+              <button class="tab-button" data-tab="leave-history">
+                Leave History
+              </button>
+            </div>
+
+            <div id="leave-request" class="tab-content active">
+              <div class="table-container">
+                <div class="table-header-controls">
+                  <i class="fas fa-filter filter-icon"></i>
+                  <button class="export-button">
+                    Export &nbsp;<i class="fas fa-download"></i>
+                  </button>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name(s)</th>
+                      <th>Duration(s)</th>
+                      <th>Start Date</th>
+                      <th>End Date</th>
+                      <th>Form</th>
+                      <th>Contact No.</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>abebe gemechu</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09123456789</td>
+                      <td class="table-actions">
+                        <button class="actions-button">
+                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+                          <a href="#" class="dropdown-item">Approve</a>
+                          <a href="#" class="dropdown-item">Decline</a>
+                          <a href="#" class="dropdown-item">Cancel</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>aman bey</td>
+                      <td>7</td>
+                      <td>22/04/2022</td>
+                      <td>30/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>092123456789</td>
+                      <td class="table-actions">
+                        <button class="actions-button">
+                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+                          <a href="#" class="dropdown-item">Approve</a>
+                          <a href="#" class="dropdown-item">Decline</a>
+                          <a href="#" class="dropdown-item">Cancel</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>feven tesfaye</td>
+                      <td>120</td>
+                      <td>22/04/2022</td>
+                      <td>28/06/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>093123456789</td>
+                      <td class="table-actions">
+                        <button class="actions-button">
+                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+                          <a href="#" class="dropdown-item">Approve</a>
+                          <a href="#" class="dropdown-item">Decline</a>
+                          <a href="#" class="dropdown-item">Cancel</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>gella moges</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09412356789</td>
+                      <td class="table-actions">
+                        <button class="actions-button">
+                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+                          <a href="#" class="dropdown-item">Approve</a>
+                          <a href="#" class="dropdown-item">Decline</a>
+                          <a href="#" class="dropdown-item">Cancel</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>yanet tesfaye</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09512346789</td>
+                      <td class="table-actions">
+                        <button class="actions-button">
+                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+                          <a href="#" class="dropdown-item">Approve</a>
+                          <a href="#" class="dropdown-item">Decline</a>
+                          <a href="#" class="dropdown-item">Cancel</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>betl wolde</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09612345789</td>
+                      <td class="table-actions">
+                        <button class="actions-button">
+                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+                          <a href="#" class="dropdown-item">Approve</a>
+                          <a href="#" class="dropdown-item">Decline</a>
+                          <a href="#" class="dropdown-item">Cancel</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>dawit int</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09712345689</td>
+                      <td class="table-actions">
+                        <button class="actions-button">
+                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+                          <a href="#" class="dropdown-item">Approve</a>
+                          <a href="#" class="dropdown-item">Decline</a>
+                          <a href="#" class="dropdown-item">Cancel</a>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="leave-recall" class="tab-content">
+              <div class="table-container">
+                <div class="table-header-controls">
+                  <i class="fas fa-filter filter-icon"></i>
+                  <button class="export-button">
+                    Export &nbsp;<i class="fas fa-download"></i>
+                  </button>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name(s)</th>
+                      <th>Leave Type</th>
+                      <th>Start Date</th>
+                      <th>End Date</th>
+                      <th>Contact No.</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>abebe gemechu</td>
+                      <td>Sick Leave</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td>09123456789</td>
+                      <td><button class="recall-button">Recall</button></td>
+                    </tr>
+                    <tr>
+                      <td>aman bey</td>
+                      <td>Vacation Leave</td>
+                      <td>22/04/2022</td>
+                      <td>30/04/2022</td>
+                      <td>092123456789</td>
+                      <td><button class="recall-button">Recall</button></td>
+                    </tr>
+                    <tr>
+                      <td>feven tesfaye</td>
+                      <td>Maternity Leave</td>
+                      <td>22/04/2022</td>
+                      <td>28/06/2022</td>
+                      <td>093123456789</td>
+                      <td><button class="recall-button">Recall</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="leave-history" class="tab-content">
+              <div class="table-container">
+                <div class="table-header-controls">
+                  <i class="fas fa-filter filter-icon"></i>
+                  <button class="export-button">
+                    Export &nbsp;<i class="fas fa-download"></i>
+                  </button>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name(s)</th>
+                      <th>Duration(s)</th>
+                      <th>Start Date</th>
+                      <th>End Date</th>
+                      <th>Form</th>
+                      <th>Contact No.</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>abebe gemechu</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09123456789</td>
+                      <td>
+                        <span class="status-badge approve">Approved</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>aman bey</td>
+                      <td>7</td>
+                      <td>22/04/2022</td>
+                      <td>30/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>092123456789</td>
+                      <td>
+                        <span class="status-badge decline">Declined</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>feven tesfaye</td>
+                      <td>120</td>
+                      <td>22/04/2022</td>
+                      <td>28/06/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>093123456789</td>
+                      <td>
+                        <span class="status-badge approve">Approved</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>gella moges</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09412356789</td>
+                      <td>
+                        <span class="status-badge decline">Declined</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>yanet tesfaye</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09512346789</td>
+                      <td>
+                        <span class="status-badge approve">Approved</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>betl wolde</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09612345789</td>
+                      <td>
+                        <span class="status-badge decline">Declined</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>dawit int</td>
+                      <td>5</td>
+                      <td>22/04/2022</td>
+                      <td>28/04/2022</td>
+                      <td><a href="#" class="view-link">view</a></td>
+                      <td>09712345689</td>
+                      <td>
+                        <span class="status-badge approve">Approved</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div id="leave-recall-modal" class="modal-overlay leave-recall-modal">
+      <div class="modal-content">
+        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+        <h3 class="text-center font-bold">Leave Recall</h3>
+        <p class="text-center text-sm text-gray-500 mb-6">
+          Fill in the required details to recall this employee
+        </p>
+        <form id="leave-recall-form" class="space-y-4">
+          <div class="form-group">
+            <label for="recall-employee-name">Employee Name</label>
+            <input
+              type="text"
+              id="recall-employee-name"
+              name="employee-name"
+              value="aman bey"
+              readonly
+            />
+          </div>
+          <div class="form-group">
+            <label for="recall-reason">Reason</label>
+            <input
+              type="text"
+              id="recall-reason"
+              name="reason"
+              value="need immediate meeting"
+            />
+          </div>
+          <div class="form-row">
+            <div class="form-group w-1/2">
+              <label for="recall-start-date">Start Date</label>
+              <input
+                type="date"
+                id="recall-start-date"
+                name="start-date"
+                value="2022-04-22"
+                required
+              />
+            </div>
+            <div class="form-group w-1/2">
+              <label for="recall-end-date">End Date</label>
+              <input
+                type="date"
+                id="recall-end-date"
+                name="end-date"
+                value="2022-04-22"
+                required
+              />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group w-1/2">
+              <label for="recall-days-remaining">Days Remaining</label>
+              <input
+                type="number"
+                id="recall-days-remaining"
+                name="days-remaining"
+                value="3"
+                required
+              />
+            </div>
+            <div class="form-group w-1/2">
+              <label for="recall-new-resumption-date"
+                >New Resumption Date</label
+              >
+              <input
+                type="date"
+                id="recall-new-resumption-date"
+                name="new-resumption-date"
+                required
+              />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="recall-relief-officer">Relief Officer(s)</label>
+            <input
+              type="text"
+              id="recall-relief-officer"
+              name="relief-officer"
+              value="Hfi bethel"
+            />
+          </div>
+          <div class="form-buttons">
+            <button type="submit" class="initiate-button">
+              Initiate Recall
+            </button>
+            <button type="button" class="cancel-button" onclick="closeModal()">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const tabs = document.querySelectorAll(".tab-button");
+        const contents = document.querySelectorAll(".tab-content");
+
+        // Function to handle tab switching
+        function switchTab(tabName) {
+          contents.forEach((content) => {
+            if (content.id === tabName) {
+              content.classList.add("active");
+            } else {
+              content.classList.remove("active");
+            }
+          });
+
+          tabs.forEach((tab) => {
+            if (tab.dataset.tab === tabName) {
+              tab.classList.add("active");
+            } else {
+              tab.classList.remove("active");
+            }
+          });
+        }
+
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => {
+            switchTab(tab.dataset.tab);
+          });
+        });
+
+        // Dropdown functionality for "Actions" button in Leave History
+        document.querySelectorAll(".table-actions").forEach((actionDiv) => {
+          const button = actionDiv.querySelector(".actions-button");
+          button.addEventListener("click", (e) => {
+            e.stopPropagation(); // Prevents click from bubbling up and closing other dropdowns
+            // Close all other open dropdowns first
+            document
+              .querySelectorAll(".table-actions.open")
+              .forEach((openDiv) => {
+                if (openDiv !== actionDiv) {
+                  openDiv.classList.remove("open");
+                }
+              });
+            actionDiv.classList.toggle("open");
+          });
+        });
+
+        // Close dropdowns when clicking outside
+        window.addEventListener("click", (e) => {
+          document
+            .querySelectorAll(".table-actions.open")
+            .forEach((openDiv) => {
+              if (!openDiv.contains(e.target)) {
+                openDiv.classList.remove("open");
+              }
+            });
+        });
+
+        // Modal functionality for Leave Recall
+        const recallModal = document.getElementById("leave-recall-modal");
+
+        // Function to show the modal
+        window.showModal = function () {
+          recallModal.classList.add("show");
+        };
+
+        // Function to close the modal
+        window.closeModal = function () {
+          recallModal.classList.remove("show");
+        };
+
+        // Event listeners for all "Recall" buttons
+        document.querySelectorAll(".recall-button").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            // This is a simple implementation. In a real application, you'd
+            // pass data about the employee to the modal.
+            showModal();
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

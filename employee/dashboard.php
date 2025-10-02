@@ -684,7 +684,7 @@ if (!isset($_SESSION['user_id'])) {
     <header class="top-header">
         <div class="header-left">
             <div class="header-logo">
-                <img src="assets/logo.png" alt="Mabini Logo" class="logo-image">
+                <img src="../assets/logo.png" alt="Mabini Logo" class="logo-image">
             </div>
             <span class="header-text">Employee</span>
         </div>

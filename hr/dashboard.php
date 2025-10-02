@@ -699,7 +699,7 @@ if (!isset($_SESSION['user_id'])) {
             <nav class="nav-menu">
                 <ul>
                     <li class="nav-item active">
-                        <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
+                        <a href="#"><i class="fas fa-th-large"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
                         <a href="employees.html"><i class="fas fa-users"></i> Employees</a>
