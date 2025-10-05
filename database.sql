@@ -10,7 +10,16 @@ CREATE TABLE IF NOT EXISTS users (
 	position VARCHAR(100) NOT NULL,
 	status VARCHAR(20) NOT NULL,
 	email VARCHAR(100) NOT NULL UNIQUE,
-	password VARCHAR(255) NOT NULL
+	password VARCHAR(255) NOT NULL,
+	profile_picture MEDIUMTEXT
 );
 
 
+CREATE TABLE IF NOT EXISTS events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    date DATE NOT NULL,
+    time VARCHAR(50),
+    location VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL
+);

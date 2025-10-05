@@ -705,13 +705,13 @@ if (!isset($_SESSION['user_id'])) {
                         <a href="employees.html"><i class="fas fa-users"></i> Employees</a>
                     </li>
                     <li class="nav-item">
-                        <a href="leave-status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
+                        <a href="leave_status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
                     </li>
                     <li class="nav-item">
-                        <a href="leave-request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>
+                        <a href="leave_request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>
                     </li>
                     <li class="nav-item">
-                        <a href="add-event.html"><i class="fas fa-calendar-plus"></i> Add Event</a>
+                        <a href="manage_events.html"><i class="fa fa-calendar-times"></i> Manage Events</a>
                     </li>
                 </ul>
             </nav>
@@ -726,23 +726,23 @@ if (!isset($_SESSION['user_id'])) {
                     <div class="header-container">
                         <div class="header-box">
                             <span class="category">Permanent</span>
-                            <div class="count">29</div>
-                            <span class="active-count">25 Active</span>
+                            <div class="count" id="count-permanent">0</div>
+                            <span class="active-count" id="active-permanent">0 Active</span>
                         </div>
                         <div class="header-box">
                             <span class="category">Casual</span>
-                            <div class="count">24</div>
-                            <span class="active-count">22 Active</span>
+                            <div class="count" id="count-casual">0</div>
+                            <span class="active-count" id="active-casual">0 Active</span>
                         </div>
                         <div class="header-box">
                             <span class="category">JO</span>
-                            <div class="count">25</div>
-                            <span class="active-count">20 Active</span>
+                            <div class="count" id="count-jo">0</div>
+                            <span class="active-count" id="active-jo">0 Active</span>
                         </div>
                         <div class="header-box">
                             <span class="category">OJT</span>
-                            <div class="count">21</div>
-                            <span class="active-count">19 Active</span>
+                            <div class="count" id="count-ojt">0</div>
+                            <span class="active-count" id="active-ojt">0 Active</span>
                         </div>
                     </div>
                     <div class="projects-events-container">
@@ -812,52 +812,9 @@ if (!isset($_SESSION['user_id'])) {
                         </div>
                         <div class="events-box">
                             <h3 class="text-xl font-bold text-gray-800">Events</h3>
-                            <div class="space-y-4">
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">20</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Development planning</p>
-                                        <p class="event-location">PTCAO Office</p>
-                                    </div>
-                                    <span class="event-time">1:00 PM</span>
-                                </div>
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">21</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Cultural Presentation</p>
-                                        <p class="event-location">Capitolo</p>
-                                    </div>
-                                    <span class="event-time">7:00 AM</span>
-                                </div>
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">24</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Development planning</p>
-                                        <p class="event-location">PTCAO Office</p>
-                                    </div>
-                                    <span class="event-time">1:00 PM</span>
-                                </div>
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">25</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Summit</p>
-                                        <p class="event-location">DreamZone</p>
-                                    </div>
-                                    <span class="event-time">2:00 PM</span>
-                                </div>
-                            </div>
+                                <ul id="events-list">
+                                    <!-- Events will be loaded here -->
+                                </ul>
                         </div>
                     </div>
                     <div class="all-projects-chart">
@@ -879,7 +836,30 @@ if (!isset($_SESSION['user_id'])) {
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
+            // Real-time employee counts
+            fetch('../api/get_employees.php')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const employees = data.employees;
+                        const countPermanent = employees.filter(e => e.status === 'Permanent').length;
+                        const countCasual = employees.filter(e => e.status === 'Casual').length;
+                        const countJO = employees.filter(e => e.status === 'JO').length;
+                        const countOJT = employees.filter(e => e.status === 'OJT').length;
+                        document.getElementById('count-permanent').textContent = countPermanent;
+                        document.getElementById('count-casual').textContent = countCasual;
+                        document.getElementById('count-jo').textContent = countJO;
+                        document.getElementById('count-ojt').textContent = countOJT;
+                        // If you want to show only active, filter by another field (e.g., e.active === 1)
+                        document.getElementById('active-permanent').textContent = countPermanent + ' Active';
+                        document.getElementById('active-casual').textContent = countCasual + ' Active';
+                        document.getElementById('active-jo').textContent = countJO + ' Active';
+                        document.getElementById('active-ojt').textContent = countOJT + ' Active';
+                    }
+                });
+
+            // Chart and events (existing code)
             const chartData = {
                 labels: ['Complete', 'Pending', 'Not Start'],
                 datasets: [{
@@ -893,7 +873,6 @@ if (!isset($_SESSION['user_id'])) {
                     hoverOffset: 4
                 }]
             };
-
             const config = {
                 type: 'doughnut',
                 data: chartData,
@@ -908,11 +887,33 @@ if (!isset($_SESSION['user_id'])) {
                     }
                 }
             };
-            
             const projectChart = document.getElementById('projectChart');
             if(projectChart) {
                 new Chart(projectChart, config);
             }
+            // Fetch and display events from database
+            fetch('../api/get_events.php')
+                .then(response => response.json())
+                .then(data => {
+                    const eventsList = document.getElementById('events-list');
+                    eventsList.innerHTML = '';
+                    if (data && data.length > 0) {
+                        data.forEach(event => {
+                            const li = document.createElement('li');
+                            li.className = 'py-2 border-b last:border-0 flex justify-between items-center';
+                            li.innerHTML = `
+                                <span><strong>${event.title}</strong> - ${event.description || ''}</span>
+                                <span class="text-xs text-gray-500 ml-2">${event.date} ${event.time ? ('- ' + event.time) : ''}</span>
+                            `;
+                            eventsList.appendChild(li);
+                        });
+                    } else {
+                        eventsList.innerHTML = '<li class="py-2 text-gray-500">No events found.</li>';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
+                });
         });
     </script>
 </body>

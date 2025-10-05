@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Form</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .modal-bg {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+        }
+        .modal-bg.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-6 lg:p-10">
+
+    <header class="bg-white rounded-xl shadow-md p-4 flex items-center justify-between z-10 sticky top-0">
+        <div class="flex items-center space-x-4">
+            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <img src="../assets/logo.png" alt="Logo" class="rounded-full">
+            </div>
+            <h1 id="header-title" class="text-xl font-bold text-gray-800">Dashboard</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
+                <i class="fas fa-bell text-lg"></i>
+            </a>
+                <div class="flex items-center space-x-4">
+            <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
+                <i class="fas fa-home text-lg"></i>
+            </a>
+            <img src="https://placehold.co/40x40/FF5733/FFFFFF?text=P" alt="Profile" class="w-10 h-10 rounded-full cursor-pointer">
+        </div>
+    </header>   
+
+    <main class="flex-grow p-4 overflow-y-auto mt-6">
+      <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div class="flex items-center text-gray-600">
+          <a href="dashboard.html" class="cursor-pointer hover:text-blue-600">Dashboard</a>
+          <span class="mx-2">&gt;</span>
+          <a href="apply_leave.html" class="cursor-pointer hover:text-blue-600">Apply for Leave</a>
+          <span class="mx-2">&gt;</span>
+          <span id="current-leave-type"></span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">
+          <span class="font-bold text-blue-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M17 17h.01" />
+            </svg>
+          </span>
+          <span id="form-leave-type">Annual Leave</span>
+        </h2>
+        <p class="text-sm text-gray-500 mb-6" id="form-description">Fill the required fields below to apply for leave.</p>
+
+        <form id="leaveAppForm">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label for="startDate" class="block text-sm font-medium text-gray-700">Start Date</label>
+              <input type="date" id="startDate" name="startDate" required class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+              <label for="endDate" class="block text-sm font-medium text-gray-700">End Date</label>
+              <input type="date" id="endDate" name="endDate" required class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+              <label for="duration" class="block text-sm font-medium text-gray-700">Duration (Working Days)</label>
+              <input type="text" id="duration" name="duration" readonly class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+            <div>
+              <label for="salaryInput" class="block text-sm font-medium text-gray-700">Salary</label>
+              <input type="text" id="salaryInput" name="salaryInput" required class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+            </div>
+          </div>
+          <div class="mt-6">
+            <label for="reason" class="block text-sm font-medium text-gray-700">Reason for Leave</label>
+            <textarea id="reason" name="reason" rows="3" required class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+          </div>
+          <div class="mt-6">
+            <label class="block text-sm font-medium text-gray-700">Commutation (6.D.)</label>
+            <div class="mt-2 space-x-4">
+              <label class="inline-flex items-center">
+                <input type="radio" name="commutation" value="Requested" class="form-radio text-blue-600" checked>
+                <span class="ml-2 text-gray-700">Requested</span>
+              </label>
+              <label class="inline-flex items-center">
+                <input type="radio" name="commutation" value="Not Requested" class="form-radio text-blue-600">
+                <span class="ml-2 text-gray-700">Not Requested</span>
+              </label>
+            </div>
+          </div>
+          <div class="mt-6">
+            <label for="reliefOfficer" class="block text-sm font-medium text-gray-700">Choose Relief Officer</label>
+            <select id="reliefOfficer" name="reliefOfficer" required class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+              <option value="">Select your relief officer</option>
+              <option value="william">William</option>
+              <option value="doel">Doel</option>
+              <option value="michael">Michael</option>
+            </select>
+          </div>
+          <div class="mt-6">
+            <label for="signature" class="block text-sm font-medium text-gray-700">Upload E-Signature</label>
+            <input type="file" id="signature" name="signature" accept="image/*" required class="mt-1 block w-full text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-full file:border-0
+              file:text-sm file:font-semibold
+              file:bg-blue-50 file:text-blue-700
+              hover:file:bg-blue-100
+              cursor-pointer">
+          </div>
+          <div class="mt-6" id="detailsOfLeave"></div>
+          <div class="mt-8">
+            <label for="dept_head_select" class="block text-sm font-medium text-gray-700 mb-2">Select Dept Head</label>
+            <select id="dept_head_select" name="dept_head_select" required class="border rounded px-2 py-2 text-sm w-full mb-4">
+              <option value="">Select department head</option>
+              <!-- Options will be loaded dynamically from the database -->
+            </select>
+            <div class="flex justify-end space-x-4">
+              <button type="reset" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Reset</button>
+              <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">Submit</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </main>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+          const leaveForm = document.getElementById('leaveAppForm');
+          const formLeaveType = document.getElementById('form-leave-type');
+          const currentLeaveType = document.getElementById('current-leave-type');
+          const formDescription = document.getElementById('form-description');
+          
+          // Get the leave type from the URL query parameter
+          const urlParams = new URLSearchParams(window.location.search);
+          const leaveType = urlParams.get('type') || 'Leave Form';
+          
+          formLeaveType.textContent = leaveType;
+          currentLeaveType.textContent = leaveType;
+          formDescription.textContent = `Fill the required fields below to apply for ${leaveType}.`;
+
+          // Auto-compute duration
+          document.getElementById('startDate').addEventListener('change', computeDuration);
+          document.getElementById('endDate').addEventListener('change', computeDuration);
+          function computeDuration() {
+            const start = new Date(document.getElementById('startDate').value);
+            const end = new Date(document.getElementById('endDate').value);
+            if (start && end && end >= start) {
+              const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+              document.getElementById('duration').value = diff;
+            } else {
+              document.getElementById('duration').value = '';
+            }
+          }
+
+          // Section 6.B dynamic fields
+          const detailsDiv = document.getElementById('detailsOfLeave');
+          if (leaveType === 'Vacation Leave' || leaveType === 'Special Privilege Leave') {
+            detailsDiv.innerHTML = `
+              <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              <select id="vl_location" name="vl_location" class="form-input border rounded w-full mb-2">
+                <option value="Within PH">Within the Philippines</option>
+                <option value="Abroad">Abroad (Specify below)</option>
+              </select>
+              <input type="text" id="vl_location_specify" name="vl_location_specify" class="form-input border rounded w-full mb-2" placeholder="Specify location if abroad">
+            `;
+          } else if (leaveType === 'Sick Leave') {
+            detailsDiv.innerHTML = `
+              <label class="block text-sm font-medium text-gray-700 mb-2">Sick Leave Type</label>
+              <select id="sl_type" name="sl_type" class="form-input border rounded w-full mb-2">
+                <option value="In Hospital">In Hospital</option>
+                <option value="Out Patient">Out Patient</option>
+              </select>
+              <input type="text" id="sl_illness" name="sl_illness" class="form-input border rounded w-full mb-2" placeholder="Specify illness">
+            `;
+          } else if (leaveType === 'Special Leave for Women') {
+            detailsDiv.innerHTML = `
+              <label class="block text-sm font-medium text-gray-700 mb-2">Special Leave for Women (Specify Illness)</label>
+              <input type="text" id="splwomen_illness" name="splwomen_illness" class="form-input border rounded w-full mb-2">
+            `;
+          } else if (leaveType === 'Study Leave') {
+            detailsDiv.innerHTML = `
+              <label class="block text-sm font-medium text-gray-700 mb-2">Study Leave Purpose</label>
+              <select id="study_purpose" name="study_purpose" class="form-input border rounded w-full mb-2">
+                <option value="Master's Degree">Completion of Master's Degree</option>
+                <option value="BAR Review">BAR/Board Examination Review</option>
+                <option value="Other">Other</option>
+              </select>
+              <input type="text" id="study_other" name="study_other" class="form-input border rounded w-full mb-2" placeholder="Specify other purpose">
+            `;
+          } else if (leaveType === 'Monetization of Leave Credits' || leaveType === 'Terminal Leave') {
+            detailsDiv.innerHTML = `<p class="text-xs">No additional details required.</p>`;
+          }
+
+          // On submit, save all answers to localStorage and go to civil form
+          document.getElementById('leaveAppForm').onsubmit = function(e) {
+            e.preventDefault();
+            localStorage.setItem('leaveType', leaveType);
+            localStorage.setItem('leaveStartDate', document.getElementById('startDate').value);
+            localStorage.setItem('leaveEndDate', document.getElementById('endDate').value);
+            localStorage.setItem('leaveDuration', document.getElementById('duration').value);
+            localStorage.setItem('leaveReason', document.getElementById('reason').value);
+            localStorage.setItem('leaveCommutation', document.querySelector('input[name="commutation"]:checked').value);
+            localStorage.setItem('leaveReliefOfficer', document.getElementById('reliefOfficer').value);
+            localStorage.setItem('leaveSalary', document.getElementById('salaryInput').value);
+            // Section 6.B
+            if (leaveType === 'Vacation Leave' || leaveType === 'Special Privilege Leave') {
+              localStorage.setItem('vl_location', document.getElementById('vl_location').value);
+              localStorage.setItem('vl_location_specify', document.getElementById('vl_location_specify').value);
+            } else if (leaveType === 'Sick Leave') {
+              localStorage.setItem('sl_type', document.getElementById('sl_type').value);
+              localStorage.setItem('sl_illness', document.getElementById('sl_illness').value);
+            } else if (leaveType === 'Special Leave for Women') {
+              localStorage.setItem('splwomen_illness', document.getElementById('splwomen_illness').value);
+            } else if (leaveType === 'Study Leave') {
+              localStorage.setItem('study_purpose', document.getElementById('study_purpose').value);
+              localStorage.setItem('study_other', document.getElementById('study_other').value);
+            }
+            // ...handle signature upload as needed...
+            window.location.href = 'civil form.html';
+          };
+      });
+    </script>
+</body>
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Management</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .modal-bg {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-6 lg:p-10">
+
+    <header class="bg-white rounded-xl shadow-md p-4 flex items-center justify-between z-10 sticky top-0">
+        <div class="flex items-center space-x-4">
+            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <img src="../assets/logo.png" alt="Logo" class="rounded-full">
+            </div>
+            <h1 id="header-title" class="text-xl font-bold text-gray-800">Dashboard</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
+                <i class="fas fa-bell text-lg"></i>
+            </a>
+            <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
+                <i class="fas fa-home text-lg"></i>
+            </a>
+            <img id="profileIcon" src="https://placehold.co/40x40/FF5733/FFFFFF?text=P" alt="Profile" class="w-10 h-10 rounded-full cursor-pointer">
+            <!-- Profile Modal -->
+            <div id="profileModal" class="fixed inset-0 hidden items-center justify-center modal-bg z-50">
+                <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs mx-4 flex flex-col items-center">
+                    <img src="https://placehold.co/80x80/FFD700/000000?text=W+P" alt="Profile" class="w-20 h-20 rounded-full mb-4">
+                    <button id="logoutBtn" class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 mb-2">Log out</button>
+                    <button id="closeProfileModal" class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="mt-8 lg:mt-12">
+        <div class="bg-white rounded-xl shadow-md p-6 lg:p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">My Tasks</h2>
+                <div class="flex space-x-2">
+                    <button data-status="all" class="filter-btn bg-gray-200 text-gray-800 px-4 py-2 rounded-full text-sm font-semibold hover:bg-gray-300 transition-colors">All</button>
+                    <button data-status="pending" class="filter-btn bg-yellow-200 text-yellow-800 px-4 py-2 rounded-full text-sm font-semibold hover:bg-yellow-300 transition-colors">Pending</button>
+                    <button data-status="in-progress" class="filter-btn bg-blue-200 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold hover:bg-blue-300 transition-colors">In Progress</button>
+                    <button data-status="completed" class="filter-btn bg-green-200 text-green-800 px-4 py-2 rounded-full text-sm font-semibold hover:bg-green-300 transition-colors">Completed</button>
+                </div>
+            </div>
+            <div id="tasks-container" class="space-y-6">
+                <!-- Tasks will be populated here by JavaScript -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Task Modal -->
+    <div id="add-task-modal" class="fixed inset-0 modal-bg flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg mx-auto w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-gray-800">Add New Task</h3>
+                <button id="close-add-task-modal" class="text-gray-500 hover:text-gray-700 text-lg">&times;</button>
+            </div>
+            <form id="add-task-form" class="space-y-4">
+                <div>
+                    <label for="task-title" class="block text-sm font-medium text-gray-700">Task Title</label>
+                    <input type="text" id="task-title" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="task-description" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea id="task-description" rows="3" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div>
+                    <label for="task-due-date" class="block text-sm font-medium text-gray-700">Due Date</label>
+                    <input type="date" id="task-due-date" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancel-add-task" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">Add Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Update Status Modal -->
+    <div id="update-status-modal" class="fixed inset-0 modal-bg flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm mx-auto w-full text-center">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-gray-800">Update Task Status</h3>
+                <button id="close-update-status-modal" class="text-gray-500 hover:text-gray-700 text-lg">&times;</button>
+            </div>
+            <p class="text-gray-600 mb-4">Select a new status for the task.</p>
+            <div class="flex flex-col space-y-3">
+                <button data-status="pending" class="confirm-status-btn bg-yellow-500 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-yellow-600 transition-colors">Pending</button>
+                <button data-status="in-progress" class="confirm-status-btn bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-blue-600 transition-colors">In Progress</button>
+                <button data-status="completed" class="confirm-status-btn bg-green-500 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-green-600 transition-colors">Completed</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="fixed bottom-5 right-5 bg-green-500 text-white px-6 py-3 rounded-lg shadow-xl hidden transition-opacity duration-300 ease-in-out">
+        Task updated successfully!
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- MODAL & UI ELEMENTS ---
+            const addTaskBtn = document.getElementById('add-task-btn');
+            const addTaskModal = document.getElementById('add-task-modal');
+            const closeAddTaskModalBtn = document.getElementById('close-add-task-modal');
+            const cancelAddTaskBtn = document.getElementById('cancel-add-task');
+            const addTaskForm = document.getElementById('add-task-form');
+            const tasksContainer = document.getElementById('tasks-container');
+            const updateStatusModal = document.getElementById('update-status-modal');
+            const closeUpdateStatusModalBtn = document.getElementById('close-update-status-modal');
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            const toastNotification = document.getElementById('toast-notification');
+
+            let currentTaskToUpdateId = null;
+
+            // --- DATA SIMULATION ---
+            // Simulating a simple in-memory database for tasks.
+            let tasks = [
+                { id: 1, title: "Design Wireframes for LMS", description: "Create low-fidelity wireframes for the new Learning Management System.", dueDate: "2024-01-15", status: "in-progress" },
+                { id: 2, title: "Create Case Study", description: "Develop a comprehensive case study for the last IT project.", dueDate: "2023-10-20", status: "completed" },
+                { id: 3, title: "Prepare for Q4 Report", description: "Gather all necessary data and draft the quarterly report.", dueDate: "2024-01-05", status: "pending" },
+                { id: 4, title: "Review Project Proposal", description: "Review and provide feedback on the new project proposal.", dueDate: "2024-01-10", status: "in-progress" }
+            ];
+
+            // --- FUNCTIONALITY ---
+
+            // Function to render tasks dynamically
+            function renderTasks(filteredTasks) {
+                tasksContainer.innerHTML = ''; // Clear existing tasks
+                const tasksToRender = filteredTasks || tasks;
+
+                if (tasksToRender.length === 0) {
+                    tasksContainer.innerHTML = '<p class="text-center text-gray-500">No tasks found for this status.</p>';
+                    return;
+                }
+
+                tasksToRender.forEach(task => {
+                    const statusText = task.status.replace('-', ' ');
+                    const statusColor = task.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                                        task.status === "in-progress" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800";
+                    
+                    const taskElement = document.createElement('div');
+                    taskElement.classList.add('bg-gray-50', 'p-6', 'rounded-xl', 'shadow-sm', 'border', 'border-gray-200');
+                    taskElement.innerHTML = `
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-semibold ${statusColor} px-3 py-1 rounded-full capitalize">${statusText}</span>
+                            <span class="text-xs text-gray-500">Due: ${task.dueDate}</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">${task.title}</h3>
+                        <p class="text-sm text-gray-600 mb-4">${task.description}</p>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="h-2.5 rounded-full ${task.status === 'completed' ? 'bg-green-600' : task.status === 'in-progress' ? 'bg-blue-600' : 'bg-yellow-600'}" style="width: ${task.status === 'completed' ? '100' : task.status === 'in-progress' ? '60' : '20'}%"></div>
+                        </div>
+                        <div class="flex justify-end space-x-2 mt-4">
+                            <button data-id="${task.id}" class="update-status-btn text-sm text-white bg-blue-500 px-4 py-1 rounded-full hover:bg-blue-600">Update Status</button>
+                        </div>
+                    `;
+                    tasksContainer.appendChild(taskElement);
+                });
+            }
+
+            // Function to show a toast notification
+            function showToast(message) {
+                toastNotification.textContent = message;
+                toastNotification.classList.remove('hidden');
+                setTimeout(() => {
+                    toastNotification.classList.add('hidden');
+                }, 3000); // Hide after 3 seconds
+            }
+
+            // --- EVENT LISTENERS ---
+
+            // Event listener for the "Add Task" button
+            if (addTaskBtn) {
+                addTaskBtn.addEventListener('click', () => {
+                    addTaskModal.classList.remove('hidden');
+                });
+            }
+
+            // Event listeners to close the Add Task modal
+            if (closeAddTaskModalBtn && cancelAddTaskBtn) {
+                closeAddTaskModalBtn.addEventListener('click', () => {
+                    addTaskModal.classList.add('hidden');
+                });
+                cancelAddTaskBtn.addEventListener('click', () => {
+                    addTaskModal.classList.add('hidden');
+                });
+            }
+
+            // Event listener for the Add Task form submission
+            if (addTaskForm) {
+                addTaskForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    
+                    const newTask = {
+                        id: tasks.length + 1,
+                        title: document.getElementById('task-title').value,
+                        description: document.getElementById('task-description').value,
+                        dueDate: document.getElementById('task-due-date').value,
+                        status: "pending"
+                    };
+
+                    tasks.push(newTask);
+                    renderTasks();
+                    addTaskModal.classList.add('hidden');
+                    addTaskForm.reset();
+                    showToast('Task added successfully!');
+                });
+            }
+
+            // Event listener for "Update Status" buttons
+            if (tasksContainer) {
+                tasksContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('update-status-btn')) {
+                        currentTaskToUpdateId = parseInt(e.target.dataset.id);
+                        updateStatusModal.classList.remove('hidden');
+                    }
+                });
+            }
+
+            // Event listener for the status buttons in the modal
+            const confirmStatusBtns = document.querySelectorAll('.confirm-status-btn');
+            if (confirmStatusBtns) {
+                confirmStatusBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const newStatus = btn.dataset.status;
+                        const taskIndex = tasks.findIndex(task => task.id === currentTaskToUpdateId);
+                        if (taskIndex !== -1) {
+                            tasks[taskIndex].status = newStatus;
+                            renderTasks();
+                            updateStatusModal.classList.add('hidden');
+                            showToast('Task status updated!');
+                        }
+                    });
+                });
+            }
+            
+            // Event listener to close the Update Status modal
+            if (closeUpdateStatusModalBtn) {
+                closeUpdateStatusModalBtn.addEventListener('click', () => {
+                    updateStatusModal.classList.add('hidden');
+                });
+            }
+
+            // Event listener for filter buttons
+            if (filterBtns) {
+                filterBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const statusFilter = e.target.dataset.status;
+                        if (statusFilter === 'all') {
+                            renderTasks(tasks);
+                        } else {
+                            const filtered = tasks.filter(task => task.status === statusFilter);
+                            renderTasks(filtered);
+                        }
+                    });
+                });
+            }
+
+            // Initial render of all tasks when the page loads
+            renderTasks(tasks);
+        });
+    </script>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Profile Modal logic
+        const profileIcon = document.getElementById('profileIcon');
+        const profileModal = document.getElementById('profileModal');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const closeProfileModal = document.getElementById('closeProfileModal');
+        profileIcon.addEventListener('click', () => {
+            profileModal.classList.remove('hidden');
+            profileModal.classList.add('flex');
+        });
+        closeProfileModal.addEventListener('click', () => {
+            profileModal.classList.add('hidden');
+            profileModal.classList.remove('flex');
+        });
+        logoutBtn.addEventListener('click', () => {
+            window.location.href = 'logout.php';
+        });
+        profileModal.addEventListener('click', (e) => {
+            if (e.target === profileModal) {
+                profileModal.classList.add('hidden');
+                profileModal.classList.remove('flex');
+            }
+        });
+    });
+</script>

@@ -809,52 +809,9 @@ if (!isset($_SESSION['user_id'])) {
                         </div>
                         <div class="events-box">
                             <h3 class="text-xl font-bold text-gray-800">Events</h3>
-                            <div class="space-y-4">
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">20</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Development planning</p>
-                                        <p class="event-location">PTCAO Office</p>
-                                    </div>
-                                    <span class="event-time">1:00 PM</span>
-                                </div>
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">21</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Cultural Presentation</p>
-                                        <p class="event-location">Capitolo</p>
-                                    </div>
-                                    <span class="event-time">7:00 AM</span>
-                                </div>
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">24</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Development planning</p>
-                                        <p class="event-location">PTCAO Office</p>
-                                    </div>
-                                    <span class="event-time">1:00 PM</span>
-                                </div>
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">25</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Summit</p>
-                                        <p class="event-location">DreamZone</p>
-                                    </div>
-                                    <span class="event-time">2:00 PM</span>
-                                </div>
-                            </div>
+                                <ul id="events-list">
+                                    <!-- Events will be loaded here -->
+                                </ul>
                         </div>
                     </div>
                     <div class="all-projects-chart">
@@ -910,6 +867,30 @@ if (!isset($_SESSION['user_id'])) {
             if(projectChart) {
                 new Chart(projectChart, config);
             }
+
+            // Fetch and display events from database
+            fetch('../api/get_events.php')
+                .then(response => response.json())
+                .then(data => {
+                    const eventsList = document.getElementById('events-list');
+                    eventsList.innerHTML = '';
+                    if (data && data.length > 0) {
+                        data.forEach(event => {
+                            const li = document.createElement('li');
+                            li.className = 'py-2 border-b last:border-0 flex justify-between items-center';
+                            li.innerHTML = `
+                                <span><strong>${event.title}</strong> - ${event.description || ''}</span>
+                                <span class="text-xs text-gray-500 ml-2">${event.date} ${event.time ? ('- ' + event.time) : ''}</span>
+                            `;
+                            eventsList.appendChild(li);
+                        });
+                    } else {
+                        eventsList.innerHTML = '<li class="py-2 text-gray-500">No events found.</li>';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
+                });
         });
     </script>
 </body>

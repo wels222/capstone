@@ -5,916 +5,489 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../index.php');
     exit();
 }
+require_once '../db.php';
+$user_id = $_SESSION['user_id'];
+$stmt = $pdo->prepare('SELECT firstname, lastname, mi, position, profile_picture FROM users WHERE id = ?');
+$stmt->execute([$user_id]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($user) {
+    $fullName = $user['firstname'] . ' ' . ($user['mi'] ? $user['mi'] . '. ' : '') . $user['lastname'];
+    $position = $user['position'];
+    $profilePicture = $user['profile_picture'] ?? '';
+} else {
+    $fullName = 'Employee';
+    $position = '';
+    $profilePicture = '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bayan ng Mabini | Employee System</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <title>Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* All colors are shades of blue or neutral tones to match the request. */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* A light blue-gray */
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            width: 280px; /* Fixed width for desktop */
-            background-color: #ffffff;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 1.5rem 1rem;
-            border-right: 4px solid #3b82f6; /* Blue border */
-            flex-shrink: 0; /* Prevents sidebar from shrinking */
-            position: fixed; /* Fix the sidebar */
-            top: 60px; /* Adjust based on header height */
-            left: 0;
-            bottom: 0;
-            overflow-y: auto; /* Enable scrolling for sidebar content if needed */
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid #d1d5db;
-        }
-
-        .logo {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border: 2px solid #55a2ea;
-            padding: 3px;
-        }
-
-        .logo-text {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-left: 0.75rem;
-            color: #1e3a8a; /* Dark blue */
-            line-height: 1.25;
-        }
-
-        .nav-menu ul {
-            list-style: none;
-            padding: 0;
-            margin: 1rem 0;
-        }
-
-        .nav-item a {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            margin-bottom: 0.5rem;
-            color: #4b5563;
-            text-decoration: none;
-            font-size: 0.95rem;
-            font-weight: 500;
-            border-radius: 0.5rem;
-            transition: background-color 0.2s, color 0.2s, transform 0.2s;
-        }
-
-        .nav-item a:hover,
-        .nav-item.active a {
-            background-color: #dbeafe; /* Light blue */
-            color: #1d4ed8;
-            font-weight: 600;
-            transform: translateY(-2px);
-        }
-
-        .nav-item a i {
-            width: 20px;
-            text-align: center;
-            margin-right: 1rem;
-        }
-
-        .sign-out {
-            margin-top: auto;
-        }
-
-        .sign-out a {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            color: #dc2626;
-            text-decoration: none;
-            font-size: 0.95rem;
-            font-weight: 500;
-            border-radius: 0.5rem;
-            transition: background-color 0.2s, transform 0.2s;
-        }
-
-        .sign-out a:hover {
-            background-color: #fee2e2;
-            transform: translateY(-2px);
-        }
-
-        .main-content {
-            flex-grow: 1;
-            padding: 2.5rem;
-            margin-left: 280px; /* Add margin to prevent content from going under the sidebar */
-            margin-top: 60px; /* Add margin to prevent content from going under the header */
-            overflow-y: auto;
-        }
-
-        .content-section {
-            display: none;
-        }
-
-        .content-section.active {
-            display: block;
-        }
-
-        .header-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Adjusted for responsiveness */
-            gap: 1.5rem; /* Reduced gap for smaller screens */
-            margin-bottom: 2rem;
-        }
-
-        .header-box {
-            background-color: #fff;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            border-top: 4px solid;
-            width: 100%; /* Ensures it fills its grid cell */
-        }
-
-        .header-box:nth-child(1) { border-color: #3b82f6; }
-        .header-box:nth-child(2) { border-color: #93c5fd; }
-        .header-box:nth-child(3) { border-color: #22d3ee; }
-        .header-box:nth-child(4) { border-color: #60a5fa; }
-
-        .header-box .category {
-            font-size: 0.9rem;
-            color: #4b5563;
-            font-weight: 500;
-            display: block;
-            margin-bottom: 0.5rem;
-        }
-
-        .header-box .count {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #1f2937;
-        }
-
-        .header-box .active-count {
-            font-size: 0.8rem;
-            color: #9ca3af;
-            font-weight: 500;
-        }
-
-        .projects-events-container {
-            display: flex;
-            flex-wrap: wrap; /* Allows wrapping on smaller screens */
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .active-projects-box, .events-box {
-            background-color: #fff;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            flex: 1 1 45%; /* Flex-basis allows them to grow but wrap */
-            min-width: 300px; /* Ensures they don't get too narrow */
-        }
-
-        .active-projects-box h3, .events-box h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 1rem;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-        }
-
-        th, td {
-            text-align: left;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        th {
-            color: #6b7280;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .progress-bar {
-            background-color: #e5e7eb;
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-            width: 100px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 4px;
-        }
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-        .status-badge.inprogress { background-color: #dbeafe; color: #1e40af; }
-        .status-badge.pending { background-color: #fef2f2; color: #ef4444; }
-        .status-badge.completed { background-color: #f0fdf4; color: #22c55e; }
-
-        .event-item {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            padding: 1rem 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .event-item:last-child {
-            border-bottom: none;
-        }
-
-        .event-date {
-            background-color: #e5e7eb;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            text-align: center;
-            line-height: 1;
-        }
-
-        .event-date .day {
-            font-size: 1.5rem;
-            font-weight: 700;
-            display: block;
-        }
-
-        .event-date .month {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            font-weight: 600;
-            color: #6b7280;
-        }
-
-        .event-details {
-            flex-grow: 1;
-        }
-
-        .event-details .event-title {
-            font-weight: 600;
-            color: #1f2937;
-        }
-
-        .event-details .event-location {
-            font-size: 0.9rem;
-            color: #6b7280;
-        }
-
-        .event-time {
-            font-size: 0.9rem;
-            color: #9ca3af;
-        }
-
-        .all-projects-chart {
-            background-color: #fff;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center; /* Center content when stacked */
-            gap: 2rem;
-            flex-wrap: wrap; /* Allows chart and legend to wrap */
-        }
-
-        .chart-container {
-            width: 150px;
-            height: 150px;
-            position: relative;
-        }
-
-        .chart-legend h4 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 0.75rem;
-        }
-
-        .chart-legend ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .chart-legend li {
-            display: flex;
-            align-items: center;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            color: #4b5563;
-        }
-
-        .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 3px;
-            margin-right: 0.75rem;
-        }
-
-        .legend-color.complete { background-color: #2563eb; }
-        .legend-color.pending { background-color: #93c5fd; }
-        .legend-color.not-start { background-color: #60a5fa; }
-
-        .top-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 1.5rem;
-            background-color: #ffffff;
-            border-bottom: 1px solid #a7c4ff;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            position: fixed; 
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-        }
-
-        .header-logo .logo-image {
-            width: 40px;
-            height: 40px;
-            margin-right: 10px;
-        }
-
-        .header-text {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #1e3a8a;
-        }
-
-        .header-profile {
-            display: flex;
-            align-items: center;
-        }
-        
-        .header-profile .profile-image {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-
-        .header-profile .notification-icon {
-            font-size: 1.25rem;
-            color: #6b7280;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-
-        .header-profile .notification-icon:hover {
-            color: #3b82f6;
-        }
-
-
-        /* Employees Section Styles */
-        .employee-tabs {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            overflow-x: auto;
-        }
-
-        .employee-tab-btn {
-            padding: 0.75rem 1.5rem;
-            font-size: 0.95rem;
-            font-weight: 500;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.2s, color 0.2s, transform 0.2s;
-            border: 1px solid #d1d5db;
-        }
-
-        .employee-tab-btn.active {
-            font-weight: 600;
-            transform: translateY(-2px);
-            color: #fff;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border-color: transparent;
-        }
-
-        /* Category-specific button colors matching dashboard boxes */
-        .employee-tab-btn[data-category="Permanent"].active { background-color: #3b82f6; }
-        .employee-tab-btn[data-category="Casual"].active { background-color: #93c5fd; }
-        .employee-tab-btn[data-category="JO"].active { background-color: #22d3ee; }
-        .employee-tab-btn[data-category="OJT"].active { background-color: #60a5fa; }
-
-        .employee-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .employee-card {
-            background-color: #fff;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            text-align: center;
-            position: relative;
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer;
-        }
-
-        .employee-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .employee-card .active-status {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            width: 12px;
-            height: 12px;
-            background-color: #10b981; /* Green color for active status */
-            border-radius: 50%;
-            border: 2px solid #fff;
-        }
-
-        .employee-card .profile-image {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #e5e7eb;
-            margin-bottom: 1rem;
-        }
-
-        .employee-card .employee-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 0.25rem;
-        }
-
-        .employee-card .employee-category {
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        
-        /* Category-specific card colors */
-        .employee-card[data-category="Permanent"] .employee-category { color: #3b82f6; }
-        .employee-card[data-category="Casual"] .employee-category { color: #93c5fd; }
-        .employee-card[data-category="JO"] .employee-category { color: #22d3ee; }
-        .employee-card[data-category="OJT"] .employee-category { color: #60a5fa; }
-
-
-        /* Modal Popup Styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            z-index: 1001;
-        }
-
-        .modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .modal-content {
-            background-color: #fff;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-            width: 90%;
-            max-width: 500px;
-            position: relative;
-            transform: scale(0.9);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            max-height: 90vh; /* Limit height to prevent full screen takeover */
-            overflow-y: auto; /* Enable scrolling for modal content */
-        }
-
-        .modal-overlay.show .modal-content {
-            transform: scale(1);
-        }
-
-        .modal-close-btn {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: #9ca3af;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-
-        .modal-close-btn:hover {
-            color: #ef4444;
-        }
-        
-        .modal-profile-header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-        
-        .modal-profile-header img {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid #3b82f6;
-            margin-bottom: 1rem;
-        }
-        
-        .modal-profile-header h4 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #1f2937;
-        }
-        
-        .modal-profile-header .employee-details {
-            font-size: 1rem;
-            color: #6b7280;
-            margin-top: 0.5rem;
-        }
-
-        .modal-leave-credits {
-            margin-top: 1rem;
-            text-align: left;
-        }
-        
-        .modal-leave-credits h5 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 1rem;
-        }
-        
-        .modal-leave-credits ul {
-            list-style: none;
-            padding: 0;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-        
-        .modal-leave-credits li {
             background-color: #f3f4f6;
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.95rem;
-            color: #374151;
         }
-        
-        .modal-leave-credits .credit-count {
-            font-weight: 600;
-            color: #1d4ed8;
+        .container {
+            display: block;
         }
-        
-        @media (max-width: 1024px) {
-            .header-container {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .projects-events-container {
-                flex-direction: column;
-            }
-
-            .all-projects-chart {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .chart-legend {
-                margin-top: 2rem;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-                height: auto;
-            }
-
-            .sidebar {
-                width: 100%;
-                height: auto;
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-                padding: 1rem;
-                position: relative;
-                border-right: none;
-                border-bottom: 4px solid #3b82f6;
-            }
-            
-            .nav-menu {
-                display: none;
-            }
-            
-            .main-content {
-                padding: 1.5rem;
-                margin-left: 0;
-                margin-top: 60px;
-            }
-            
-            .header-container {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-            
-            .employee-tabs {
-                flex-wrap: nowrap;
-            }
+        .modal-bg {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 p-6 lg:p-10">
 
-    <header class="top-header">
-        <div class="header-left">
-            <div class="header-logo">
-                <img src="../assets/logo.png" alt="Mabini Logo" class="logo-image">
+    <header class="bg-white rounded-xl shadow-md p-4 flex items-center justify-between z-10 sticky top-0">
+        <div class="flex items-center space-x-4">
+            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <img src="../assets/logo.png" alt="Logo" class="rounded-full">
             </div>
-            <span class="header-text">Employee</span>
+            <h1 id="header-title" class="text-xl font-bold text-gray-800">Dashboard</h1>
         </div>
-        <div class="header-profile">
-            <i class="fas fa-bell notification-icon"></i>
-            <img src="assets/logo.png" alt="Profile" class="profile-image">
+        <div class="flex items-center space-x-4">
+            <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
+                <i class="fas fa-bell text-lg"></i>
+            </a>
+            <img id="profileIcon" src="<?php echo $profilePicture ? htmlspecialchars($profilePicture) : 'https://placehold.co/40x40/FF5733/FFFFFF?text=P'; ?>" alt="Profile" class="w-10 h-10 rounded-full cursor-pointer">
+            <!-- Profile Modal -->
+            <div id="profileModal" class="fixed inset-0 hidden items-center justify-center modal-bg z-50">
+                <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs mx-4 flex flex-col items-center">
+                    <img id="profileModalPhoto" src="<?php echo $profilePicture ? htmlspecialchars($profilePicture) : 'https://placehold.co/80x80/FFD700/000000?text=W+P'; ?>" alt="Profile" class="w-20 h-20 rounded-full mb-4">
+                    <button id="logoutBtn" class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 mb-2">Log out</button>
+                    <button id="closeProfileModal" class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Cancel</button>
+                </div>
+            </div>
         </div>
     </header>
 
-    <div class="container">
-        <aside class="sidebar">
-            <nav class="nav-menu">
-                <ul>
-                    <li class="nav-item active">
-                        <a href="index.html"><i class="fas fa-th-large"></i> Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="employees.html"><i class="fas fa-users"></i> Employees</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="leave-status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="leave-request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="add-event.html"><i class="fas fa-calendar-plus"></i> Add Event</a>
-                    </li>
-                </ul>
-            </nav>
-            <div class="sign-out">
-                <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
-            </div>
-        </aside>
+    <main class="flex-grow p-4 overflow-y-auto mt-6">
 
-        <main class="main-content">
-            <div class="main-content-area">
-                <section id="dashboard-content" class="content-section active">
-                    <div class="header-container">
-                        <div class="header-box">
-                            <span class="category">Permanent</span>
-                            <div class="count">29</div>
-                            <span class="active-count">25 Active</span>
-                        </div>
-                        <div class="header-box">
-                            <span class="category">Casual</span>
-                            <div class="count">24</div>
-                            <span class="active-count">22 Active</span>
-                        </div>
-                        <div class="header-box">
-                            <span class="category">JO</span>
-                            <div class="count">25</div>
-                            <span class="active-count">20 Active</span>
-                        </div>
-                        <div class="header-box">
-                            <span class="category">OJT</span>
-                            <div class="count">21</div>
-                            <span class="active-count">19 Active</span>
-                        </div>
+        <div id="dashboard-page" class="container">
+            <div class="bg-blue-600 w-full rounded-xl shadow-lg p-6 flex flex-col items-start text-white relative overflow-hidden mb-6">
+                <div class="absolute inset-0 bg-blue-700 bg-opacity-20 backdrop-blur-sm z-0"></div>
+                <div class="relative z-10 flex items-center space-x-6">
+                    <img id="profilePicture" src="<?php echo $profilePicture ? htmlspecialchars($profilePicture) : 'https://placehold.co/80x80/FFD700/000000?text=W+P'; ?>" alt="Profile" class="w-20 h-20 rounded-full border-4 border-white">
+                    <div class="flex flex-col text-left">
+                        <h2 id="profileName" class="text-3xl font-extrabold tracking-tight"><?php echo htmlspecialchars($fullName); ?></h2>
+                        <p id="profilePosition" class="text-sm opacity-80 mt-1"><?php echo htmlspecialchars($position); ?></p>
                     </div>
-                    <div class="projects-events-container">
-                        <div class="active-projects-box">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold text-gray-800">Active Projects</h3>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full">
-                                    <thead>
-                                        <tr>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Name</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Lead</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Progress</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th class="py-3 px-4 whitespace-nowrap font-semibold text-sm text-gray-500 uppercase tracking-wider">Due Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Bender project</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Johnson</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 63%; background-color: #55a2ea;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Batmon</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">William</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 24%; background-color: #ef4444;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge pending">Pending</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Candy</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Paul</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 86%; background-color: #22c55e;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge completed">Completed</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">30 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Throwing</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Elizabeth</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 51%; background-color: #6b7280;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">11 Jan 2025</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="events-box">
-                            <h3 class="text-xl font-bold text-gray-800">Events</h3>
-                            <div class="space-y-4">
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">20</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Development planning</p>
-                                        <p class="event-location">PTCAO Office</p>
-                                    </div>
-                                    <span class="event-time">1:00 PM</span>
-                                </div>
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">21</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Cultural Presentation</p>
-                                        <p class="event-location">Capitolo</p>
-                                    </div>
-                                    <span class="event-time">7:00 AM</span>
-                                </div>
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">24</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Development planning</p>
-                                        <p class="event-location">PTCAO Office</p>
-                                    </div>
-                                    <span class="event-time">1:00 PM</span>
-                                </div>
-                                <div class="event-item">
-                                    <div class="event-date">
-                                        <span class="day">25</span>
-                                        <span class="month">Mon</span>
-                                    </div>
-                                    <div class="event-details">
-                                        <p class="event-title">Summit</p>
-                                        <p class="event-location">DreamZone</p>
-                                    </div>
-                                    <span class="event-time">2:00 PM</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="all-projects-chart">
-                        <div class="chart-container">
-                            <canvas id="projectChart"></canvas>
-                        </div>
-                        <div class="chart-legend">
-                            <h4>All Projects</h4>
-                            <ul>
-                                <li><span class="legend-color complete"></span> Complete</li>
-                                <li><span class="legend-color pending"></span> Pending</li>
-                                <li><span class="legend-color not-start"></span> Not Start</li>
-                            </ul>
-                        </div>
-                    </div>
-                </section>
+                    <button id="editProfileBtn" class="bg-white text-blue-600 text-sm px-3 py-1 rounded-full hover:bg-gray-100 transition-colors">
+                        Edit Profile
+                    </button>
+                </div>
             </div>
-        </main>
-    </div>
+
+            <div class="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-4">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+                    <div class="flex flex-wrap justify-around gap-4 text-center">
+                        <a href="apply_leave.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                            <div class="bg-blue-100 p-4 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M17 17h.01" />
+                                </svg>
+                            </div>
+                            <span class="text-sm text-gray-600">Apply for Leave</span>
+                        </a>
+                        <a href="leave_status.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                            <div class="bg-purple-100 p-4 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
+                                </svg>
+                            </div>
+                            <span class="text-sm text-gray-600">Leave Status</span>
+                        </a>
+                        <a href="task.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                            <div class="bg-green-100 p-4 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <span class="text-sm text-gray-600">Task</span>
+                        </a>
+                        <a href="view_attendance.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                            <div class="bg-yellow-100 p-4 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <span class="text-sm text-gray-600">View Attendance</span>
+                        </a>
+                        <a href="events.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                            <div class="bg-teal-100 p-4 rounded-full">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h.01M7 11h.01M16 11h.01m-2-2h.01m-6-4h.01M8 21h8a2 2 0 002-2V7a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <span class="text-sm text-gray-600">Events</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="col-span-1 md:col-span-3">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Leave</h3>
+                    </div>
+                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="font-medium text-gray-700">Vacation Leave</span>
+                            <span class="text-sm text-gray-500">05/07</span>
+                        </div>
+                        <p class="text-sm text-gray-500">Available - 05</p>
+                        <p class="text-sm text-gray-500">Used - 02</p>
+                    </div>
+                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="font-medium text-gray-700">Maternity Leave</span>
+                            <span class="text-sm text-gray-500">105/105</span>
+                        </div>
+                        <p class="text-sm text-gray-500">Available - 105</p>
+                        <p class="text-sm text-gray-500">Used - 00</p>
+                    </div>
+                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="font-medium text-gray-700">Study Leave</span>
+                            <span class="text-sm text-gray-500">00/00</span>
+                        </div>
+                        <p class="text-sm text-gray-500">Available - 00</p>
+                        <p class="text-sm text-gray-500">Used - 00</p>
+                    </div>
+                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="font-medium text-gray-700">Mandatory Force Leave</span>
+                            <span class="text-sm text-gray-500">02/02</span>
+                        </div>
+                        <p class="text-sm text-gray-500">Available - 00</p>
+                        <p class="text-sm text-gray-500">Used - 02</p>
+                    </div>
+                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="font-medium text-gray-700">Social Leave Benefits</span>
+                            <span class="text-sm text-gray-500">00/00</span>
+                        </div>
+                        <p class="text-sm text-gray-500">Available - 00</p>
+                        <p class="text-sm text-gray-500">Used - 00</p>
+                    </div>
+                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="font-medium text-gray-700">Social Emergency</span>
+                            <span class="text-sm text-gray-500">00/00</span>
+                        </div>
+                        <p class="text-sm text-gray-500">Available - 00</p>
+                        <p class="text-sm text-gray-500">Used - 00</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">To-dos</h3>
+                        <div class="flex space-x-2 text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2z" />
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </div>
+                    <ul>
+                        <li class="py-2 border-b last:border-0 flex justify-between items-center">
+                            <span>Complete Onboarding Document Upload</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </li>
+                        <li class="py-2 border-b last:border-0 flex justify-between items-center">
+                            <span>Follow up on clients on documents</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </li>
+                        <li class="py-2 border-b last:border-0 flex justify-between items-center">
+                            <span>Design wireframes for LMS</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </li>
+                        <li class="py-2 border-b last:border-0 flex justify-between items-center">
+                            <span>Create case study for next IT project</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Performance</h3>
+                        <div class="text-sm text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <canvas id="performanceChart"></canvas>
+                    <div class="flex justify-between text-sm mt-4">
+                        <span>Low performance in April</span>
+                        <span class="text-blue-600">Details</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Attendance Comparison Chart</h3>
+                        <div class="flex items-center space-x-4 text-sm text-gray-600">
+                            <label class="flex items-center space-x-1">
+                                <input type="radio" name="chart-period" value="daily" checked>
+                                <span>Daily</span>
+                            </label>
+                            <label class="flex items-center space-x-1">
+                                <input type="radio" name="chart-period" value="weekly">
+                                <span>Week</span>
+                            </label>
+                            <label class="flex items-center space-x-1">
+                                <input type="radio" name="chart-period" value="monthly">
+                                <span>Month</span>
+                            </label>
+                        </div>
+                    </div>
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Announcement(s)</h3>
+                        <div class="flex space-x-2 text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2z" />
+                            </svg>
+                        </div>
+                    </div>
+                        <ul id="events-list">
+                            <!-- Events will be loaded here -->
+                        </ul>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center justify-center">
+                    <div class="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center font-bold text-green-600 text-lg">
+                        <span>90%</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mt-4">Excellent</h3>
+                    <p class="text-sm text-gray-500 mt-1 text-center">Score better than last month</p>
+                    <div class="bg-blue-600 rounded-full px-4 py-1 text-white text-xs mt-4">Details</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="editProfileModal" class="fixed inset-0 hidden items-center justify-center modal-bg">
+            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Edit Profile</h3>
+                    <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600">&times;</button>
+                </div>
+                <form id="editProfileForm">
+                    <div class="mb-4 text-center">
+                        <img id="profilePhotoPreview" src="<?php echo $profilePicture ? htmlspecialchars($profilePicture) : 'https://placehold.co/80x80/FFD700/000000?text=W+P'; ?>" alt="Profile" class="w-24 h-24 rounded-full mx-auto mb-2 border-4 border-gray-200">
+                        <label class="cursor-pointer bg-gray-200 px-3 py-1 text-sm rounded-full hover:bg-gray-300">
+                            Change Photo
+                            <input type="file" id="photoInput" class="hidden" accept="image/*">
+                        </label>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancelBtn" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </main>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const chartData = {
-                labels: ['Complete', 'Pending', 'Not Start'],
-                datasets: [{
-                    label: 'Project Status',
-                    data: [3, 2, 4],
-                    backgroundColor: [
-                        '#2563eb', // Complete (Blue)
-                        '#93c5fd', // Pending (Light Blue)
-                        '#60a5fa'  // Not Start (Lighter Blue)
-                    ],
-                    hoverOffset: 4
-                }]
-            };
-
-            const config = {
-                type: 'doughnut',
-                data: chartData,
+            // Profile Modal logic
+            const profileIcon = document.getElementById('profileIcon');
+            const profileModal = document.getElementById('profileModal');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const closeProfileModal = document.getElementById('closeProfileModal');
+            profileIcon.addEventListener('click', () => {
+                profileModal.classList.remove('hidden');
+                profileModal.classList.add('flex');
+            });
+            closeProfileModal.addEventListener('click', () => {
+                profileModal.classList.add('hidden');
+                profileModal.classList.remove('flex');
+            });
+            logoutBtn.addEventListener('click', () => {
+                window.location.href = 'logout.php';
+            });
+            profileModal.addEventListener('click', (e) => {
+                if (e.target === profileModal) {
+                    profileModal.classList.add('hidden');
+                    profileModal.classList.remove('flex');
+                }
+            });
+            // Performance Chart
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Performance',
+                        data: [65, 59, 80, 81, 56, 55],
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4
+                    }]
+                },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
                     plugins: {
                         legend: {
                             display: false
                         }
                     }
                 }
-            };
-            
-            const projectChart = document.getElementById('projectChart');
-            if(projectChart) {
-                new Chart(projectChart, config);
+            });
+
+            // Attendance Chart
+            const attendanceCtx = document.getElementById('attendanceChart').getContext('2d');
+            new Chart(attendanceCtx, {
+                type: 'line',
+                data: {
+                    labels: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'],
+                    datasets: [{
+                        label: 'Attendance',
+                        data: [80, 90, 85, 95, 88, 92, 90, 93, 89, 91, 94, 95],
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // Edit Profile Modal functionality
+            const editProfileModal = document.getElementById('editProfileModal');
+            const editProfileBtn = document.getElementById('editProfileBtn');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const editProfileForm = document.getElementById('editProfileForm');
+            const photoInput = document.getElementById('photoInput');
+            const profilePhotoPreview = document.getElementById('profilePhotoPreview');
+            const profilePicture = document.getElementById('profilePicture');
+            let newPhotoDataUrl = null;
+
+            editProfileBtn.addEventListener('click', () => {
+                profilePhotoPreview.src = profilePicture.src;
+                newPhotoDataUrl = null;
+                editProfileModal.classList.remove('hidden');
+                editProfileModal.classList.add('flex');
+            });
+
+            function hideModal() {
+                editProfileModal.classList.add('hidden');
+                editProfileModal.classList.remove('flex');
             }
-        });
+
+            closeModalBtn.addEventListener('click', hideModal);
+            cancelBtn.addEventListener('click', hideModal);
+            editProfileModal.addEventListener('click', (e) => {
+                if (e.target === editProfileModal) {
+                    hideModal();
+                }
+            });
+
+            photoInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        profilePhotoPreview.src = e.target.result;
+                        newPhotoDataUrl = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            editProfileForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (newPhotoDataUrl) {
+                    // Save to DB via API
+                    fetch('../api/employee_info.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: <?php echo json_encode($user_id); ?>, profile_picture: newPhotoDataUrl })
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            profilePicture.src = newPhotoDataUrl;
+                            document.getElementById('profileIcon').src = newPhotoDataUrl;
+                            document.getElementById('profileModalPhoto').src = newPhotoDataUrl;
+                            document.getElementById('profilePhotoPreview').src = newPhotoDataUrl;
+                        }
+                        hideModal();
+                    });
+                } else {
+                    hideModal();
+                }
+            });
+            // Fetch and display events from database
+            fetch('../api/get_events.php')
+                .then(response => response.json())
+                .then(data => {
+                    const eventsList = document.getElementById('events-list');
+                    eventsList.innerHTML = '';
+                    if (data && data.length > 0) {
+                        data.forEach(event => {
+                            const li = document.createElement('li');
+                            li.className = 'py-2 border-b last:border-0 flex justify-between items-center';
+                            li.innerHTML = `
+                                <span><strong>${event.title}</strong> - ${event.description || ''}</span>
+                                <span class="text-xs text-gray-500 ml-2">${event.date} ${event.time ? ('- ' + event.time) : ''}</span>
+                            `;
+                            eventsList.appendChild(li);
+                        });
+                    } else {
+                        eventsList.innerHTML = '<li class="py-2 text-gray-500">No events found.</li>';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
+                });
+    });
     </script>
 </body>
 </html>
-

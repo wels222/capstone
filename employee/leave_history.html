@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leave History</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f3f4f6;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Breadcrumb Navigation -->
+      <main class="flex-grow p-4 overflow-y-auto mt-6">
+        <div class="bg-white rounded-xl shadow-md p-6 mb-6">
+          <div class="flex items-center text-gray-600">
+            <a href="dashboard.html" class="cursor-pointer hover:text-blue-600"
+              >Dashboard</a
+            >
+            <span class="mx-2">&gt;</span>
+            <a
+              href="apply_leave.html"
+              class="cursor-pointer hover:text-blue-600"
+              >Apply for Leave</a
+            >
+            <span class="mx-2">&gt;</span>
+            <span id="current-leave-type"></span>
+          </div>
+        </div>
+      </main>
+
+      <div class="bg-white rounded-xl shadow-md p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-gray-800">Leave History</h3>
+          <div class="flex items-center space-x-4">
+            <button
+              class="flex items-center space-x-2 px-4 py-2 text-sm font-semibold text-blue-600 bg-white border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              <span>Filter</span>
+            </button>
+            <button
+              class="flex items-center space-x-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <span>Export</span>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Duration
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Start Date
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  End Date
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Form
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Contact No.
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              id="leaveHistoryBody"
+              class="bg-white divide-y divide-gray-200"
+            >
+              <!-- Rows populated by JS from database -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Breadcrumb: Show current leave type ---
+      document.getElementById("current-leave-type").textContent =
+        localStorage.getItem("leaveType") || "Civil Service Form";
+
+      // Fetch leave history from DB and populate table
+      fetch("/api/leave-history?email=" + localStorage.getItem("userEmail"))
+        .then((res) => res.json())
+        .then((history) => {
+          const tbody = document.getElementById("leaveHistoryBody");
+          tbody.innerHTML = "";
+          history.forEach((item) => {
+            const statusClass =
+              item.status === "Approved" ? "text-green-600" : "text-red-600";
+            tr = document.createElement("tr");
+            tr.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.name}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.duration}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.startDate}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.endDate}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 underline"><a href="civil form.html?id=${item.formId}" target="_blank">View Form</a></td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.contactNo}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${statusClass}">${item.status}</td>
+      `;
+            tbody.appendChild(tr);
+          });
+        });
+    </script>
+  </body>
+</html>

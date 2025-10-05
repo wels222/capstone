@@ -23,12 +23,22 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
+    // Super admin bypass: no DB check needed
+    if ($email === 'mabiniadmin@gmail.com' && $password === 'MabiniAdminOfficial') {
+        $_SESSION['user_id'] = 'superadmin';
+        $_SESSION['position'] = 'Super Admin';
+        $_SESSION['email'] = $email;
+        header('Location: super_admin.html');
+        exit();
+    }
+    // Normal user login
     $stmt = $pdo->prepare('SELECT id, password, position FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $user = $stmt->fetch();
     if ($user && password_verify($password, $user['password'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['position'] = $user['position'];
+        $_SESSION['email'] = $email;
         if ($user['position'] === 'HR') {
             header('Location: hr/dashboard.php');
         } elseif ($user['position'] === 'Dept Head') {

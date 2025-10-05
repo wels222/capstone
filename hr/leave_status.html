@@ -748,13 +748,13 @@
                 ><i class="fas fa-th-large"></i> Dashboard</a
               >
             </li>
-            <li class="nav-item active">
-              <a href="#"><i class="fas fa-users"></i> Employees</a>
-            </li>
             <li class="nav-item">
-              <a href="leave_status.html"
-                ><i class="fas fa-calendar-alt"></i> Leave Status</a
+              <a href="employees.html"
+                ><i class="fas fa-users"></i> Employees</a
               >
+            </li>
+            <li class="nav-item active">
+              <a href="#"><i class="fas fa-calendar-alt"></i> Leave Status</a>
             </li>
             <li class="nav-item">
               <a href="leave_request.html"
@@ -775,106 +775,197 @@
 
       <main class="main-content">
         <div class="main-content-area">
-          <section id="employees-content" class="content-section active">
-            <h2 class="text-2xl font-bold mb-4">Employees</h2>
-
-            <div class="employee-tabs">
-              <button class="employee-tab-btn active" data-category="Permanent">
-                Permanent
-              </button>
-              <button class="employee-tab-btn" data-category="Casual">
-                Casual
-              </button>
-              <button class="employee-tab-btn" data-category="JO">JO</button>
-              <button class="employee-tab-btn" data-category="OJT">OJT</button>
+          <section id="leave-status-content" class="content-section active">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold text-gray-800">Leave Status</h2>
+              <div class="flex items-center space-x-4">
+                <button
+                  id="prevMonth"
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Previous
+                </button>
+                <h3
+                  id="currentMonthYear"
+                  class="text-xl font-semibold text-gray-700"
+                ></h3>
+                <button
+                  id="nextMonth"
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
 
-            <div class="employee-grid">
-            <div id="employee-grid" class="employee-grid"></div>
+            <div class="bg-white rounded-xl shadow-md p-6">
+              <div
+                id="calendar-weekdays"
+                class="grid grid-cols-7 text-center font-semibold text-gray-500 mb-2"
+              >
+                <span>Sun</span>
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+              </div>
+              <div id="calendar-grid" class="grid grid-cols-7 gap-1 h-80"></div>
+            </div>
+
+            <div class="mt-8">
+              <h3 class="text-xl font-bold text-gray-800 mb-4">
+                Leave Requests
+              </h3>
+              <div class="bg-white rounded-xl shadow-md p-6">
+                <table class="w-full text-left table-auto">
+                  <thead>
+                    <tr class="text-gray-600 text-sm uppercase">
+                      <th class="py-3 px-4">Employee</th>
+                      <th class="py-3 px-4">Type</th>
+                      <th class="py-3 px-4">Start Date</th>
+                      <th class="py-3 px-4">End Date</th>
+                      <th class="py-3 px-4">Status</th>
+                      <th class="py-3 px-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="border-b border-gray-200 hover:bg-gray-100">
+                      <td class="py-4 px-4 flex items-center">
+                        <img
+                          src="assets/profile-placeholder.png"
+                          alt="Anna Dela Cruz"
+                          class="w-8 h-8 rounded-full mr-3"
+                        />
+                        <span>Anna Dela Cruz</span>
+                      </td>
+                      <td class="py-4 px-4">Vacation Leave</td>
+                      <td class="py-4 px-4">2025-01-20</td>
+                      <td class="py-4 px-4">2025-01-24</td>
+                      <td class="py-4 px-4">
+                        <span class="status-badge pending">Pending</span>
+                      </td>
+                      <td class="py-4 px-4">
+                        <button
+                          class="text-green-600 hover:text-green-800 transition-colors mr-2"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          class="text-red-600 hover:text-red-800 transition-colors"
+                        >
+                          Deny
+                        </button>
+                      </td>
+                    </tr>
+                    <tr class="border-b border-gray-200 hover:bg-gray-100">
+                      <td class="py-4 px-4 flex items-center">
+                        <img
+                          src="assets/profile-placeholder.png"
+                          alt="Jerome Fernandez"
+                          class="w-8 h-8 rounded-full mr-3"
+                        />
+                        <span>Jerome Fernandez</span>
+                      </td>
+                      <td class="py-4 px-4">Sick Leave</td>
+                      <td class="py-4 px-4">2025-02-05</td>
+                      <td class="py-4 px-4">2025-02-05</td>
+                      <td class="py-4 px-4">
+                        <span class="status-badge completed">Approved</span>
+                      </td>
+                      <td class="py-4 px-4">
+                        <span class="text-gray-500">Completed</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </section>
         </div>
       </main>
     </div>
 
     <script>
-      document.addEventListener("DOMContentLoaded", function() {
-        const employeeGrid = document.getElementById("employee-grid");
-        const tabButtons = document.querySelectorAll(".employee-tab-btn");
-        let employees = [];
-        const modalOverlay = document.createElement("div");
-        modalOverlay.className = "modal-overlay";
-        document.body.appendChild(modalOverlay);
+      document.addEventListener("DOMContentLoaded", () => {
+        const calendarGrid = document.getElementById("calendar-grid");
+        const currentMonthYear = document.getElementById("currentMonthYear");
+        const prevMonthBtn = document.getElementById("prevMonth");
+        const nextMonthBtn = document.getElementById("nextMonth");
+        const leaveEvents = [
+          { type: "Vacation", date: "2025-01-20", duration: 5 },
+          { type: "Sick", date: "2025-02-05", duration: 1 },
+          { type: "Vacation", date: "2025-02-14", duration: 3 },
+        ];
 
-        // Fetch employees from API
-        fetch("../api/get_employees.php")
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-              employees = data.employees;
-              renderEmployees("Permanent");
-            }
+        let currentDate = new Date();
+
+        const renderCalendar = (date) => {
+          calendarGrid.innerHTML = "";
+          const month = date.getMonth();
+          const year = date.getFullYear();
+          const firstDay = new Date(year, month, 1).getDay();
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+          currentMonthYear.textContent = date.toLocaleDateString("en-US", {
+            month: "long",
+            year: "numeric",
           });
 
-        function renderEmployees(category) {
-          employeeGrid.innerHTML = "";
-          employees.filter(emp => emp.status === category).forEach(emp => {
-            const card = document.createElement("div");
-            card.className = "employee-card";
-            card.dataset.category = emp.status;
-            card.dataset.name = emp.firstname + ' ' + emp.lastname;
-            card.dataset.position = emp.position;
-            card.dataset.department = emp.department;
-            card.dataset.leaves = JSON.stringify({}); // Placeholder for leave credits
-            card.innerHTML = `
-              <span class="active-status"></span>
-              <img src="${emp.profile_picture ? emp.profile_picture : 'assets/profile-placeholder.png'}" alt="${emp.firstname} ${emp.lastname}" class="profile-image" />
-              <p class="employee-name">${emp.firstname} ${emp.lastname}</p>
-              <p class="employee-category">${emp.status}</p>
-            `;
-            card.addEventListener("click", function() {
-              const name = card.dataset.name;
-              const position = card.dataset.position;
-              const department = card.dataset.department;
-              let leaveListHtml = '<li><span>Vacation</span><span class="credit-count">-</span></li>';
-              let modalContent =
-                '<div class="modal-content">' +
-                '<button class="modal-close-btn">&times;</button>' +
-                '<div class="modal-profile-header">' +
-                '<img src="' + (emp.profile_picture ? emp.profile_picture : 'assets/profile-placeholder.png') + '" alt="' + name + '">' +
-                '<h4>' + name + '</h4>' +
-                '<p class="employee-details">' + position + ' - ' + department + '</p>' +
-                '</div>' +
-                '<div class="modal-leave-credits">' +
-                '<h5>Leave Credits</h5>' +
-                '<ul>' + leaveListHtml + '</ul>' +
-                '</div>' +
-                '</div>';
-              modalOverlay.innerHTML = modalContent;
-              modalOverlay.classList.add("show");
-              let closeButton = modalOverlay.querySelector(".modal-close-btn");
-              closeButton.addEventListener("click", function() {
-                modalOverlay.classList.remove("show");
-                setTimeout(function() { modalOverlay.innerHTML = ""; }, 300);
-              });
-              modalOverlay.addEventListener("click", function(e) {
-                if (e.target === modalOverlay) {
-                  modalOverlay.classList.remove("show");
-                  setTimeout(function() { modalOverlay.innerHTML = ""; }, 300);
-                }
-              });
-            });
-            employeeGrid.appendChild(card);
+          for (let i = 0; i < firstDay; i++) {
+            const emptyCell = document.createElement("div");
+            calendarGrid.appendChild(emptyCell);
+          }
+
+          for (let i = 1; i <= daysInMonth; i++) {
+            const dayCell = document.createElement("div");
+            dayCell.className =
+              "calendar-day relative p-2 h-16 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer";
+            dayCell.innerHTML = `<span class="font-semibold text-gray-700">${i}</span>`;
+            dayCell.dataset.date = `${year}-${String(month + 1).padStart(
+              2,
+              "0"
+            )}-${String(i).padStart(2, "0")}`;
+            calendarGrid.appendChild(dayCell);
+          }
+
+          leaveEvents.forEach((leaveEvent) => {
+            const leaveDate = new Date(leaveEvent.date);
+            if (
+              leaveDate.getMonth() === month &&
+              leaveDate.getFullYear() === year
+            ) {
+              const day = leaveDate.getDate();
+              const dayCell = calendarGrid.querySelector(
+                `[data-date="${leaveEvent.date}"]`
+              );
+
+              if (dayCell) {
+                const leaveEntry = document.createElement("div");
+                leaveEntry.className =
+                  "absolute bottom-1 w-full bg-blue-500 text-white text-xs text-center rounded px-1";
+                leaveEntry.textContent = leaveEvent.type;
+                dayCell.appendChild(leaveEntry);
+              }
+            }
+          });
+        };
+
+        if (prevMonthBtn && nextMonthBtn) {
+          prevMonthBtn.addEventListener("click", () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar(currentDate);
+          });
+
+          nextMonthBtn.addEventListener("click", () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar(currentDate);
           });
         }
 
-        tabButtons.forEach(function(button) {
-          button.addEventListener("click", function() {
-            const category = button.dataset.category;
-            tabButtons.forEach(btn => btn.classList.remove("active"));
-            button.classList.add("active");
-            renderEmployees(category);
-          });
-        });
+        // Initial render
+        renderCalendar(currentDate);
       });
     </script>
   </body>

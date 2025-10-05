@@ -26,9 +26,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Email already registered.';
         } else {
             $hash = password_hash($password, PASSWORD_DEFAULT);
+            // All new accounts require super admin approval, set status to 'Pending'
+            $pendingStatus = 'Pending';
             $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-            if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position, $status])) {
-                $success = 'Registration successful! You can now <a href="index.php" style="color:#2563eb;">login</a>.';
+            if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position, $pendingStatus])) {
+                $success = 'Registration submitted! Awaiting super admin approval.';
             } else {
                 $error = 'Registration failed. Please try again.';
             }
@@ -293,7 +295,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="step" id="step-2" style="display:none;">
                         <div class="input-block">
                             <label for="department" class="input-label">Department</label>
-                            <input type="text" name="department" id="department" placeholder="Department" required>
+                            <select name="department" id="department" required>
+                                <option value="">Select Department</option>
+                                <option value="Mayor's Office">Mayor's Office</option>
+                                <option value="Vice Mayor's Office">Vice Mayor's Office</option>
+                                <option value="SB Office">SB Office</option>
+                                <option value="Accounting">Accounting</option>
+                                <option value="Budget">Budget</option>
+                                <option value="Treasury">Treasury</option>
+                                <option value="Assessor">Assessor</option>
+                                <option value="Engineering">Engineering</option>
+                                <option value="Planning & Development">Planning & Development</option>
+                                <option value="HR">HR</option>
+                                <option value="Civil Registrar">Civil Registrar</option>
+                                <option value="MSWDO">MSWDO</option>
+                                <option value="MHO">MHO</option>
+                                <option value="Agriculture">Agriculture</option>
+                                <option value="Tourism">Tourism</option>
+                                <option value="Market">Market</option>
+                                <option value="General Services">General Services</option>
+                            </select>
                         </div>
                         <div class="input-block">
                             <label for="position" class="input-label">Position</label>

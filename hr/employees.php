@@ -1,15 +1,23 @@
+<?php
+// employees.php - Dynamic employee list from database
+require_once '../db.php';
+
+$categories = ['Permanent', 'Casual', 'JO', 'OJT'];
+$employees = [];
+foreach ($categories as $cat) {
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE status = ?");
+    $stmt->execute([$cat]);
+    $employees[$cat] = $stmt->fetchAll();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bayan ng Mabini | Employee System</title>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       /* All colors are shades of blue or neutral tones to match the request. */
       @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
@@ -724,249 +732,150 @@
         }
       }
     </style>
-  </head>
-  <body>
+</head>
+<body>
     <header class="top-header">
-      <div class="header-left">
-        <div class="header-logo">
-          <img src="../assets/logo.png" alt="Mabini Logo" class="logo-image" />
+        <div class="header-left">
+            <div class="header-logo">
+                <img src="../assets/logo.png" alt="Mabini Logo" class="logo-image" />
+            </div>
+            <span class="header-text">Bayan ng Mabini</span>
         </div>
-        <span class="header-text">Bayan ng Mabini</span>
-      </div>
-      <div class="header-profile">
-        <i class="fas fa-bell notification-icon"></i>
-        <img src="../assets/logo.png" alt="Profile" class="profile-image" />
-      </div>
+        <div class="header-profile">
+            <i class="fas fa-bell notification-icon"></i>
+            <img src="../assets/logo.png" alt="Profile" class="profile-image" />
+        </div>
     </header>
-
     <div class="container">
-      <aside class="sidebar">
-        <nav class="nav-menu">
-          <ul>
-            <li class="nav-item">
-              <a href="dashboard.php"
-                ><i class="fas fa-th-large"></i> Dashboard</a
-              >
-            </li>
-            <li class="nav-item">
-              <a href="employees.html"
-                ><i class="fas fa-users"></i> Employees</a
-              >
-            </li>
-            <li class="nav-item active">
-              <a href="#"><i class="fas fa-calendar-alt"></i> Leave Status</a>
-            </li>
-            <li class="nav-item">
-              <a href="leave-request.html"
-                ><i class="fas fa-calendar-plus"></i> Leave Request</a
-              >
-            </li>
-            <li class="nav-item">
-              <a href="add-event.html"
-                ><i class="fas fa-calendar-plus"></i> Add Event</a
-              >
-            </li>
-          </ul>
-        </nav>
-        <div class="sign-out">
-          <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
-        </div>
-      </aside>
-
-      <main class="main-content">
-        <div class="main-content-area">
-          <section id="leave-status-content" class="content-section active">
-            <div class="flex justify-between items-center mb-6">
-              <h2 class="text-2xl font-bold text-gray-800">Leave Status</h2>
-              <div class="flex items-center space-x-4">
-                <button
-                  id="prevMonth"
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  Previous
-                </button>
-                <h3
-                  id="currentMonthYear"
-                  class="text-xl font-semibold text-gray-700"
-                ></h3>
-                <button
-                  id="nextMonth"
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  Next
-                </button>
-              </div>
+        <aside class="sidebar">
+            <nav class="nav-menu">
+                <ul>
+                    <li class="nav-item">
+                        <a href="dashboard.php"><i class="fas fa-th-large"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a href="#"><i class="fas fa-users"></i> Employees</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="leave-status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="leave-request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="add-event.html"><i class="fas fa-calendar-plus"></i> Add Event</a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="sign-out">
+                <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
             </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6">
-              <div
-                id="calendar-weekdays"
-                class="grid grid-cols-7 text-center font-semibold text-gray-500 mb-2"
-              >
-                <span>Sun</span>
-                <span>Mon</span>
-                <span>Tue</span>
-                <span>Wed</span>
-                <span>Thu</span>
-                <span>Fri</span>
-                <span>Sat</span>
-              </div>
-              <div id="calendar-grid" class="grid grid-cols-7 gap-1 h-80"></div>
-            </div>
-
-            <div class="mt-8">
-              <h3 class="text-xl font-bold text-gray-800 mb-4">
-                Leave Requests
-              </h3>
-              <div class="bg-white rounded-xl shadow-md p-6">
-                <table class="w-full text-left table-auto">
-                  <thead>
-                    <tr class="text-gray-600 text-sm uppercase">
-                      <th class="py-3 px-4">Employee</th>
-                      <th class="py-3 px-4">Type</th>
-                      <th class="py-3 px-4">Start Date</th>
-                      <th class="py-3 px-4">End Date</th>
-                      <th class="py-3 px-4">Status</th>
-                      <th class="py-3 px-4">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr class="border-b border-gray-200 hover:bg-gray-100">
-                      <td class="py-4 px-4 flex items-center">
-                        <img
-                          src="assets/profile-placeholder.png"
-                          alt="Anna Dela Cruz"
-                          class="w-8 h-8 rounded-full mr-3"
-                        />
-                        <span>Anna Dela Cruz</span>
-                      </td>
-                      <td class="py-4 px-4">Vacation Leave</td>
-                      <td class="py-4 px-4">2025-01-20</td>
-                      <td class="py-4 px-4">2025-01-24</td>
-                      <td class="py-4 px-4">
-                        <span class="status-badge pending">Pending</span>
-                      </td>
-                      <td class="py-4 px-4">
-                        <button
-                          class="text-green-600 hover:text-green-800 transition-colors mr-2"
-                        >
-                          Approve
+        </aside>
+        <main class="main-content">
+            <div class="main-content-area">
+                <section id="employees-content" class="content-section active">
+                    <h2 class="text-2xl font-bold mb-4">Employees</h2>
+                    <div class="employee-tabs">
+                        <?php foreach ($categories as $i => $cat): ?>
+                        <button class="employee-tab-btn<?= $i === 0 ? ' active' : '' ?>" data-category="<?= htmlspecialchars($cat) ?>">
+                            <?= htmlspecialchars($cat) ?>
                         </button>
-                        <button
-                          class="text-red-600 hover:text-red-800 transition-colors"
-                        >
-                          Deny
-                        </button>
-                      </td>
-                    </tr>
-                    <tr class="border-b border-gray-200 hover:bg-gray-100">
-                      <td class="py-4 px-4 flex items-center">
-                        <img
-                          src="assets/profile-placeholder.png"
-                          alt="Jerome Fernandez"
-                          class="w-8 h-8 rounded-full mr-3"
-                        />
-                        <span>Jerome Fernandez</span>
-                      </td>
-                      <td class="py-4 px-4">Sick Leave</td>
-                      <td class="py-4 px-4">2025-02-05</td>
-                      <td class="py-4 px-4">2025-02-05</td>
-                      <td class="py-4 px-4">
-                        <span class="status-badge completed">Approved</span>
-                      </td>
-                      <td class="py-4 px-4">
-                        <span class="text-gray-500">Completed</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="employee-grid">
+                        <?php foreach ($categories as $cat): ?>
+                            <?php foreach ($employees[$cat] as $emp): ?>
+                                <div class="employee-card" data-category="<?= htmlspecialchars($cat) ?>" data-name="<?= htmlspecialchars($emp['firstname'] . ' ' . $emp['lastname']) ?>" data-position="<?= htmlspecialchars($emp['position']) ?>" data-department="<?= htmlspecialchars($emp['department']) ?>" data-leaves='{}'>
+                                    <span class="active-status"></span>
+                                    <img src="assets/profile-placeholder.png" alt="<?= htmlspecialchars($emp['firstname'] . ' ' . $emp['lastname']) ?>" class="profile-image" />
+                                    <p class="employee-name"><?= htmlspecialchars($emp['firstname'] . ' ' . $emp['lastname']) ?></p>
+                                    <p class="employee-category"><?= htmlspecialchars($cat) ?></p>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
             </div>
-          </section>
-        </div>
-      </main>
+        </main>
     </div>
-
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        const calendarGrid = document.getElementById("calendar-grid");
-        const currentMonthYear = document.getElementById("currentMonthYear");
-        const prevMonthBtn = document.getElementById("prevMonth");
-        const nextMonthBtn = document.getElementById("nextMonth");
-        const leaveEvents = [
-          { type: "Vacation", date: "2025-01-20", duration: 5 },
-          { type: "Sick", date: "2025-02-05", duration: 1 },
-          { type: "Vacation", date: "2025-02-14", duration: 3 },
-        ];
+        const employeeCards = document.querySelectorAll(".employee-card");
+        const modalOverlay = document.createElement("div");
+        modalOverlay.className = "modal-overlay";
+        document.body.appendChild(modalOverlay);
 
-        let currentDate = new Date();
+        employeeCards.forEach((card) => {
+          card.addEventListener("click", () => {
+            const name = card.dataset.name;
+            const position = card.dataset.position;
+            const department = card.dataset.department;
+            const leaves = JSON.parse(card.dataset.leaves);
 
-        const renderCalendar = (date) => {
-          calendarGrid.innerHTML = "";
-          const month = date.getMonth();
-          const year = date.getFullYear();
-          const firstDay = new Date(year, month, 1).getDay();
-          const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-          currentMonthYear.textContent = date.toLocaleDateString("en-US", {
-            month: "long",
-            year: "numeric",
-          });
-
-          for (let i = 0; i < firstDay; i++) {
-            const emptyCell = document.createElement("div");
-            calendarGrid.appendChild(emptyCell);
-          }
-
-          for (let i = 1; i <= daysInMonth; i++) {
-            const dayCell = document.createElement("div");
-            dayCell.className =
-              "calendar-day relative p-2 h-16 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer";
-            dayCell.innerHTML = `<span class="font-semibold text-gray-700">${i}</span>`;
-            dayCell.dataset.date = `${year}-${String(month + 1).padStart(
-              2,
-              "0"
-            )}-${String(i).padStart(2, "0")}`;
-            calendarGrid.appendChild(dayCell);
-          }
-
-          leaveEvents.forEach((leaveEvent) => {
-            const leaveDate = new Date(leaveEvent.date);
-            if (
-              leaveDate.getMonth() === month &&
-              leaveDate.getFullYear() === year
-            ) {
-              const day = leaveDate.getDate();
-              const dayCell = calendarGrid.querySelector(
-                `[data-date="${leaveEvent.date}"]`
-              );
-
-              if (dayCell) {
-                const leaveEntry = document.createElement("div");
-                leaveEntry.className =
-                  "absolute bottom-1 w-full bg-blue-500 text-white text-xs text-center rounded px-1";
-                leaveEntry.textContent = leaveEvent.type;
-                dayCell.appendChild(leaveEntry);
-              }
+            let leaveListHtml = "";
+            for (const type in leaves) {
+              leaveListHtml += `<li><span>${type}</span><span class="credit-count">${leaves[type]}</span></li>`;
             }
-          });
-        };
 
-        if (prevMonthBtn && nextMonthBtn) {
-          prevMonthBtn.addEventListener("click", () => {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            renderCalendar(currentDate);
-          });
+            const modalContent = `
+                        <div class="modal-content">
+                            <button class="modal-close-btn">&times;</button>
+                            <div class="modal-profile-header">
+                                <img src="assets/profile-placeholder.png" alt="${name}">
+                                <h4>${name}</h4>
+                                <p class="employee-details">${position} - ${department}</p>
+                            </div>
+                            <div class="modal-leave-credits">
+                                <h5>Leave Credits</h5>
+                                <ul>${leaveListHtml}</ul>
+                            </div>
+                        </div>
+                    `;
 
-          nextMonthBtn.addEventListener("click", () => {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            renderCalendar(currentDate);
-          });
-        }
+            modalOverlay.innerHTML = modalContent;
+            modalOverlay.classList.add("show");
 
-        // Initial render
-        renderCalendar(currentDate);
+            const closeButton = modalOverlay.querySelector(".modal-close-btn");
+            closeButton.addEventListener("click", () => {
+              modalOverlay.classList.remove("show");
+              setTimeout(() => (modalOverlay.innerHTML = ""), 300);
+            });
+
+            modalOverlay.addEventListener("click", (e) => {
+              if (e.target === modalOverlay) {
+                modalOverlay.classList.remove("show");
+                setTimeout(() => (modalOverlay.innerHTML = ""), 300);
+              }
+            });
+          });
+        });
+
+        // Tab functionality
+        const tabButtons = document.querySelectorAll(".employee-tab-btn");
+        const employeeGrid = document.querySelector(".employee-grid");
+
+        tabButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            const category = button.dataset.category;
+
+            // Remove active class from all buttons
+            tabButtons.forEach((btn) => btn.classList.remove("active"));
+
+            // Add active class to the clicked button
+            button.classList.add("active");
+
+            // Filter employee cards
+            const allCards = employeeGrid.querySelectorAll(".employee-card");
+            allCards.forEach((card) => {
+              if (card.dataset.category === category) {
+                card.style.display = "block";
+              } else {
+                card.style.display = "none";
+              }
+            });
+          });
+        });
       });
     </script>
-  </body>
+</body>
 </html>
