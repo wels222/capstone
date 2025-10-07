@@ -843,10 +843,11 @@ if (!isset($_SESSION['user_id'])) {
                 .then(data => {
                     if (data.success) {
                         const employees = data.employees;
-                        const countPermanent = employees.filter(e => e.status === 'Permanent').length;
-                        const countCasual = employees.filter(e => e.status === 'Casual').length;
-                        const countJO = employees.filter(e => e.status === 'JO').length;
-                        const countOJT = employees.filter(e => e.status === 'OJT').length;
+                        // employment category is stored in e.position now
+                        const countPermanent = employees.filter(e => e.position === 'Permanent').length;
+                        const countCasual = employees.filter(e => e.position === 'Casual').length;
+                        const countJO = employees.filter(e => e.position === 'JO').length;
+                        const countOJT = employees.filter(e => e.position === 'OJT').length;
                         document.getElementById('count-permanent').textContent = countPermanent;
                         document.getElementById('count-casual').textContent = countCasual;
                         document.getElementById('count-jo').textContent = countJO;

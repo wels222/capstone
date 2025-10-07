@@ -462,27 +462,24 @@
         const tbody = document.getElementById("accounts-table-body");
         tbody.innerHTML = "";
         users.forEach((user) => {
+          const statusLabel = user.status ? (user.status.charAt(0).toUpperCase() + user.status.slice(1)) : '';
           tbody.innerHTML += `<tr>
           <td>${user.lastname}, ${user.firstname} ${user.mi || ""}</td>
           <td>${user.email}</td>
           <td>${user.department}</td>
           <td>${user.position}</td>
-          <td>${user.status}</td>
+          <td>${statusLabel}</td>
           <td>
             ${
-              user.status === "Pending"
+              user.status === "pending"
                 ? `
-              <button class=\"action-btn approve\" onclick=\"approveUser(${user.id})\">Approve</button>
-              <button class=\"action-btn decline\" onclick=\"declineUser(${user.id})\">Decline</button>
+              <button class="action-btn approve" onclick="approveUser(${user.id})">Approve</button>
+              <button class="action-btn decline" onclick="declineUser(${user.id})">Decline</button>
             `
                 : ""
             }
-            <button class=\"action-btn edit\" onclick=\"editUser(${
-              user.id
-            })\">Edit</button>
-            <button class=\"action-btn delete\" onclick=\"deleteUser(${
-              user.id
-            })\">Delete</button>
+            <button class="action-btn edit" onclick="editUser(${user.id})">Edit</button>
+            <button class="action-btn delete" onclick="deleteUser(${user.id})">Delete</button>
           </td>
         </tr>`;
         });
@@ -518,15 +515,24 @@
               <option value="General Services">General Services</option>
             </select>
           </div>
-          <div><label class='block text-sm font-medium'>Position</label>
-            <select name='position' class='w-full border rounded px-3 py-2' required>
-              <option value=''>Select Position</option>
-              <option value='HR'>HR</option>
-              <option value='Dept Head'>Dept Head</option>
-              <option value='Employee'>Employee</option>
-            </select>
-          </div>
-          <div><label class='block text-sm font-medium'>Status</label><select name='status' class='w-full border rounded px-3 py-2'><option value='Pending'>Pending</option><option value='Permanent'>Permanent</option><option value='Casual'>Casual</option><option value='JO'>JO</option><option value='OJT'>OJT</option></select></div>
+            <div><label class='block text-sm font-medium'>Position</label>
+              <select name='position' class='w-full border rounded px-3 py-2' required>
+                <option value=''>Select Position</option>
+                <option value='Permanent'>Permanent</option>
+                <option value='Casual'>Casual</option>
+                <option value='JO'>JO</option>
+                <option value='OJT'>OJT</option>
+              </select>
+            </div>
+            <div><label class='block text-sm font-medium'>Role</label>
+              <select name='role' class='w-full border rounded px-3 py-2' required>
+                <option value='employee'>Employee</option>
+                <option value='department_head'>Department Head</option>
+                <option value='hr'>HR</option>
+              </select>
+            </div>
+            <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' placeholder='0917xxxxxxx' /></div>
+            <div><label class='block text-sm font-medium'>Status</label><select name='status' class='w-full border rounded px-3 py-2'><option value='pending'>Pending</option><option value='approved'>Approved</option><option value='declined'>Declined</option></select></div>
           <div><label class='block text-sm font-medium'>Email</label><input name='email' type='email' class='w-full border rounded px-3 py-2' required></div>
           <div><label class='block text-sm font-medium'>Password</label><input name='password' type='password' class='w-full border rounded px-3 py-2' required></div>
         </form>
@@ -554,105 +560,54 @@
           "Edit Account",
           `
         <form id='edit-account-form' class='space-y-4'>
-          <div><label class='block text-sm font-medium'>Last Name</label><input name='lastname' class='w-full border rounded px-3 py-2' value='${
-            user.lastname
-          }' required></div>
-          <div><label class='block text-sm font-medium'>First Name</label><input name='firstname' class='w-full border rounded px-3 py-2' value='${
-            user.firstname
-          }' required></div>
-          <div><label class='block text-sm font-medium'>Middle Initial</label><input name='mi' maxlength='1' class='w-full border rounded px-3 py-2' value='${
-            user.mi || ""
-          }'></div>
+          <div><label class='block text-sm font-medium'>Last Name</label><input name='lastname' class='w-full border rounded px-3 py-2' value='${user.lastname}' required></div>
+          <div><label class='block text-sm font-medium'>First Name</label><input name='firstname' class='w-full border rounded px-3 py-2' value='${user.firstname}' required></div>
+          <div><label class='block text-sm font-medium'>Middle Initial</label><input name='mi' maxlength='1' class='w-full border rounded px-3 py-2' value='${user.mi || ""}'></div>
           <div><label class='block text-sm font-medium'>Department</label>
             <select name='department' class='w-full border rounded px-3 py-2' required>
               <option value=''>Select Department</option>
-              <option value="Mayor's Office" ${
-                user.department === "Mayor's Office" ? "selected" : ""
-              }>Mayor's Office</option>
-              <option value="Vice Mayor's Office" ${
-                user.department === "Vice Mayor's Office" ? "selected" : ""
-              }>Vice Mayor's Office</option>
-              <option value="SB Office" ${
-                user.department === "SB Office" ? "selected" : ""
-              }>SB Office</option>
-              <option value="Accounting" ${
-                user.department === "Accounting" ? "selected" : ""
-              }>Accounting</option>
-              <option value="Budget" ${
-                user.department === "Budget" ? "selected" : ""
-              }>Budget</option>
-              <option value="Treasury" ${
-                user.department === "Treasury" ? "selected" : ""
-              }>Treasury</option>
-              <option value="Assessor" ${
-                user.department === "Assessor" ? "selected" : ""
-              }>Assessor</option>
-              <option value="Engineering" ${
-                user.department === "Engineering" ? "selected" : ""
-              }>Engineering</option>
-              <option value="Planning & Development" ${
-                user.department === "Planning & Development" ? "selected" : ""
-              }>Planning & Development</option>
-              <option value="HR" ${
-                user.department === "HR" ? "selected" : ""
-              }>HR</option>
-              <option value="Civil Registrar" ${
-                user.department === "Civil Registrar" ? "selected" : ""
-              }>Civil Registrar</option>
-              <option value="MSWDO" ${
-                user.department === "MSWDO" ? "selected" : ""
-              }>MSWDO</option>
-              <option value="MHO" ${
-                user.department === "MHO" ? "selected" : ""
-              }>MHO</option>
-              <option value="Agriculture" ${
-                user.department === "Agriculture" ? "selected" : ""
-              }>Agriculture</option>
-              <option value="Tourism" ${
-                user.department === "Tourism" ? "selected" : ""
-              }>Tourism</option>
-              <option value="Market" ${
-                user.department === "Market" ? "selected" : ""
-              }>Market</option>
-              <option value="General Services" ${
-                user.department === "General Services" ? "selected" : ""
-              }>General Services</option>
+              <option value="Mayor's Office" ${user.department === "Mayor's Office" ? "selected" : ""}>Mayor's Office</option>
+              <option value="Vice Mayor's Office" ${user.department === "Vice Mayor's Office" ? "selected" : ""}>Vice Mayor's Office</option>
+              <option value="SB Office" ${user.department === "SB Office" ? "selected" : ""}>SB Office</option>
+              <option value="Accounting" ${user.department === "Accounting" ? "selected" : ""}>Accounting</option>
+              <option value="Budget" ${user.department === "Budget" ? "selected" : ""}>Budget</option>
+              <option value="Treasury" ${user.department === "Treasury" ? "selected" : ""}>Treasury</option>
+              <option value="Assessor" ${user.department === "Assessor" ? "selected" : ""}>Assessor</option>
+              <option value="Engineering" ${user.department === "Engineering" ? "selected" : ""}>Engineering</option>
+              <option value="Planning & Development" ${user.department === "Planning & Development" ? "selected" : ""}>Planning & Development</option>
+              <option value="HR" ${user.department === "HR" ? "selected" : ""}>HR</option>
+              <option value="Civil Registrar" ${user.department === "Civil Registrar" ? "selected" : ""}>Civil Registrar</option>
+              <option value="MSWDO" ${user.department === "MSWDO" ? "selected" : ""}>MSWDO</option>
+              <option value="MHO" ${user.department === "MHO" ? "selected" : ""}>MHO</option>
+              <option value="Agriculture" ${user.department === "Agriculture" ? "selected" : ""}>Agriculture</option>
+              <option value="Tourism" ${user.department === "Tourism" ? "selected" : ""}>Tourism</option>
+              <option value="Market" ${user.department === "Market" ? "selected" : ""}>Market</option>
+              <option value="General Services" ${user.department === "General Services" ? "selected" : ""}>General Services</option>
             </select>
           </div>
           <div><label class='block text-sm font-medium'>Position</label>
             <select name='position' class='w-full border rounded px-3 py-2' required>
               <option value=''>Select Position</option>
-              <option value='HR' ${
-                user.position === "HR" ? "selected" : ""
-              }>HR</option>
-              <option value='Dept Head' ${
-                user.position === "Dept Head" ? "selected" : ""
-              }>Dept Head</option>
-              <option value='Employee' ${
-                user.position === "Employee" ? "selected" : ""
-              }>Employee</option>
+              <option value='Permanent' ${user.position === 'Permanent' ? 'selected' : ''}>Permanent</option>
+              <option value='Casual' ${user.position === 'Casual' ? 'selected' : ''}>Casual</option>
+              <option value='JO' ${user.position === 'JO' ? 'selected' : ''}>JO</option>
+              <option value='OJT' ${user.position === 'OJT' ? 'selected' : ''}>OJT</option>
             </select>
           </div>
+          <div><label class='block text-sm font-medium'>Role</label>
+            <select name='role' class='w-full border rounded px-3 py-2' required>
+              <option value='employee' ${user.role === 'employee' ? 'selected' : ''}>Employee</option>
+              <option value='department_head' ${user.role === 'department_head' ? 'selected' : ''}>Department Head</option>
+              <option value='hr' ${user.role === 'hr' ? 'selected' : ''}>HR</option>
+            </select>
+          </div>
+          <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' value='${user.contact_no || ""}' /></div>
           <div><label class='block text-sm font-medium'>Status</label><select name='status' class='w-full border rounded px-3 py-2'>
-            <option value='Pending' ${
-              user.status === "Pending" ? "selected" : ""
-            }>Pending</option>
-            <option value='Permanent' ${
-              user.status === "Permanent" ? "selected" : ""
-            }>Permanent</option>
-            <option value='Casual' ${
-              user.status === "Casual" ? "selected" : ""
-            }>Casual</option>
-            <option value='JO' ${
-              user.status === "JO" ? "selected" : ""
-            }>JO</option>
-            <option value='OJT' ${
-              user.status === "OJT" ? "selected" : ""
-            }>OJT</option>
+            <option value='pending' ${user.status === 'pending' ? 'selected' : ''}>Pending</option>
+            <option value='approved' ${user.status === 'approved' ? 'selected' : ''}>Approved</option>
+            <option value='declined' ${user.status === 'declined' ? 'selected' : ''}>Declined</option>
           </select></div>
-          <div><label class='block text-sm font-medium'>Email</label><input name='email' type='email' class='w-full border rounded px-3 py-2' value='${
-            user.email
-          }' required></div>
+          <div><label class='block text-sm font-medium'>Email</label><input name='email' type='email' class='w-full border rounded px-3 py-2' value='${user.email}' required></div>
           <div><label class='block text-sm font-medium'>Password (leave blank to keep current)</label><input name='password' type='password' class='w-full border rounded px-3 py-2'></div>
         </form>
       `,

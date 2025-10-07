@@ -9,7 +9,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mi = $_POST['mi'] ?? '';
     $department = $_POST['department'] ?? '';
     $position = $_POST['position'] ?? '';
-    $status = $_POST['status'] ?? '';
+    $role = $_POST['role'] ?? 'employee';
+    $contact_no = $_POST['contact_no'] ?? '';
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
@@ -17,22 +18,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Passwords do not match.';
     } elseif (strlen($password) < 6) {
         $error = 'Password must be at least 6 characters.';
-    } elseif (empty($department) || empty($lastname) || empty($firstname) || empty($position) || empty($status) || empty($email)) {
+    } elseif (empty($department) || empty($lastname) || empty($firstname) || empty($position) || empty($email)) {
         $error = 'Please fill in all required fields.';
     } else {
-        $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-        $stmt->execute([$email]);
-        if ($stmt->fetch()) {
-            $error = 'Email already registered.';
+        // Ensure position is one of the allowed employment categories
+        $allowedPositions = ['Permanent','Casual','JO','OJT'];
+        if (!in_array($position, $allowedPositions)) {
+            $error = 'Invalid position selected.';
         } else {
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-            // All new accounts require super admin approval, set status to 'Pending'
-            $pendingStatus = 'Pending';
-            $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-            if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position, $pendingStatus])) {
-                $success = 'Registration submitted! Awaiting super admin approval.';
+            $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+            $stmt->execute([$email]);
+            if ($stmt->fetch()) {
+                $error = 'Email already registered.';
             } else {
-                $error = 'Registration failed. Please try again.';
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                // All new accounts require super admin approval: set status to 'pending'
+                $pendingStatus = 'pending';
+                $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position, role, contact_no, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position, $role, $contact_no, $pendingStatus])) {
+                    $success = 'Registration submitted! Awaiting super admin approval.';
+                } else {
+                    $error = 'Registration failed. Please try again.';
+                }
             }
         }
     }
@@ -320,20 +327,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="position" class="input-label">Position</label>
                             <select name="position" id="position" required>
                                 <option value="">Select Position</option>
-                                <option value="HR">HR</option>
-                                <option value="Dept Head">Dept Head</option>
-                                <option value="Employee">Employee</option>
-                            </select>
-                        </div>
-                        <div class="input-block">
-                            <label for="status" class="input-label">Employee Status</label>
-                            <select name="status" id="status" required>
-                                <option value="">Select Status</option>
                                 <option value="Permanent">Permanent</option>
                                 <option value="Casual">Casual</option>
                                 <option value="JO">JO</option>
                                 <option value="OJT">OJT</option>
                             </select>
+                        </div>
+                        <div class="input-block">
+                            <label for="role" class="input-label">Role (how this account will be used)</label>
+                            <select name="role" id="role" required>
+                                <option value="employee">Employee</option>
+                                <option value="department_head">Department Head</option>
+                                <option value="hr">HR</option>
+                            </select>
+                        </div>
+                        <div class="input-block">
+                            <label for="contact_no" class="input-label">Contact No.</label>
+                            <input type="text" name="contact_no" id="contact_no" placeholder="09XXXXXXXXX" >
                         </div>
                         <div class="modal-buttons">
                             <button type="button" class="input-button" id="prev-2">Back</button>

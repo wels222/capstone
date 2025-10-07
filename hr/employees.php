@@ -4,10 +4,11 @@ require_once '../db.php';
 
 $categories = ['Permanent', 'Casual', 'JO', 'OJT'];
 $employees = [];
+// Group employees by their employment category stored in the `position` column
 foreach ($categories as $cat) {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE status = ?");
-    $stmt->execute([$cat]);
-    $employees[$cat] = $stmt->fetchAll();
+  $stmt = $pdo->prepare("SELECT * FROM users WHERE position = ?");
+  $stmt->execute([$cat]);
+  $employees[$cat] = $stmt->fetchAll();
 }
 ?>
 <!DOCTYPE html>

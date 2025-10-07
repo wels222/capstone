@@ -2,22 +2,27 @@
 session_start();
 require_once 'db.php';
 // Redirect to dashboard if already logged in
-$redirected = false;
-if (isset($_SESSION['user_id']) && isset($_SESSION['position'])) {
-    if ($_SESSION['position'] === 'HR') {
+if (isset($_SESSION['user_id'])) {
+    // Super admin
+    if ($_SESSION['user_id'] === 'superadmin') {
+        header('Location: super_admin.html');
+        exit();
+    }
+    // Prefer role (new column). Fall back to position for older users.
+    $sessRole = strtolower($_SESSION['role'] ?? $_SESSION['position'] ?? '');
+    if ($sessRole === 'hr' || $sessRole === 'human resources') {
         header('Location: hr/dashboard.php');
-        $redirected = true;
-    } elseif ($_SESSION['position'] === 'Dept Head') {
+        exit();
+    } elseif ($sessRole === 'department_head' || $sessRole === 'dept head' || $sessRole === 'dept_head') {
         header('Location: dept_head/dashboard.php');
-        $redirected = true;
-    } elseif ($_SESSION['position'] === 'Employee') {
+        exit();
+    } elseif ($sessRole === 'employee') {
         header('Location: employee/dashboard.php');
-        $redirected = true;
+        exit();
     } else {
         header('Location: dashboard.php');
-        $redirected = true;
+        exit();
     }
-    if ($redirected) exit();
 }
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -32,23 +37,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
     // Normal user login
-    $stmt = $pdo->prepare('SELECT id, password, position FROM users WHERE email = ?');
+    $stmt = $pdo->prepare('SELECT id, password, role, status, position FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $user = $stmt->fetch();
     if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['position'] = $user['position'];
-        $_SESSION['email'] = $email;
-        if ($user['position'] === 'HR') {
-            header('Location: hr/dashboard.php');
-        } elseif ($user['position'] === 'Dept Head') {
-            header('Location: dept_head/dashboard.php');
-        } elseif ($user['position'] === 'Employee') {
-            header('Location: employee/dashboard.php');
+        // Normalize status and role checks to be forgiving for older data
+        $status = strtolower($user['status'] ?? '');
+        if ($status !== 'approved') {
+            if ($status === 'pending' || $status === 'pending') {
+                $error = 'Your account is pending approval by the Super Admin.';
+            } elseif ($status === 'declined') {
+                $error = 'Your account registration was declined. Contact the administrator.';
+            } else {
+                // Unknown status - block login for safety
+                $error = 'Your account is not active. Please contact the administrator.';
+            }
         } else {
-            header('Location: dashboard.php');
+            // Successful login
+            $_SESSION['user_id'] = $user['id'];
+            // Store both role and position for backward compatibility
+            $_SESSION['role'] = $user['role'] ?? '';
+            $_SESSION['position'] = $user['position'] ?? '';
+            $_SESSION['email'] = $email;
+
+            $roleNorm = strtolower($user['role'] ?? $user['position'] ?? '');
+            if ($roleNorm === 'hr' || $roleNorm === 'human resources') {
+                header('Location: hr/dashboard.php');
+            } elseif ($roleNorm === 'department_head' || $roleNorm === 'dept head' || $roleNorm === 'dept_head') {
+                header('Location: dept_head/dashboard.php');
+            } elseif ($roleNorm === 'employee') {
+                header('Location: employee/dashboard.php');
+            } else {
+                header('Location: dashboard.php');
+            }
+            exit();
         }
-        exit();
     } else {
         $error = 'Invalid email or password.';
     }

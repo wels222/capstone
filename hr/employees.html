@@ -466,7 +466,10 @@
 
       /* Category-specific button colors matching dashboard boxes */
       .employee-tab-btn[data-category="Permanent"].active {
-        background-color: #3b82f6;
+        background-color: rgb(0, 98, 255);
+      }
+      .employee-tab-btn[data-category="All"].active {
+        background-color: #002e79;
       }
       .employee-tab-btn[data-category="Casual"].active {
         background-color: #93c5fd;
@@ -779,17 +782,13 @@
             <h2 class="text-2xl font-bold mb-4">Employees</h2>
 
             <div class="employee-tabs">
-              <button class="employee-tab-btn active" data-category="Permanent">
-                Permanent
-              </button>
-              <button class="employee-tab-btn" data-category="Casual">
-                Casual
-              </button>
+              <button class="employee-tab-btn active" data-category="All">All</button>
+              <button class="employee-tab-btn" data-category="Permanent">Permanent</button>
+              <button class="employee-tab-btn" data-category="Casual">Casual</button>
               <button class="employee-tab-btn" data-category="JO">JO</button>
               <button class="employee-tab-btn" data-category="OJT">OJT</button>
             </div>
 
-            <div class="employee-grid">
             <div id="employee-grid" class="employee-grid"></div>
           </section>
         </div>
@@ -811,16 +810,18 @@
           .then(data => {
             if (data.success) {
               employees = data.employees;
-              renderEmployees("Permanent");
+              // show all by default
+              renderEmployees("All");
             }
           });
 
         function renderEmployees(category) {
           employeeGrid.innerHTML = "";
-          employees.filter(emp => emp.status === category).forEach(emp => {
+          const list = category === 'All' ? employees : employees.filter(emp => emp.position === category);
+          list.forEach(emp => {
             const card = document.createElement("div");
             card.className = "employee-card";
-            card.dataset.category = emp.status;
+            card.dataset.category = emp.position;
             card.dataset.name = emp.firstname + ' ' + emp.lastname;
             card.dataset.position = emp.position;
             card.dataset.department = emp.department;
@@ -829,7 +830,7 @@
               <span class="active-status"></span>
               <img src="${emp.profile_picture ? emp.profile_picture : 'assets/profile-placeholder.png'}" alt="${emp.firstname} ${emp.lastname}" class="profile-image" />
               <p class="employee-name">${emp.firstname} ${emp.lastname}</p>
-              <p class="employee-category">${emp.status}</p>
+              <p class="employee-category">${emp.position}</p>
             `;
             card.addEventListener("click", function() {
               const name = card.dataset.name;
