@@ -702,10 +702,10 @@ if (!isset($_SESSION['user_id'])) {
                         <a href="#"><i class="fas fa-th-large"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="task-status.html"><i class="fas fa-users"></i> Task Status</a>
+                        <a href="leave-status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
                     </li>
                     <li class="nav-item">
-                        <a href="leave-status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
+                        <a href="task-status.html"><i class="fas fa-tasks"></i> Task Status</a>
                     </li>
                     <li class="nav-item">
                         <a href="leave-request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>

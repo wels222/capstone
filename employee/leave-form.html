@@ -136,11 +136,51 @@
       </div>
     </main>
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load department heads dynamically
+      fetch('../api/dept_heads.php')
+        .then(response => response.json())
+        .then(heads => {
+          const select = document.getElementById('dept_head_select');
+          select.innerHTML = '<option value="">Select department head</option>';
+          heads.forEach(head => {
+            const opt = document.createElement('option');
+            opt.value = head.email;
+            opt.textContent = `${head.name} (${head.department})`;
+            select.appendChild(opt);
+          });
+        })
+        .catch(() => {
+          const select = document.getElementById('dept_head_select');
+          select.innerHTML = '<option value="">Failed to load department heads</option>';
+        });
           const leaveForm = document.getElementById('leaveAppForm');
           const formLeaveType = document.getElementById('form-leave-type');
           const currentLeaveType = document.getElementById('current-leave-type');
           const formDescription = document.getElementById('form-description');
+
+          // Load relief officers dynamically from employees API
+          fetch('../api/get_employees.php')
+            .then(r => r.json())
+            .then(data => {
+              const reliefSelect = document.getElementById('reliefOfficer');
+              reliefSelect.innerHTML = '<option value="">Select your relief officer</option>';
+              if (data.success && Array.isArray(data.employees)) {
+                data.employees.forEach(emp => {
+                  const opt = document.createElement('option');
+                  const name = `${emp.firstname} ${emp.lastname}`.trim();
+                  opt.value = emp.email || emp.id || name;
+                  opt.textContent = `${name} (${emp.department || emp.position || ''})`;
+                  reliefSelect.appendChild(opt);
+                });
+              } else {
+                reliefSelect.innerHTML = '<option value="">Failed to load relief officers</option>';
+              }
+            })
+            .catch(() => {
+              const reliefSelect = document.getElementById('reliefOfficer');
+              reliefSelect.innerHTML = '<option value="">Failed to load relief officers</option>';
+            });
           
           // Get the leave type from the URL query parameter
           const urlParams = new URLSearchParams(window.location.search);
