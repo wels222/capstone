@@ -55,9 +55,15 @@ if ($user) {
             <h1 id="header-title" class="text-xl font-bold text-gray-800">Dashboard</h1>
         </div>
         <div class="flex items-center space-x-4">
-            <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
-                <i class="fas fa-bell text-lg"></i>
-            </a>
+            <div id="notification-bell-container" class="relative">
+                <button id="notification-bell" class="text-gray-600 hover:text-blue-600 transition-colors relative">
+                    <i class="fas fa-bell text-lg"></i>
+                    <span id="notification-badge" style="display:none;" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full px-2 py-0.5 text-xs font-bold">!</span>
+                </button>
+                <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded shadow-lg z-50">
+                    <div id="notification-list" class="p-4"></div>
+                </div>
+            </div>
             <img id="profileIcon" src="<?php echo $profilePicture ? htmlspecialchars($profilePicture) : 'https://placehold.co/40x40/FF5733/FFFFFF?text=P'; ?>" alt="Profile" class="w-10 h-10 rounded-full cursor-pointer">
             <!-- Profile Modal -->
             <div id="profileModal" class="fixed inset-0 hidden items-center justify-center modal-bg z-50">
@@ -71,7 +77,6 @@ if ($user) {
     </header>
 
     <main class="flex-grow p-4 overflow-y-auto mt-6">
-
         <div id="dashboard-page" class="container">
             <div class="bg-blue-600 w-full rounded-xl shadow-lg p-6 flex flex-col items-start text-white relative overflow-hidden mb-6">
                 <div class="absolute inset-0 bg-blue-700 bg-opacity-20 backdrop-blur-sm z-0"></div>
@@ -99,7 +104,7 @@ if ($user) {
                             </div>
                             <span class="text-sm text-gray-600">Apply for Leave</span>
                         </a>
-                        <a href="leave_status.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                        <a href="leave_status.php" class="flex flex-col items-center space-y-2 cursor-pointer">
                             <div class="bg-purple-100 p-4 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
@@ -316,6 +321,44 @@ if ($user) {
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+           // Notification logic
+           let notifications = [];
+           const bell = document.getElementById('notification-bell');
+           const badge = document.getElementById('notification-badge');
+           const dropdown = document.getElementById('notification-dropdown');
+           const list = document.getElementById('notification-list');
+           // Fetch notifications for employee
+           fetch('notifications.php')
+               .then(response => response.json())
+               .then(data => {
+                   notifications = (data.success && Array.isArray(data.data)) ? data.data : [];
+                   if (notifications.length > 0) {
+                       badge.style.display = 'block';
+                   } else {
+                       badge.style.display = 'none';
+                   }
+                   list.innerHTML = '';
+                   if (notifications.length > 0) {
+                       notifications.forEach(n => {
+                           const div = document.createElement('div');
+                           div.className = 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-2 rounded shadow';
+                           div.innerHTML = `<strong>Notification:</strong> ${n.message} <span class="text-xs text-gray-500">${n.created_at}</span>`;
+                           list.appendChild(div);
+                       });
+                   } else {
+                       list.innerHTML = '<div class="text-gray-500 p-2">No notifications.</div>';
+                   }
+               });
+           // Toggle dropdown on bell click
+           bell.addEventListener('click', () => {
+               dropdown.classList.toggle('hidden');
+           });
+           // Hide dropdown when clicking outside
+           document.addEventListener('click', (e) => {
+               if (!bell.contains(e.target) && !dropdown.contains(e.target)) {
+                   dropdown.classList.add('hidden');
+               }
+           });
             // Profile Modal logic
             const profileIcon = document.getElementById('profileIcon');
             const profileModal = document.getElementById('profileModal');

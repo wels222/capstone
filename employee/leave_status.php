@@ -1,3 +1,15 @@
+<?php
+session_start();
+require_once '../db.php';
+$user_id = $_SESSION['user_id'] ?? null;
+$employeeEmail = '';
+if ($user_id) {
+    $stmt = $pdo->prepare('SELECT email FROM users WHERE id = ?');
+    $stmt->execute([$user_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) $employeeEmail = $row['email'];
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -145,31 +157,60 @@
             const searchInput = document.getElementById('search-leave');
             const toastNotification = document.getElementById('toast-notification');
 
-            // --- DATA SIMULATION ---
-            // Simulating a simple in-memory database for leave requests.
-            let leaveRequests = [
-                { id: 1, type: "Vacation Leave", startDate: "2023-11-20", endDate: "2023-11-25", status: "Pending", reason: "Family vacation.", managerNotes: "Waiting for approval from department head." },
-                { id: 2, type: "Sick Leave", startDate: "2023-11-10", endDate: "2023-11-12", status: "Approved", reason: "Fever and flu.", managerNotes: "Approved. Hope you feel better soon!" },
-                { id: 3, type: "Paternity Leave", startDate: "2023-09-01", endDate: "2023-09-10", status: "Approved", reason: "Birth of a child.", managerNotes: "Congratulations! Approved as per policy." },
-                { id: 4, type: "Personal Leave", startDate: "2023-08-01", endDate: "2023-08-01", status: "Denied", reason: "Attending a concert.", managerNotes: "Denied due to project deadline." }
-            ];
+            // --- FETCH REAL LEAVE REQUESTS ---
+            let leaveRequests = [];
+            function fetchLeaveRequests() {
+                fetch('../api/get_leave_requests.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && Array.isArray(data.data)) {
+                            // Get current employee email from session (PHP inject)
+                            const employeeEmail = window.employeeEmail || '';
+                            leaveRequests = data.data.filter(req => req.employee_email === employeeEmail);
+                            renderLeaveRequests(leaveRequests);
+                        } else {
+                            leaveTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No leave requests found.</td></tr>';
+                        }
+                    })
+                    .catch(() => {
+                        leaveTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Failed to fetch leave requests.</td></tr>';
+                    });
+            }
 
             // --- FUNCTIONALITY ---
-
-            // Function to render leave requests dynamically
             function renderLeaveRequests(requests) {
-                leaveTableBody.innerHTML = ''; // Clear existing content
+                leaveTableBody.innerHTML = '';
                 requests.forEach(req => {
-                    const statusColor = req.status === "Approved" ? "bg-green-100 text-green-800" :
-                                        req.status === "Pending" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
-                    
+                    let statusLabel = 'Pending';
+                    let statusColor = 'bg-yellow-100 text-yellow-800';
+                    // Only HR can approve: show 'Approved' only if req.status === 'approved' and req.approved_by_hr === '1' or true
+                    if (req.status === 'approved' && req.approved_by_hr) {
+                        statusLabel = 'Approved';
+                        statusColor = 'bg-green-100 text-green-800';
+                    } else if (req.status === 'declined') {
+                        statusLabel = 'Declined';
+                        statusColor = 'bg-red-100 text-red-800';
+                    } else {
+                        statusLabel = 'Pending';
+                        statusColor = 'bg-yellow-100 text-yellow-800';
+                    }
+                    // Get start and end date from req.dates
+                    let startDate = '';
+                    let endDate = '';
+                    if (req.dates) {
+                        const matches = req.dates.match(/\d{4}-\d{2}-\d{2}/g);
+                        if (matches && matches.length > 0) {
+                            startDate = matches[0];
+                            endDate = matches[1] ? matches[1] : matches[0];
+                        }
+                    }
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${req.type}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${req.startDate}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${req.endDate}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${req.leave_type}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${startDate}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${endDate}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">${req.status}</span>
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">${statusLabel}</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button data-id="${req.id}" class="view-details-btn text-blue-600 hover:text-blue-900">View Details</button>
@@ -177,6 +218,9 @@
                     `;
                     leaveTableBody.appendChild(row);
                 });
+                if (requests.length === 0) {
+                    leaveTableBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No leave requests found.</td></tr>';
+                }
             }
 
             // Function to show the leave details modal
@@ -262,11 +306,76 @@
             if (leaveTableBody) {
                 leaveTableBody.addEventListener('click', (e) => {
                     if (e.target.classList.contains('view-details-btn')) {
-                        const requestId = parseInt(e.target.dataset.id);
-                        const request = leaveRequests.find(req => req.id === requestId);
-                        if (request) {
-                            showLeaveDetailsModal(request);
-                        }
+                        const requestId = e.target.getAttribute('data-id');
+                        fetch(`../api/get_leave_requests.php?id=${requestId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success && data.data && data.data.length > 0) {
+                                    // Find the exact request by id
+                                    const req = data.data.find(r => r.id == requestId);
+                                    if (!req) return;
+                                    const content = document.getElementById('leave-details-content');
+                                    // Only HR can approve
+                                    let statusLabel = 'Pending';
+                                    if (req.status === 'approved' && req.approved_by_hr) {
+                                        statusLabel = 'Approved by HR';
+                                    } else if (req.status === 'declined') {
+                                        // Try to identify who declined
+                                        let declinedBy = '';
+                                        if (req.decline_reason) {
+                                            if (req.decline_reason.toLowerCase().includes('hr')) {
+                                                declinedBy = 'HR';
+                                            } else if (req.decline_reason.toLowerCase().includes('department head')) {
+                                                declinedBy = 'Department Head';
+                                            }
+                                        }
+                                        // Fallback: if department head email exists, assume department head
+                                        if (!declinedBy && req.dept_head_email) {
+                                            declinedBy = 'Department Head';
+                                        }
+                                        // Fallback: if approved_by_hr is 0, assume department head, else HR
+                                        if (!declinedBy) {
+                                            declinedBy = req.approved_by_hr ? 'HR' : 'Department Head';
+                                        }
+                                        statusLabel = `Declined by ${declinedBy}`;
+                                    } else {
+                                        statusLabel = 'Pending';
+                                    }
+                                    // Show all fields from database for the selected request only
+                                    let noteText = '';
+                                    if (req.status === 'declined' && req.decline_reason) {
+                                        noteText = req.decline_reason;
+                                    } else if (req.status === 'pending') {
+                                        noteText = 'Pending';
+                                    } else if (req.status === 'approved' && req.approved_by_hr) {
+                                        noteText = 'Congratulations!';
+                                    } else {
+                                        noteText = '';
+                                    }
+                                    content.innerHTML = `
+                                        <div><span class='font-semibold text-gray-700'>Leave Type:</span> <span class='text-gray-600'>${req.leave_type}</span></div>
+                                        <div><span class='font-semibold text-gray-700'>Dates:</span> <span class='text-gray-600'>${req.dates}</span></div>
+                                        <div><span class='font-semibold text-gray-700'>Status:</span> <span class='text-gray-600'>${statusLabel}</span></div>
+                                        <div><span class='font-semibold text-gray-700'>Reason:</span> <span class='text-gray-600'>${req.reason}</span></div>
+                                        <div><span class='font-semibold text-gray-700'>Department Head:</span> <span class='text-gray-600' id='dept-head-name'></span></div>
+                                        <div class='mt-4'><span class='font-semibold text-blue-700'>Note:</span> <span class='text-gray-600'>${noteText}</span></div>
+                                    `;
+                                    // Fetch department head name in real time
+                                    fetch(`../api/dept_heads.php`)
+                                        .then(response => response.json())
+                                        .then(heads => {
+                                            if (Array.isArray(heads)) {
+                                                const head = heads.find(h => h.email === req.dept_head_email);
+                                                if (head) {
+                                                    document.getElementById('dept-head-name').textContent = head.name;
+                                                } else {
+                                                    document.getElementById('dept-head-name').textContent = req.dept_head_email;
+                                                }
+                                            }
+                                        });
+                                    leaveDetailsModal.classList.remove('hidden');
+                                }
+                            });
                     }
                 });
             }
@@ -292,13 +401,13 @@
                 });
             }
 
-            // Initial render of leave requests
-            renderLeaveRequests(leaveRequests);
+            // Initial fetch of leave requests
+            fetchLeaveRequests();
+            // Optionally, refresh every minute for real-time updates
+            setInterval(fetchLeaveRequests, 60000);
         });
     </script>
-</body>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
+    <script>
         // Profile Modal logic
         const profileIcon = document.getElementById('profileIcon');
         const profileModal = document.getElementById('profileModal');
@@ -321,5 +430,10 @@
                 profileModal.classList.remove('flex');
             }
         });
-    });
-</script>
+    </script>
+    <script>
+        // Inject employee email from PHP session/database
+        window.employeeEmail = <?php echo json_encode($employeeEmail); ?>;
+    </script>
+</body>
+</html>

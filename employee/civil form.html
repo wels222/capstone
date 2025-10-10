@@ -721,7 +721,15 @@
         </div>
       </div>
 
-      <!-- Add at the bottom of the form -->
+      <!-- Submit Button -->
+      <div class="mt-4 text-center">
+        <button
+          id="submit-leave"
+          class="bg-blue-500 text-white px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"
+        >
+          Submit Leave Application
+        </button>
+      </div>
     </div>
 
     <script>
@@ -732,32 +740,47 @@
       // --- Auto-fill form fields from DB and localStorage ---
       window.onload = function () {
         // Fetch current logged-in user (session-backed)
-        fetch('/capstone/api/current_user.php')
-          .then(res => res.json())
-          .then(data => {
+        fetch("/capstone/api/current_user.php")
+          .then((res) => res.json())
+          .then((data) => {
             if (data && data.logged_in) {
-              document.getElementById('office_dept').value = data.department || '';
-              document.getElementById('name_last').value = data.lastname || '';
-              document.getElementById('name_first').value = data.firstname || '';
-              document.getElementById('name_middle').value = data.mi || '';
-              document.getElementById('position').value = data.position || '';
-              document.getElementById('salary').value = localStorage.getItem('leaveSalary') || '';
+              document.getElementById("office_dept").value =
+                data.department || "";
+              document.getElementById("name_last").value = data.lastname || "";
+              document.getElementById("name_first").value =
+                data.firstname || "";
+              document.getElementById("name_middle").value = data.mi || "";
+              document.getElementById("position").value = data.position || "";
+              document.getElementById("salary").value =
+                localStorage.getItem("leaveSalary") || "";
             } else {
               // fallback to employee-info endpoint if needed
-              fetch('/capstone/api/employee_info.php?email=' + encodeURIComponent(localStorage.getItem('userEmail')))
-                .then(r => r.json()).then(emp => {
-                  document.getElementById('office_dept').value = emp.department || '';
-                  document.getElementById('name_last').value = emp.lastName || '';
-                  document.getElementById('name_first').value = emp.firstName || '';
-                  document.getElementById('name_middle').value = emp.middleName || '';
-                  document.getElementById('position').value = emp.position || '';
-                  document.getElementById('salary').value = localStorage.getItem('leaveSalary') || emp.salary || '';
-                }).catch(()=>{});
+              fetch(
+                "/capstone/api/employee_info.php?email=" +
+                  encodeURIComponent(localStorage.getItem("userEmail"))
+              )
+                .then((r) => r.json())
+                .then((emp) => {
+                  document.getElementById("office_dept").value =
+                    emp.department || "";
+                  document.getElementById("name_last").value =
+                    emp.lastName || "";
+                  document.getElementById("name_first").value =
+                    emp.firstName || "";
+                  document.getElementById("name_middle").value =
+                    emp.middleName || "";
+                  document.getElementById("position").value =
+                    emp.position || "";
+                  document.getElementById("salary").value =
+                    localStorage.getItem("leaveSalary") || emp.salary || "";
+                })
+                .catch(() => {});
             }
-          }).catch(()=>{});
+          })
+          .catch(() => {});
 
-  // Fetch Dept Heads for dropdown (PHP endpoint)
-  fetch("/capstone/api/dept_heads.php")
+        // Fetch Dept Heads for dropdown (PHP endpoint)
+        fetch("/capstone/api/dept_heads.php")
           .then((res) => res.json())
           .then((heads) => {
             const select = document.getElementById("dept_head_select");
@@ -795,27 +818,32 @@
         }
 
         // Try to read structured details first
-        const storedDetailsRaw = localStorage.getItem('leaveDetails');
+        const storedDetailsRaw = localStorage.getItem("leaveDetails");
         let details = null;
         try {
           if (storedDetailsRaw) details = JSON.parse(storedDetailsRaw);
-        } catch(e) { details = null; }
+        } catch (e) {
+          details = null;
+        }
 
         // Set Date of Filing: prefer server-provided applied_at, else localStorage, else today
-        const appliedAt = localStorage.getItem('leaveAppliedAt') || localStorage.getItem('leaveAppliedAt');
-        const dateFilingInput = document.getElementById('date_filing');
+        const appliedAt =
+          localStorage.getItem("leaveAppliedAt") ||
+          localStorage.getItem("leaveAppliedAt");
+        const dateFilingInput = document.getElementById("date_filing");
         if (appliedAt) {
           // appliedAt is like '2025-10-07 11:46:13' -> convert to YYYY-MM-DD
           const d = new Date(appliedAt);
-          if (!isNaN(d)) dateFilingInput.value = d.toISOString().slice(0,10);
+          if (!isNaN(d)) dateFilingInput.value = d.toISOString().slice(0, 10);
           else {
             // fallback: try to parse manual string
-            const dt = appliedAt.split(' ')[0];
+            const dt = appliedAt.split(" ")[0];
             if (dt) dateFilingInput.value = dt;
           }
         } else {
           // default to today
-          const today = new Date(); dateFilingInput.value = today.toISOString().slice(0,10);
+          const today = new Date();
+          dateFilingInput.value = today.toISOString().slice(0, 10);
         }
 
         if (details && details.section6b) {
@@ -823,69 +851,95 @@
           if (details.section6b.vl) {
             const vl = details.section6b.vl;
             // Only populate the specify input for the selected location
-            if (vl.location === 'Within PH') {
-              document.getElementById('loc_ph').checked = true;
-              document.getElementById('loc_ab').checked = false;
-              if (document.getElementById('vl_loc_within_specify')) document.getElementById('vl_loc_within_specify').value = vl.specify || '';
-              if (document.getElementById('vl_loc_abroad_specify')) document.getElementById('vl_loc_abroad_specify').value = '';
-            } else if (vl.location === 'Abroad') {
-              document.getElementById('loc_ab').checked = true;
-              document.getElementById('loc_ph').checked = false;
-              if (document.getElementById('vl_loc_abroad_specify')) document.getElementById('vl_loc_abroad_specify').value = vl.specify || '';
-              if (document.getElementById('vl_loc_within_specify')) document.getElementById('vl_loc_within_specify').value = '';
+            if (vl.location === "Within PH") {
+              document.getElementById("loc_ph").checked = true;
+              document.getElementById("loc_ab").checked = false;
+              if (document.getElementById("vl_loc_within_specify"))
+                document.getElementById("vl_loc_within_specify").value =
+                  vl.specify || "";
+              if (document.getElementById("vl_loc_abroad_specify"))
+                document.getElementById("vl_loc_abroad_specify").value = "";
+            } else if (vl.location === "Abroad") {
+              document.getElementById("loc_ab").checked = true;
+              document.getElementById("loc_ph").checked = false;
+              if (document.getElementById("vl_loc_abroad_specify"))
+                document.getElementById("vl_loc_abroad_specify").value =
+                  vl.specify || "";
+              if (document.getElementById("vl_loc_within_specify"))
+                document.getElementById("vl_loc_within_specify").value = "";
             } else {
               // unknown value: clear both
-              if (document.getElementById('vl_loc_within_specify')) document.getElementById('vl_loc_within_specify').value = '';
-              if (document.getElementById('vl_loc_abroad_specify')) document.getElementById('vl_loc_abroad_specify').value = '';
+              if (document.getElementById("vl_loc_within_specify"))
+                document.getElementById("vl_loc_within_specify").value = "";
+              if (document.getElementById("vl_loc_abroad_specify"))
+                document.getElementById("vl_loc_abroad_specify").value = "";
             }
           }
           // Sick Leave
           if (details.section6b.sl) {
             const sl = details.section6b.sl;
             // Only populate the matching illness field
-            if (sl.type === 'In Hospital') {
-              document.getElementById('sl_hosp').checked = true;
-              if (document.getElementById('sl_hosp_illness')) document.getElementById('sl_hosp_illness').value = sl.illness || '';
+            if (sl.type === "In Hospital") {
+              document.getElementById("sl_hosp").checked = true;
+              if (document.getElementById("sl_hosp_illness"))
+                document.getElementById("sl_hosp_illness").value =
+                  sl.illness || "";
               // clear the other
-              if (document.getElementById('sl_out_illness')) document.getElementById('sl_out_illness').value = '';
-            } else if (sl.type === 'Out Patient') {
-              document.getElementById('sl_out').checked = true;
-              if (document.getElementById('sl_out_illness')) document.getElementById('sl_out_illness').value = sl.illness || '';
+              if (document.getElementById("sl_out_illness"))
+                document.getElementById("sl_out_illness").value = "";
+            } else if (sl.type === "Out Patient") {
+              document.getElementById("sl_out").checked = true;
+              if (document.getElementById("sl_out_illness"))
+                document.getElementById("sl_out_illness").value =
+                  sl.illness || "";
               // clear the other
-              if (document.getElementById('sl_hosp_illness')) document.getElementById('sl_hosp_illness').value = '';
+              if (document.getElementById("sl_hosp_illness"))
+                document.getElementById("sl_hosp_illness").value = "";
             }
           }
           // Special Leave for Women
           if (details.section6b.splwomen) {
-            if (document.getElementById('splwomen_illness_input')) document.getElementById('splwomen_illness_input').value = details.section6b.splwomen.illness || '';
+            if (document.getElementById("splwomen_illness_input"))
+              document.getElementById("splwomen_illness_input").value =
+                details.section6b.splwomen.illness || "";
           }
           // Study Leave
           if (details.section6b.study) {
             const st = details.section6b.study;
-            document.getElementById('sl_md').checked = (st.purpose === "Master's Degree");
-            document.getElementById('sl_bar').checked = (st.purpose && st.purpose.indexOf('BAR') !== -1);
+            document.getElementById("sl_md").checked =
+              st.purpose === "Master's Degree";
+            document.getElementById("sl_bar").checked =
+              st.purpose && st.purpose.indexOf("BAR") !== -1;
             // only populate the 'other' field when the purpose is an explicit other value
-            if (document.getElementById('study_other_input')) {
-              if (st.purpose && st.purpose.toLowerCase().indexOf('other') !== -1) document.getElementById('study_other_input').value = st.other || '';
-              else document.getElementById('study_other_input').value = '';
+            if (document.getElementById("study_other_input")) {
+              if (
+                st.purpose &&
+                st.purpose.toLowerCase().indexOf("other") !== -1
+              )
+                document.getElementById("study_other_input").value =
+                  st.other || "";
+              else document.getElementById("study_other_input").value = "";
             }
           }
 
           // common fields
           if (details.duration) {
-            const durationInput = document.getElementById('num_working_days');
+            const durationInput = document.getElementById("num_working_days");
             if (durationInput) durationInput.value = details.duration;
           }
           if (details.dates) {
-            const datesInput = document.getElementById('inclusive_dates');
+            const datesInput = document.getElementById("inclusive_dates");
             if (datesInput) datesInput.value = details.dates;
           }
           if (details.reliefOfficer) {
-            const reliefInput = document.querySelector('input[type="text"].form-underline.w-full.text-center.text-sm');
+            const reliefInput = document.querySelector(
+              'input[type="text"].form-underline.w-full.text-center.text-sm'
+            );
             if (reliefInput) reliefInput.value = details.reliefOfficer;
           }
-          if (details.commutation === 'Requested') document.getElementById('comm_req').checked = true;
-          else document.getElementById('comm_not_req').checked = true;
+          if (details.commutation === "Requested")
+            document.getElementById("comm_req").checked = true;
+          else document.getElementById("comm_not_req").checked = true;
         } else {
           // Backwards compatibility: read older localStorage keys
           if (
@@ -893,50 +947,88 @@
             leaveType === "Special Privilege Leave"
           ) {
             const vl_location = localStorage.getItem("vl_location");
-            document.getElementById("loc_ph").checked = vl_location === "Within PH";
-            document.getElementById("loc_ab").checked = vl_location === "Abroad";
-            if (vl_location === 'Within PH') {
-              if (document.getElementById('vl_loc_within_specify')) document.getElementById('vl_loc_within_specify').value = localStorage.getItem("vl_location_specify") || '';
-              if (document.getElementById('vl_loc_abroad_specify')) document.getElementById('vl_loc_abroad_specify').value = '';
-            } else if (vl_location === 'Abroad') {
-              if (document.getElementById('vl_loc_abroad_specify')) document.getElementById('vl_loc_abroad_specify').value = localStorage.getItem("vl_location_specify") || '';
-              if (document.getElementById('vl_loc_within_specify')) document.getElementById('vl_loc_within_specify').value = '';
+            document.getElementById("loc_ph").checked =
+              vl_location === "Within PH";
+            document.getElementById("loc_ab").checked =
+              vl_location === "Abroad";
+            if (vl_location === "Within PH") {
+              if (document.getElementById("vl_loc_within_specify"))
+                document.getElementById("vl_loc_within_specify").value =
+                  localStorage.getItem("vl_location_specify") || "";
+              if (document.getElementById("vl_loc_abroad_specify"))
+                document.getElementById("vl_loc_abroad_specify").value = "";
+            } else if (vl_location === "Abroad") {
+              if (document.getElementById("vl_loc_abroad_specify"))
+                document.getElementById("vl_loc_abroad_specify").value =
+                  localStorage.getItem("vl_location_specify") || "";
+              if (document.getElementById("vl_loc_within_specify"))
+                document.getElementById("vl_loc_within_specify").value = "";
             } else {
-              if (document.getElementById('vl_loc_within_specify')) document.getElementById('vl_loc_within_specify').value = '';
-              if (document.getElementById('vl_loc_abroad_specify')) document.getElementById('vl_loc_abroad_specify').value = '';
+              if (document.getElementById("vl_loc_within_specify"))
+                document.getElementById("vl_loc_within_specify").value = "";
+              if (document.getElementById("vl_loc_abroad_specify"))
+                document.getElementById("vl_loc_abroad_specify").value = "";
             }
           } else if (leaveType === "Sick Leave") {
             const sl_type = localStorage.getItem("sl_type");
-            document.getElementById("sl_hosp").checked = sl_type === "In Hospital";
-            document.getElementById("sl_out").checked = sl_type === "Out Patient";
-            if (sl_type === 'In Hospital') {
-              if (document.getElementById('sl_hosp_illness')) document.getElementById('sl_hosp_illness').value = localStorage.getItem("sl_illness") || '';
-              if (document.getElementById('sl_out_illness')) document.getElementById('sl_out_illness').value = '';
-            } else if (sl_type === 'Out Patient') {
-              if (document.getElementById('sl_out_illness')) document.getElementById('sl_out_illness').value = localStorage.getItem("sl_illness") || '';
-              if (document.getElementById('sl_hosp_illness')) document.getElementById('sl_hosp_illness').value = '';
+            document.getElementById("sl_hosp").checked =
+              sl_type === "In Hospital";
+            document.getElementById("sl_out").checked =
+              sl_type === "Out Patient";
+            if (sl_type === "In Hospital") {
+              if (document.getElementById("sl_hosp_illness"))
+                document.getElementById("sl_hosp_illness").value =
+                  localStorage.getItem("sl_illness") || "";
+              if (document.getElementById("sl_out_illness"))
+                document.getElementById("sl_out_illness").value = "";
+            } else if (sl_type === "Out Patient") {
+              if (document.getElementById("sl_out_illness"))
+                document.getElementById("sl_out_illness").value =
+                  localStorage.getItem("sl_illness") || "";
+              if (document.getElementById("sl_hosp_illness"))
+                document.getElementById("sl_hosp_illness").value = "";
             } else {
-              if (document.getElementById('sl_hosp_illness')) document.getElementById('sl_hosp_illness').value = '';
-              if (document.getElementById('sl_out_illness')) document.getElementById('sl_out_illness').value = '';
+              if (document.getElementById("sl_hosp_illness"))
+                document.getElementById("sl_hosp_illness").value = "";
+              if (document.getElementById("sl_out_illness"))
+                document.getElementById("sl_out_illness").value = "";
             }
           } else if (leaveType === "Special Leave for Women") {
-            if (document.getElementById('splwomen_illness_input')) document.getElementById('splwomen_illness_input').value = localStorage.getItem("splwomen_illness") || '';
+            if (document.getElementById("splwomen_illness_input"))
+              document.getElementById("splwomen_illness_input").value =
+                localStorage.getItem("splwomen_illness") || "";
           } else if (leaveType === "Study Leave") {
             const study_purpose = localStorage.getItem("study_purpose");
-            document.getElementById('sl_md').checked = study_purpose === "Master's Degree";
-            document.getElementById('sl_bar').checked = study_purpose === "BAR Review";
-            if (document.getElementById('study_other_input')) {
-              if (study_purpose && study_purpose.toLowerCase().indexOf('other') !== -1) document.getElementById('study_other_input').value = localStorage.getItem("study_other") || '';
-              else document.getElementById('study_other_input').value = '';
+            document.getElementById("sl_md").checked =
+              study_purpose === "Master's Degree";
+            document.getElementById("sl_bar").checked =
+              study_purpose === "BAR Review";
+            if (document.getElementById("study_other_input")) {
+              if (
+                study_purpose &&
+                study_purpose.toLowerCase().indexOf("other") !== -1
+              )
+                document.getElementById("study_other_input").value =
+                  localStorage.getItem("study_other") || "";
+              else document.getElementById("study_other_input").value = "";
             }
           }
 
-          const durationField = document.getElementById('num_working_days');
-          if (durationField) durationField.value = localStorage.getItem("leaveDuration") || "";
-          const inclusiveField = document.getElementById('inclusive_dates');
-          if (inclusiveField) inclusiveField.value = (localStorage.getItem("leaveStartDate") || "") + " - " + (localStorage.getItem("leaveEndDate") || "");
-          const reliefField = document.querySelector('input[type="text"].form-underline.w-full.text-center.text-sm');
-          if (reliefField) reliefField.value = localStorage.getItem("leaveReliefOfficer") || "";
+          const durationField = document.getElementById("num_working_days");
+          if (durationField)
+            durationField.value = localStorage.getItem("leaveDuration") || "";
+          const inclusiveField = document.getElementById("inclusive_dates");
+          if (inclusiveField)
+            inclusiveField.value =
+              (localStorage.getItem("leaveStartDate") || "") +
+              " - " +
+              (localStorage.getItem("leaveEndDate") || "");
+          const reliefField = document.querySelector(
+            'input[type="text"].form-underline.w-full.text-center.text-sm'
+          );
+          if (reliefField)
+            reliefField.value =
+              localStorage.getItem("leaveReliefOfficer") || "";
           if (localStorage.getItem("leaveCommutation") === "Requested") {
             document.getElementById("comm_req").checked = true;
           } else {
@@ -946,37 +1038,37 @@
 
         // Display signature image. Prefer data URI stored as 'leaveSignatureData' (no server file needed),
         // otherwise fall back to path stored as 'leaveSignaturePath' (legacy behavior).
-        const sigData = localStorage.getItem('leaveSignatureData');
-        const sigPath = localStorage.getItem('leaveSignaturePath');
+        const sigData = localStorage.getItem("leaveSignatureData");
+        const sigPath = localStorage.getItem("leaveSignaturePath");
         if (sigData || sigPath) {
           // Place the image inside the signature area (replace the input)
-          const sigContainer = document.getElementById('signature_container');
+          const sigContainer = document.getElementById("signature_container");
           if (sigContainer) {
-            sigContainer.innerHTML = ''; // clear
-            const wrapper = document.createElement('div');
-            wrapper.style.width = '100%';
-            wrapper.style.height = '70px';
-            wrapper.style.display = 'flex';
-            wrapper.style.alignItems = 'center';
-            wrapper.style.justifyContent = 'center';
+            sigContainer.innerHTML = ""; // clear
+            const wrapper = document.createElement("div");
+            wrapper.style.width = "100%";
+            wrapper.style.height = "70px";
+            wrapper.style.display = "flex";
+            wrapper.style.alignItems = "center";
+            wrapper.style.justifyContent = "center";
 
-            const img = document.createElement('img');
-            img.alt = 'Signature';
-            img.style.maxHeight = '60px';
-            img.style.objectFit = 'contain';
-            img.style.display = 'block';
+            const img = document.createElement("img");
+            img.alt = "Signature";
+            img.style.maxHeight = "60px";
+            img.style.objectFit = "contain";
+            img.style.display = "block";
 
             if (sigData) {
               // data URI available -> use it immediately
               img.src = sigData;
             } else {
               // Build candidate src paths and try them until one loads
-              const raw = String(sigPath || '');
-              const cleaned = raw.replace(/^\/+/, ''); // remove leading slashes
+              const raw = String(sigPath || "");
+              const cleaned = raw.replace(/^\/+/, ""); // remove leading slashes
               const candidates = [];
               if (/^https?:\/\//i.test(raw)) candidates.push(raw);
-              candidates.push('../' + cleaned);
-              candidates.push('/' + cleaned);
+              candidates.push("../" + cleaned);
+              candidates.push("/" + cleaned);
               candidates.push(cleaned);
 
               img.onerror = function () {
@@ -984,10 +1076,10 @@
                   img.src = candidates.shift();
                 } else {
                   img.remove();
-                  const txt = document.createElement('div');
-                  txt.textContent = '(Signature not found)';
-                  txt.style.fontStyle = 'italic';
-                  txt.style.color = '#666';
+                  const txt = document.createElement("div");
+                  txt.textContent = "(Signature not found)";
+                  txt.style.fontStyle = "italic";
+                  txt.style.color = "#666";
                   wrapper.appendChild(txt);
                 }
               };
@@ -1002,7 +1094,7 @@
       };
 
       // --- Submit Button Logic ---
-      document.getElementById("submitLeaveBtn").onclick = function () {
+      document.getElementById("submit-leave").onclick = function () {
         // Gather all form data
         const formData = {
           employee_email: localStorage.getItem("userEmail"),
@@ -1029,6 +1121,94 @@
           }
         });
       };
+
+      document
+        .getElementById("submit-leave")
+        .addEventListener("click", function (e) {
+          e.preventDefault();
+
+          // Confirmation dialog
+          const confirmSubmit = confirm(
+            "Are you sure you want to submit this leave application?"
+          );
+          if (!confirmSubmit) {
+            return; // Exit if the user cancels
+          }
+
+          // Add animation
+          const body = document.querySelector("body");
+          const animationDiv = document.createElement("div");
+          animationDiv.style.position = "fixed";
+          animationDiv.style.top = "0";
+          animationDiv.style.left = "0";
+          animationDiv.style.width = "100%";
+          animationDiv.style.height = "100%";
+          animationDiv.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+          animationDiv.style.display = "flex";
+          animationDiv.style.justifyContent = "center";
+          animationDiv.style.alignItems = "center";
+          animationDiv.style.zIndex = "1000";
+          animationDiv.innerHTML = `<div style="color: white; font-size: 2rem;">Submitting...</div>`;
+          body.appendChild(animationDiv);
+
+          // Collect form data
+          const formData = {
+            office_dept: document.getElementById("office_dept").value,
+            name_last: document.getElementById("name_last").value,
+            name_first: document.getElementById("name_first").value,
+            name_middle: document.getElementById("name_middle").value,
+            date_filing: document.getElementById("date_filing").value,
+            position: document.getElementById("position").value,
+            salary: document.getElementById("salary").value,
+            leave_type: Array.from(
+              document.querySelectorAll("input[name='leave_type']:checked")
+            ).map((el) => el.id),
+            employee_email: document.getElementById("employee_email").value, // Added
+            dept_head_email: document.getElementById("dept_head_email").value, // Added
+          };
+
+          // Send data to the backend
+          console.log("Submitting form data:", formData); // Debugging log
+          fetch("/capstone/api/submit_leave.php", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(formData),
+          })
+            .then((response) => {
+              console.log("Response received:", response); // Debugging log
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              return response.json();
+            })
+            .then((data) => {
+              console.log("Response data:", data); // Debugging log
+              if (data.success) {
+                alert("Leave application submitted successfully!");
+                // Redirect to the dashboard after animation
+                setTimeout(() => {
+                  body.removeChild(animationDiv);
+                  window.location.href = "/capstone/employee/dashboard.php";
+                }, 2000); // 2-second delay for animation
+              } else {
+                alert(
+                  `Failed to submit leave application: ${
+                    data.error || "Unknown error"
+                  }`
+                ); // Improved error feedback
+                body.removeChild(animationDiv); // Remove animation on failure
+              }
+            })
+            .catch((error) => {
+              console.error("Error during submission:", error); // Debugging log
+              alert(
+                "An error occurred while submitting the leave application."
+              );
+              body.removeChild(animationDiv); // Remove animation on error
+            });
+        });
     </script>
   </body>
 </html>

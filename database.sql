@@ -1,7 +1,3 @@
-
-
-
-
 -- users table: includes role, contact number, and normalized status values
 CREATE TABLE IF NOT EXISTS users (
 	id INT AUTO_INCREMENT PRIMARY KEY,
@@ -40,6 +36,16 @@ CREATE TABLE IF NOT EXISTS leave_requests (
 	signature_path VARCHAR(255) DEFAULT NULL,
 	details TEXT DEFAULT NULL,
 	status ENUM('pending','approved','declined') NOT NULL DEFAULT 'pending',
+	decline_reason TEXT DEFAULT NULL,
+	approved_by_hr TINYINT(1) NOT NULL DEFAULT 0,
 	applied_at DATETIME NOT NULL,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    recipient_email VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) DEFAULT 'recall',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
