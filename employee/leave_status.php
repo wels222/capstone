@@ -320,23 +320,8 @@ if ($user_id) {
                                     if (req.status === 'approved' && req.approved_by_hr) {
                                         statusLabel = 'Approved by HR';
                                     } else if (req.status === 'declined') {
-                                        // Try to identify who declined
-                                        let declinedBy = '';
-                                        if (req.decline_reason) {
-                                            if (req.decline_reason.toLowerCase().includes('hr')) {
-                                                declinedBy = 'HR';
-                                            } else if (req.decline_reason.toLowerCase().includes('department head')) {
-                                                declinedBy = 'Department Head';
-                                            }
-                                        }
-                                        // Fallback: if department head email exists, assume department head
-                                        if (!declinedBy && req.dept_head_email) {
-                                            declinedBy = 'Department Head';
-                                        }
-                                        // Fallback: if approved_by_hr is 0, assume department head, else HR
-                                        if (!declinedBy) {
-                                            declinedBy = req.approved_by_hr ? 'HR' : 'Department Head';
-                                        }
+                                        // Real-time: use approved_by_hr only
+                                        let declinedBy = (req.approved_by_hr == 1 || req.approved_by_hr === '1') ? 'HR' : 'Department Head';
                                         statusLabel = `Declined by ${declinedBy}`;
                                     } else {
                                         statusLabel = 'Pending';

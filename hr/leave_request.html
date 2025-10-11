@@ -949,6 +949,93 @@
         background-color: #fee2e2;
         color: #991b1b;
       }
+
+      /* Decline Reason Modal Styles */
+      #decline-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        z-index: 1002;
+      }
+
+      #decline-modal.show {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .decline-modal-content {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        width: 90%;
+        max-width: 500px;
+        position: relative;
+        transform: scale(0.9);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      #decline-modal.show .decline-modal-content {
+        transform: scale(1);
+      }
+
+      .decline-modal-close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #9ca3af;
+        cursor: pointer;
+        transition: color 0.2s;
+      }
+
+      .decline-modal-close-btn:hover {
+        color: #ef4444;
+      }
+
+      .decline-reason-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+      }
+
+      .decline-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+      }
+
+      .decline-modal-actions button {
+        padding: 0.75rem 2rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        color: #ffffff;
+        border: none;
+      }
+
+      .decline-modal-actions .submit-decline-btn {
+        background-color: #ef4444;
+      }
+
+      .decline-modal-actions .cancel-decline-btn {
+        background-color: #6b7280;
+      }
     </style>
   </head>
   <body>
@@ -1008,9 +1095,6 @@
               <button class="tab-button active" data-tab="leave-request">
                 Leave Request
               </button>
-              <button class="tab-button" data-tab="leave-recall">
-                Leave Recall
-              </button>
               <button class="tab-button" data-tab="leave-history">
                 Leave History
               </button>
@@ -1024,194 +1108,28 @@
                     Export &nbsp;<i class="fas fa-download"></i>
                   </button>
                 </div>
-                <table>
+                <table class="min-w-full border border-gray-300">
                   <thead>
                     <tr>
-                      <th>Name(s)</th>
-                      <th>Duration(s)</th>
-                      <th>Start Date</th>
-                      <th>End Date</th>
-                      <th>Form</th>
-                      <th>Contact No.</th>
-                      <th>Actions</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">
+                        Name(s)
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">
+                        Leave Type
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">
+                        Dates
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-center">
+                        Form
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-center">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
-                  <tbody>
-                    <tr>
-                      <td>abebe gemechu</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09123456789</td>
-                      <td class="table-actions">
-                        <button class="actions-button">
-                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="actions-dropdown">
-                          <a href="#" class="dropdown-item">Approve</a>
-                          <a href="#" class="dropdown-item">Decline</a>
-                          <a href="#" class="dropdown-item">Cancel</a>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>aman bey</td>
-                      <td>7</td>
-                      <td>22/04/2022</td>
-                      <td>30/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>092123456789</td>
-                      <td class="table-actions">
-                        <button class="actions-button">
-                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="actions-dropdown">
-                          <a href="#" class="dropdown-item">Approve</a>
-                          <a href="#" class="dropdown-item">Decline</a>
-                          <a href="#" class="dropdown-item">Cancel</a>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>feven tesfaye</td>
-                      <td>120</td>
-                      <td>22/04/2022</td>
-                      <td>28/06/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>093123456789</td>
-                      <td class="table-actions">
-                        <button class="actions-button">
-                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="actions-dropdown">
-                          <a href="#" class="dropdown-item">Approve</a>
-                          <a href="#" class="dropdown-item">Decline</a>
-                          <a href="#" class="dropdown-item">Cancel</a>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>gella moges</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09412356789</td>
-                      <td class="table-actions">
-                        <button class="actions-button">
-                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="actions-dropdown">
-                          <a href="#" class="dropdown-item">Approve</a>
-                          <a href="#" class="dropdown-item">Decline</a>
-                          <a href="#" class="dropdown-item">Cancel</a>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>yanet tesfaye</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09512346789</td>
-                      <td class="table-actions">
-                        <button class="actions-button">
-                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="actions-dropdown">
-                          <a href="#" class="dropdown-item">Approve</a>
-                          <a href="#" class="dropdown-item">Decline</a>
-                          <a href="#" class="dropdown-item">Cancel</a>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>betl wolde</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09612345789</td>
-                      <td class="table-actions">
-                        <button class="actions-button">
-                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="actions-dropdown">
-                          <a href="#" class="dropdown-item">Approve</a>
-                          <a href="#" class="dropdown-item">Decline</a>
-                          <a href="#" class="dropdown-item">Cancel</a>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>dawit int</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09712345689</td>
-                      <td class="table-actions">
-                        <button class="actions-button">
-                          Actions &nbsp;<i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="actions-dropdown">
-                          <a href="#" class="dropdown-item">Approve</a>
-                          <a href="#" class="dropdown-item">Decline</a>
-                          <a href="#" class="dropdown-item">Cancel</a>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div id="leave-recall" class="tab-content">
-              <div class="table-container">
-                <div class="table-header-controls">
-                  <i class="fas fa-filter filter-icon"></i>
-                  <button class="export-button">
-                    Export &nbsp;<i class="fas fa-download"></i>
-                  </button>
-                </div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Name(s)</th>
-                      <th>Leave Type</th>
-                      <th>Start Date</th>
-                      <th>End Date</th>
-                      <th>Contact No.</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>abebe gemechu</td>
-                      <td>Sick Leave</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td>09123456789</td>
-                      <td><button class="recall-button">Recall</button></td>
-                    </tr>
-                    <tr>
-                      <td>aman bey</td>
-                      <td>Vacation Leave</td>
-                      <td>22/04/2022</td>
-                      <td>30/04/2022</td>
-                      <td>092123456789</td>
-                      <td><button class="recall-button">Recall</button></td>
-                    </tr>
-                    <tr>
-                      <td>feven tesfaye</td>
-                      <td>Maternity Leave</td>
-                      <td>22/04/2022</td>
-                      <td>28/06/2022</td>
-                      <td>093123456789</td>
-                      <td><button class="recall-button">Recall</button></td>
-                    </tr>
+                  <tbody id="hr-leave-request">
+                    <!-- Dynamic leave request rows will be rendered here by JavaScript -->
                   </tbody>
                 </table>
               </div>
@@ -1225,96 +1143,28 @@
                     Export &nbsp;<i class="fas fa-download"></i>
                   </button>
                 </div>
-                <table>
+                <table class="min-w-full border border-gray-300">
                   <thead>
                     <tr>
-                      <th>Name(s)</th>
-                      <th>Duration(s)</th>
-                      <th>Start Date</th>
-                      <th>End Date</th>
-                      <th>Form</th>
-                      <th>Contact No.</th>
-                      <th>Status</th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">
+                        Name(s)
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">
+                        Leave Type
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">
+                        Dates
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-center">
+                        Form
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-center">
+                        Status
+                      </th>
                     </tr>
                   </thead>
-                  <tbody>
-                    <tr>
-                      <td>abebe gemechu</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09123456789</td>
-                      <td>
-                        <span class="status-badge approve">Approved</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>aman bey</td>
-                      <td>7</td>
-                      <td>22/04/2022</td>
-                      <td>30/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>092123456789</td>
-                      <td>
-                        <span class="status-badge decline">Declined</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>feven tesfaye</td>
-                      <td>120</td>
-                      <td>22/04/2022</td>
-                      <td>28/06/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>093123456789</td>
-                      <td>
-                        <span class="status-badge approve">Approved</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>gella moges</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09412356789</td>
-                      <td>
-                        <span class="status-badge decline">Declined</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>yanet tesfaye</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09512346789</td>
-                      <td>
-                        <span class="status-badge approve">Approved</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>betl wolde</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09612345789</td>
-                      <td>
-                        <span class="status-badge decline">Declined</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>dawit int</td>
-                      <td>5</td>
-                      <td>22/04/2022</td>
-                      <td>28/04/2022</td>
-                      <td><a href="#" class="view-link">view</a></td>
-                      <td>09712345689</td>
-                      <td>
-                        <span class="status-badge approve">Approved</span>
-                      </td>
-                    </tr>
+                  <tbody id="hr-leave-history">
+                    <!-- Dynamic leave history rows will be rendered here by JavaScript -->
                   </tbody>
                 </table>
               </div>
@@ -1324,92 +1174,34 @@
       </main>
     </div>
 
-    <div id="leave-recall-modal" class="modal-overlay leave-recall-modal">
-      <div class="modal-content">
-        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
-        <h3 class="text-center font-bold">Leave Recall</h3>
+    <!-- Decline Reason Modal -->
+    <div id="decline-modal" class="modal-overlay">
+      <div class="modal-content decline-modal-content">
+        <button class="modal-close-btn" id="decline-cancel-btn">&times;</button>
+        <h3 class="text-center font-bold">Decline Leave Request</h3>
         <p class="text-center text-sm text-gray-500 mb-6">
-          Fill in the required details to recall this employee
+          Please provide a reason for declining this leave request.
         </p>
-        <form id="leave-recall-form" class="space-y-4">
+        <form id="decline-form" class="space-y-4">
           <div class="form-group">
-            <label for="recall-employee-name">Employee Name</label>
-            <input
-              type="text"
-              id="recall-employee-name"
-              name="employee-name"
-              value="aman bey"
-              readonly
-            />
-          </div>
-          <div class="form-group">
-            <label for="recall-reason">Reason</label>
-            <input
-              type="text"
-              id="recall-reason"
+            <label for="decline-reason-input">Reason</label>
+            <textarea
+              id="decline-reason-input"
               name="reason"
-              value="need immediate meeting"
-            />
+              rows="3"
+              required
+              class="decline-reason-input"
+            ></textarea>
           </div>
-          <div class="form-row">
-            <div class="form-group w-1/2">
-              <label for="recall-start-date">Start Date</label>
-              <input
-                type="date"
-                id="recall-start-date"
-                name="start-date"
-                value="2022-04-22"
-                required
-              />
-            </div>
-            <div class="form-group w-1/2">
-              <label for="recall-end-date">End Date</label>
-              <input
-                type="date"
-                id="recall-end-date"
-                name="end-date"
-                value="2022-04-22"
-                required
-              />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group w-1/2">
-              <label for="recall-days-remaining">Days Remaining</label>
-              <input
-                type="number"
-                id="recall-days-remaining"
-                name="days-remaining"
-                value="3"
-                required
-              />
-            </div>
-            <div class="form-group w-1/2">
-              <label for="recall-new-resumption-date"
-                >New Resumption Date</label
-              >
-              <input
-                type="date"
-                id="recall-new-resumption-date"
-                name="new-resumption-date"
-                required
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="recall-relief-officer">Relief Officer(s)</label>
-            <input
-              type="text"
-              id="recall-relief-officer"
-              name="relief-officer"
-              value="Hfi bethel"
-            />
-          </div>
-          <div class="form-buttons">
-            <button type="submit" class="initiate-button">
-              Initiate Recall
+          <div class="form-buttons decline-modal-actions">
+            <button type="submit" class="initiate-button submit-decline-btn">
+              Submit
             </button>
-            <button type="button" class="cancel-button" onclick="closeModal()">
+            <button
+              type="button"
+              class="cancel-button cancel-decline-btn"
+              id="decline-cancel-btn"
+            >
               Cancel
             </button>
           </div>
@@ -1447,56 +1239,233 @@
           });
         });
 
-        // Dropdown functionality for "Actions" button in Leave History
-        document.querySelectorAll(".table-actions").forEach((actionDiv) => {
-          const button = actionDiv.querySelector(".actions-button");
-          button.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevents click from bubbling up and closing other dropdowns
-            // Close all other open dropdowns first
-            document
-              .querySelectorAll(".table-actions.open")
-              .forEach((openDiv) => {
-                if (openDiv !== actionDiv) {
-                  openDiv.classList.remove("open");
+        // Leave recall modal removed
+
+        // Decline modal logic
+        const declineModal = document.getElementById("decline-modal");
+        const declineForm = document.getElementById("decline-form");
+        const declineCancelBtns = document.querySelectorAll(
+          "#decline-cancel-btn"
+        );
+        declineCancelBtns.forEach((btn) => {
+          btn.onclick = function () {
+            declineModal.classList.remove("show");
+            window._declineRequestId = null;
+          };
+        });
+        if (declineForm) {
+          declineForm.onsubmit = function (e) {
+            e.preventDefault();
+            const reason = document
+              .getElementById("decline-reason-input")
+              .value.trim();
+            const id = window._declineRequestId;
+            if (!reason || !id) return;
+            // Update backend with decline and reason, mark as declined by HR
+            fetch(`/capstone/api/update_leave_status.php`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id,
+                status: "declined",
+                reason,
+                declined_by_hr: true,
+              }),
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                if (data.success) {
+                  // Send notification to employee
+                  const request = window._leaveRequests.find((r) => r.id == id);
+                  if (request && request.employee_email) {
+                    fetch("/capstone/api/add_notification.php", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        recipient_email: request.employee_email,
+                        message: `Your leave request has been declined by HR. Reason: ${reason}`,
+                        type: "declined",
+                      }),
+                    });
+                  }
+                  alert("Leave request declined successfully!");
+                  declineModal.classList.remove("show");
+                  window._declineRequestId = null;
+                  fetchLeaveRequests();
+                } else {
+                  alert("Failed to decline leave request.");
                 }
+              })
+              .catch((error) => {
+                console.error("Error declining leave request:", error);
+                alert("An error occurred while declining the leave request.");
               });
-            actionDiv.classList.toggle("open");
-          });
-        });
-
-        // Close dropdowns when clicking outside
-        window.addEventListener("click", (e) => {
-          document
-            .querySelectorAll(".table-actions.open")
-            .forEach((openDiv) => {
-              if (!openDiv.contains(e.target)) {
-                openDiv.classList.remove("open");
-              }
-            });
-        });
-
-        // Modal functionality for Leave Recall
-        const recallModal = document.getElementById("leave-recall-modal");
-
-        // Function to show the modal
-        window.showModal = function () {
-          recallModal.classList.add("show");
-        };
-
-        // Function to close the modal
-        window.closeModal = function () {
-          recallModal.classList.remove("show");
-        };
-
-        // Event listeners for all "Recall" buttons
-        document.querySelectorAll(".recall-button").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            // This is a simple implementation. In a real application, you'd
-            // pass data about the employee to the modal.
-            showModal();
-          });
-        });
+          };
+        }
       });
+
+      function fetchLeaveRequests() {
+        fetch("/capstone/api/get_hr_leave_requests.php")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              window._leaveRequests = data.data;
+              // Leave Request (department head approved, not HR approved yet)
+              const tbodyRequest = document.querySelector("#hr-leave-request");
+              tbodyRequest.innerHTML = "";
+              // Leave History (HR approved/declined)
+              const tbodyHistory = document.querySelector("#hr-leave-history");
+              tbodyHistory.innerHTML = "";
+
+              data.data.forEach((request) => {
+                const name =
+                  (request.firstname ? request.firstname : "") +
+                  (request.lastname ? " " + request.lastname : "");
+
+                // Leave Request Table (dept head approved, pending HR approval)
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                  <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
+                  <td class="border border-gray-300 px-4 py-2 text-left">${
+                    request.leave_type || ""
+                  }</td>
+                  <td class="border border-gray-300 px-4 py-2 text-left">${
+                    request.dates || ""
+                  }</td>
+                  <td class="border border-gray-300 px-4 py-2 text-center">
+                    <button class="bg-blue-500 text-white px-2 py-1 rounded view-button" onclick="viewForm('${
+                      request.id
+                    }')">View</button>
+                  </td>
+                  <td class="border border-gray-300 px-4 py-2 text-center">
+                    <select class="action-dropdown px-2 py-1 rounded border border-gray-300" data-id="${
+                      request.id
+                    }" onchange="handleHRAction(this)">
+                      <option value="">Select Action</option>
+                      <option value="approved">Approve</option>
+                      <option value="declined">Decline</option>
+                    </select>
+                  </td>
+                `;
+                tbodyRequest.appendChild(row);
+              });
+
+              // Fetch all leave requests for history and recall
+              fetch("/capstone/api/get_leave_requests.php")
+                .then((response) => response.json())
+                .then((allData) => {
+                  if (allData.success) {
+                    allData.data.forEach((request) => {
+                      const name =
+                        (request.firstname ? request.firstname : "") +
+                        (request.lastname ? " " + request.lastname : "");
+
+                      // Leave History Table (HR approved/declined)
+                      if (
+                        (request.status === "approved" &&
+                          request.approved_by_hr) ||
+                        request.status === "declined"
+                      ) {
+                        const historyRow = document.createElement("tr");
+                        let statusBadge = "";
+                        if (
+                          request.status === "approved" &&
+                          request.approved_by_hr
+                        ) {
+                          statusBadge =
+                            '<span class="status-badge approve">Approved by HR</span>';
+                        } else if (request.status === "declined") {
+                          statusBadge =
+                            '<span class="status-badge decline">Declined</span>';
+                        }
+                        historyRow.innerHTML = `
+                          <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
+                          <td class="border border-gray-300 px-4 py-2 text-left">${
+                            request.leave_type || ""
+                          }</td>
+                          <td class="border border-gray-300 px-4 py-2 text-left">${
+                            request.dates || ""
+                          }</td>
+                          <td class="border border-gray-300 px-4 py-2 text-center">
+                            <button class="bg-blue-500 text-white px-2 py-1 rounded view-button" onclick="viewForm('${
+                              request.id
+                            }')">View</button>
+                          </td>
+                          <td class="border border-gray-300 px-4 py-2 text-center">${statusBadge}</td>
+                        `;
+                        tbodyHistory.appendChild(historyRow);
+                      }
+                    });
+                  }
+                });
+            } else {
+              console.error("Failed to fetch HR leave requests:", data.error);
+            }
+          })
+          .catch((error) =>
+            console.error("Error fetching HR leave requests:", error)
+          );
+      }
+
+      // View form function
+      function viewForm(id) {
+        window.location.href = `../dept_head/civil_form.php?id=${id}`;
+      }
+
+      // Handle HR approve/decline action
+      function handleHRAction(select) {
+        const id = select.getAttribute("data-id");
+        const action = select.value;
+        if (!action) return;
+        if (action === "declined") {
+          // Show decline modal and store id
+          window._declineRequestId = id;
+          document.getElementById("decline-modal").classList.add("show");
+        } else if (action === "approved") {
+          // HR Approve action: update backend with approved_by_hr = 1
+          fetch(`/capstone/api/update_leave_status.php`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id,
+              status: "approved",
+              approved_by_hr: true,
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                // Send notification to employee
+                const request = window._leaveRequests.find((r) => r.id == id);
+                if (request && request.employee_email) {
+                  fetch("/capstone/api/add_notification.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      recipient_email: request.employee_email,
+                      message: `Your leave request has been approved by HR!`,
+                      type: "approved",
+                    }),
+                  });
+                }
+                alert("Leave request approved successfully!");
+                fetchLeaveRequests();
+              } else {
+                alert("Failed to approve leave request.");
+              }
+            })
+            .catch((error) => {
+              console.error("Error approving leave request:", error);
+              alert("An error occurred while approving the leave request.");
+            });
+        }
+      }
+
+      // Fetch leave requests on page load
+      document.addEventListener("DOMContentLoaded", fetchLeaveRequests);
+
+      // Optionally, refresh the table every minute
+      setInterval(fetchLeaveRequests, 60000);
     </script>
   </body>
 </html>

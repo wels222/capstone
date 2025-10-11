@@ -20,8 +20,10 @@ try {
         $stmt = $pdo->prepare("UPDATE leave_requests SET status = :status, approved_by_hr = 0, updated_at = NOW() WHERE id = :id");
         $stmt->execute([':status' => $status, ':id' => $id]);
     } else if ($status === 'declined' && isset($data['reason'])) {
-        $stmt = $pdo->prepare("UPDATE leave_requests SET status = :status, decline_reason = :reason, updated_at = NOW() WHERE id = :id");
-        $stmt->execute([':status' => $status, ':reason' => $data['reason'], ':id' => $id]);
+        // If declined by HR, set approved_by_hr=1, else 0
+        $approved_by_hr = isset($data['declined_by_hr']) && $data['declined_by_hr'] ? 1 : 0;
+        $stmt = $pdo->prepare("UPDATE leave_requests SET status = :status, decline_reason = :reason, approved_by_hr = :approved_by_hr, updated_at = NOW() WHERE id = :id");
+        $stmt->execute([':status' => $status, ':reason' => $data['reason'], ':approved_by_hr' => $approved_by_hr, ':id' => $id]);
     } else {
         $stmt = $pdo->prepare("UPDATE leave_requests SET status = :status, updated_at = NOW() WHERE id = :id");
         $stmt->execute([':status' => $status, ':id' => $id]);

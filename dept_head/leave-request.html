@@ -1678,30 +1678,30 @@
                     }</td>
                   `;
                   tbodyHistory.appendChild(historyRow);
-                  // Also add to recall table if approved/declined
-                  if (["approved", "declined"].includes(request.status)) {
-                    const recallRow = document.createElement("tr");
-                    recallRow.innerHTML = `
-                      <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
-                      <td class="border border-gray-300 px-4 py-2 text-left">${
-                        request.leave_type || ""
-                      }</td>
-                      <td class="border border-gray-300 px-4 py-2 text-left">${
-                        request.dates || ""
-                      }</td>
-                      <td class="border border-gray-300 px-4 py-2 text-center">
-                        <button class="bg-blue-500 text-white px-2 py-1 rounded view-button" onclick="viewForm('${
-                          request.id
-                        }')">View Form</button>
-                      </td>
-                      <td class="border border-gray-300 px-4 py-2 text-center">
-                        <button class="recall-btn bg-yellow-500 text-white px-2 py-1 rounded" onclick="openRecallModal(${JSON.stringify(
-                          request
-                        )})">Recall</button>
-                      </td>
-                    `;
-                    tbodyRecall.appendChild(recallRow);
-                  }
+                }
+                // Only add to recall table if approved (not declined)
+                if (request.status === "approved") {
+                  const recallRow = document.createElement("tr");
+                  recallRow.innerHTML = `
+                    <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
+                    <td class="border border-gray-300 px-4 py-2 text-left">${
+                      request.leave_type || ""
+                    }</td>
+                    <td class="border border-gray-300 px-4 py-2 text-left">${
+                      request.dates || ""
+                    }</td>
+                    <td class="border border-gray-300 px-4 py-2 text-center">
+                      <button class="bg-blue-500 text-white px-2 py-1 rounded view-button" onclick="viewForm('${
+                        request.id
+                      }')">View Form</button>
+                    </td>
+                    <td class="border border-gray-300 px-4 py-2 text-center">
+                      <button class="recall-btn bg-yellow-500 text-white px-2 py-1 rounded" onclick="openRecallModal(${JSON.stringify(
+                        request
+                      )})">Recall</button>
+                    </td>
+                  `;
+                  tbodyRecall.appendChild(recallRow);
                 }
               });
             } else {
