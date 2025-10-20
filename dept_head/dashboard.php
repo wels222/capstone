@@ -745,63 +745,21 @@ if (!isset($_SESSION['user_id'])) {
                     <div class="projects-events-container">
                         <div class="active-projects-box">
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold text-gray-800">Active Projects</h3>
+                                <h3 class="text-xl font-bold text-gray-800">My Tasks</h3>
                             </div>
-                            <div class="overflow-x-auto">
+                            <div class="overflow-x-auto max-h-96 overflow-y-auto">
                                 <table class="min-w-full">
                                     <thead>
-                                        <tr>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Name</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Lead</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Progress</th>
+                                        <tr class="text-gray-600 text-sm uppercase">
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Task Name</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Assigned To</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Due Date</th>
                                             <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th class="py-3 px-4 whitespace-nowrap font-semibold text-sm text-gray-500 uppercase tracking-wider">Due Date</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="dashboardTasksTbody">
                                         <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Bender project</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Johnson</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 63%; background-color: #55a2ea;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Batmon</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">William</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 24%; background-color: #ef4444;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge pending">Pending</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Candy</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Paul</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 86%; background-color: #22c55e;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge completed">Completed</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">30 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Throwing</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Elizabeth</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 51%; background-color: #6b7280;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">11 Jan 2025</td>
+                                            <td class="py-4 px-4 text-gray-500" colspan="4">Loading tasks...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -891,6 +849,59 @@ if (!isset($_SESSION['user_id'])) {
                 .catch(err => {
                     document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
                 });
+            // --- Tasks: load for dashboard Active Projects box replacement ---
+            const dashboardTasksTbody = document.getElementById('dashboardTasksTbody');
+            const employeeMap = new Map();
+            function fmtDate(d){ try { return d ? new Date(d).toISOString().slice(0,10) : ''; } catch(e){ return d||''; } }
+            function escapeHtml(s){
+                return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+            }
+            function truncate(s,n){ if(!s) return ''; return s.length>n ? s.slice(0,n-1)+'…' : s; }
+
+            async function loadEmployeesMap(){
+                try{
+                    const res = await fetch('../api/get_employees.php');
+                    const data = await res.json();
+                    const emps = Array.isArray(data.employees) ? data.employees : [];
+                    emps.forEach(e=>{
+                        const name = `${e.firstname} ${e.mi ? e.mi + '. ' : ''}${e.lastname}`;
+                        employeeMap.set(e.email, { name, department: e.department });
+                    });
+                }catch(err){ /* ignore map errors */ }
+            }
+
+            async function loadDashboardTasks(){
+                try{
+                    const res = await fetch('../api/tasks_list.php', { credentials:'include' });
+                    const data = await res.json();
+                    if(!data.success){
+                        dashboardTasksTbody.innerHTML = `<tr><td colspan="4" class="py-4 px-4 text-red-600">${escapeHtml(data.error||'Failed to load tasks')}</td></tr>`;
+                        return;
+                    }
+                    const rows = data.tasks.map(t => {
+                        const assignee = employeeMap.get(t.assigned_to_email)?.name || t.assigned_to_email;
+                        const statusClass = t.status === 'completed' ? 'completed' : (t.status === 'in_progress' ? 'inprogress' : 'pending');
+                        return `<tr class="border-b border-gray-200 hover:bg-gray-50">
+                            <td class="py-3 px-4 font-medium text-gray-800">${escapeHtml(t.title)}</td>
+                            <td class="py-3 px-4 text-gray-600">${escapeHtml(assignee)}</td>
+                            <td class="py-3 px-4 text-gray-600">${fmtDate(t.due_date)}</td>
+                            <td class="py-3 px-4"><span class="status-badge ${statusClass}">${t.status.replace('_',' ')}</span></td>
+                        </tr>`;
+                    }).join('');
+                    dashboardTasksTbody.innerHTML = rows || '<tr><td class="py-4 px-4 text-gray-500" colspan="4">No tasks yet.</td></tr>';
+                }catch(err){
+                    dashboardTasksTbody.innerHTML = '<tr><td colspan="4" class="py-4 px-4 text-red-600">Error loading tasks</td></tr>';
+                }
+            }
+
+            // load name map first, then tasks
+            loadEmployeesMap().then(loadDashboardTasks);
+
+            // Auto-refresh tasks on dashboard every 10s, pause when hidden
+            const DASHBOARD_TASKS_INTERVAL = 10000;
+            let _dashTasksTimer = setInterval(() => { if(!document.hidden) loadDashboardTasks(); }, DASHBOARD_TASKS_INTERVAL);
+            document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) loadDashboardTasks(); });
+            window.addEventListener('beforeunload', ()=>{ if(_dashTasksTimer){ clearInterval(_dashTasksTimer); _dashTasksTimer=null; } });
         });
 
         // Dept head counts: fetch current user, then employees, filter by department

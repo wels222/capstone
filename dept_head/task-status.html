@@ -777,6 +777,7 @@
 
             <div class="flex justify-end mb-6">
               <button
+                id="btnOpenAddTask"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center"
               >
                 <i class="fas fa-plus mr-2"></i>
@@ -784,7 +785,7 @@
               </button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="grid grid-cols-1 gap-8 mb-8">
               <div class="bg-white rounded-xl shadow-md p-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-4">
                   My Tasks
@@ -794,79 +795,333 @@
                     <thead>
                       <tr class="text-gray-600 text-sm uppercase">
                         <th class="py-3 px-4">Task Name</th>
+                        <th class="py-3 px-4">Assigned To</th>
                         <th class="py-3 px-4">Due Date</th>
+                        <th class="py-3 px-4">Files</th>
+                        <th class="py-3 px-4">Submission Note</th>
                         <th class="py-3 px-4">Status</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      <tr class="border-b border-gray-200 hover:bg-gray-100">
-                        <td class="py-4 px-4">Complete Q3 Report</td>
-                        <td class="py-4 px-4">2025-01-25</td>
-                        <td class="py-4 px-4">
-                          <span class="status-badge pending">Pending</span>
-                        </td>
-                      </tr>
-                      <tr class="border-b border-gray-200 hover:bg-gray-100">
-                        <td class="py-4 px-4">Team meeting preparation</td>
-                        <td class="py-4 px-4">2025-01-20</td>
-                        <td class="py-4 px-4">
-                          <span class="status-badge completed">Completed</span>
-                        </td>
-                      </tr>
-                      <tr class="border-b border-gray-200 hover:bg-gray-100">
-                        <td class="py-4 px-4">Review annual budget proposal</td>
-                        <td class="py-4 px-4">2025-02-10</td>
-                        <td class="py-4 px-4">
-                          <span class="status-badge inprogress"
-                            >In Progress</span
-                          >
+                    <tbody id="tasksTbody">
+                      <tr>
+                        <td class="py-4 px-4 text-gray-500" colspan="6">
+                          Loading tasks...
                         </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
-              <div class="bg-white rounded-xl shadow-md p-6">
+            </div>
+
+            <!-- Add Task Modal -->
+            <div id="addTaskModal" class="modal-overlay">
+              <div class="modal-content">
+                <button
+                  class="modal-close-btn"
+                  id="btnCloseAddTask"
+                  aria-label="Close"
+                >
+                  &times;
+                </button>
                 <h3 class="text-xl font-semibold text-gray-800 mb-4">
-                  To Do List
+                  Add Task
                 </h3>
-                <div class="space-y-4">
-                  <div class="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="task1"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <label for="task1" class="ml-3 text-gray-700 font-medium"
-                      >Follow up with finance department</label
+                <form
+                  id="addTaskForm"
+                  enctype="multipart/form-data"
+                  class="space-y-4"
+                >
+                  <div>
+                    <label
+                      class="block text-gray-700 font-medium mb-1"
+                      for="taskTitle"
+                      >Task Name</label
                     >
-                  </div>
-                  <div class="flex items-center">
                     <input
-                      type="checkbox"
-                      id="task2"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      id="taskTitle"
+                      name="title"
+                      type="text"
+                      class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+                      required
                     />
-                    <label for="task2" class="ml-3 text-gray-700 font-medium"
-                      >Schedule meeting with IT team</label
-                    >
                   </div>
-                  <div class="flex items-center">
+                  <div>
+                    <label
+                      class="block text-gray-700 font-medium mb-1"
+                      for="taskDesc"
+                      >Description</label
+                    >
+                    <textarea
+                      id="taskDesc"
+                      name="description"
+                      rows="3"
+                      class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label
+                      class="block text-gray-700 font-medium mb-1"
+                      for="taskDue"
+                      >Due Date</label
+                    >
                     <input
-                      type="checkbox"
-                      id="task3"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      id="taskDue"
+                      name="due_date"
+                      type="date"
+                      class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
                     />
-                    <label for="task3" class="ml-3 text-gray-700 font-medium"
-                      >Prepare presentation for next week</label
-                    >
                   </div>
-                </div>
+                  <div>
+                    <label
+                      class="block text-gray-700 font-medium mb-1"
+                      for="taskEmployee"
+                      >Assign To</label
+                    >
+                    <select
+                      id="taskEmployee"
+                      name="assigned_to_email"
+                      class="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+                      required
+                    >
+                      <option value="">Loading employees...</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      class="block text-gray-700 font-medium mb-1"
+                      for="taskFile"
+                      >Attachment</label
+                    >
+                    <input
+                      id="taskFile"
+                      name="attachment"
+                      type="file"
+                      class="w-full"
+                    />
+                  </div>
+                  <div class="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      id="btnCancelAddTask"
+                      class="px-4 py-2 rounded-md border text-gray-700 hover:bg-gray-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      Create Task
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           </section>
         </div>
       </main>
     </div>
+    <script>
+      // Utility to format dates
+      function fmtDate(d) {
+        if (!d) return "";
+        try {
+          return new Date(d).toISOString().slice(0, 10);
+        } catch (e) {
+          return d;
+        }
+      }
+      function escapeHtml(s) {
+        return (s || "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            }[c])
+        );
+      }
+      function truncate(s, n) {
+        if (!s) return "";
+        return s.length > n ? s.slice(0, n - 1) + "…" : s;
+      }
+
+      const tasksTbody = document.getElementById("tasksTbody");
+      const addTaskModal = document.getElementById("addTaskModal");
+      const btnOpenAddTask = document.getElementById("btnOpenAddTask");
+      const btnCloseAddTask = document.getElementById("btnCloseAddTask");
+      const btnCancelAddTask = document.getElementById("btnCancelAddTask");
+      const addTaskForm = document.getElementById("addTaskForm");
+      const employeeSelect = document.getElementById("taskEmployee");
+
+      function openModal() {
+        addTaskModal.classList.add("show");
+      }
+      function closeModal() {
+        addTaskModal.classList.remove("show");
+      }
+      btnOpenAddTask.addEventListener("click", openModal);
+      btnCloseAddTask.addEventListener("click", closeModal);
+      btnCancelAddTask.addEventListener("click", closeModal);
+      addTaskModal.addEventListener("click", (e) => {
+        if (e.target === addTaskModal) closeModal();
+      });
+
+      // Load employees for dropdown
+      const employeeMap = new Map();
+      async function loadEmployees() {
+        try {
+          const res = await fetch("../api/get_employees.php");
+          const data = await res.json();
+          employeeSelect.innerHTML = "";
+          if (!data.success) {
+            employeeSelect.innerHTML =
+              '<option value="">Failed to load</option>';
+            return;
+          }
+          const emps = Array.isArray(data.employees)
+            ? data.employees.filter(
+                (e) =>
+                  (e.role || "").toLowerCase() === "employee" &&
+                  (e.status || "").toLowerCase() === "approved"
+              )
+            : [];
+          const opts = emps
+            .map((e) => {
+              const name = `${e.firstname} ${e.mi ? e.mi + ". " : ""}${
+                e.lastname
+              }`;
+              employeeMap.set(e.email, { name, department: e.department });
+              return `<option value="${e.email}">${name} - ${e.department}</option>`;
+            })
+            .join("");
+          employeeSelect.innerHTML =
+            '<option value="">Select employee...</option>' + opts;
+        } catch (err) {
+          employeeSelect.innerHTML = '<option value="">Error loading</option>';
+        }
+      }
+
+      // Load tasks
+      async function loadTasks() {
+        try {
+          const res = await fetch("../api/tasks_list.php", {
+            credentials: "include",
+          });
+          const data = await res.json();
+          if (!data.success) {
+            tasksTbody.innerHTML = `<tr><td colspan="4" class="py-4 px-4 text-red-600">${
+              data.error || "Failed to load tasks"
+            }</td></tr>`;
+            return;
+          }
+          const rows = data.tasks
+            .map((t) => {
+              const statusClass =
+                t.status === "completed"
+                  ? "completed"
+                  : t.status === "in_progress"
+                  ? "inprogress"
+                  : "pending";
+              const assignee =
+                employeeMap.get(t.assigned_to_email)?.name ||
+                t.assigned_to_email;
+              const note = (t.submission_note || "").toString();
+              const noteEsc = escapeHtml(note);
+              const noteShort = escapeHtml(truncate(note, 80));
+              return `<tr class="border-b border-gray-200 hover:bg-gray-50">
+              <td class="py-3 px-4 font-medium text-gray-800">${t.title}</td>
+              <td class="py-3 px-4 text-gray-600">${assignee}</td>
+              <td class="py-3 px-4 text-gray-600">${fmtDate(t.due_date)}</td>
+              <td class="py-3 px-4 text-gray-600">${
+                t.submission_file_path
+                  ? `<a class="text-blue-600 hover:underline" href="../${t.submission_file_path}" target="_blank" title="${noteEsc}">View file</a>`
+                  : "-"
+              }</td>
+              <td class="py-3 px-4 text-gray-600" title="${noteEsc}">${
+                note ? noteShort : "-"
+              }</td>
+              <td class="py-3 px-4"><span class="status-badge ${statusClass}">${t.status.replace(
+                "_",
+                " "
+              )}</span></td>
+            </tr>`;
+            })
+            .join("");
+          tasksTbody.innerHTML =
+            rows ||
+            '<tr><td class="py-4 px-4 text-gray-500" colspan="6">No tasks yet.</td></tr>';
+        } catch (err) {
+          tasksTbody.innerHTML =
+            '<tr><td colspan="4" class="py-4 px-4 text-red-600">Error loading tasks</td></tr>';
+        }
+      }
+
+      addTaskForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(addTaskForm);
+        try {
+          const res = await fetch("../api/tasks_create.php", {
+            method: "POST",
+            body: fd,
+            credentials: "include",
+          });
+          const data = await res.json();
+          if (!data.success) {
+            alert(data.error || "Failed to create task");
+            return;
+          }
+          closeModal();
+          addTaskForm.reset();
+          await loadTasks();
+        } catch (err) {
+          alert("Network error creating task");
+        }
+      });
+
+      // Initial: ensure employees loaded before tasks to map names
+      loadEmployees().then(() => {
+        loadTasks();
+        startAutoRefresh();
+      });
+
+      // --- Auto-refresh (polling) ---
+      const AUTO_REFRESH_MS = 10000; // 10 seconds
+      let __tasksAutoRefreshTimer = null;
+
+      function startAutoRefresh() {
+        if (__tasksAutoRefreshTimer) return; // prevent duplicates
+        __tasksAutoRefreshTimer = setInterval(() => {
+          // Only refresh if tab is visible
+          if (!document.hidden) {
+            loadTasks();
+          }
+        }, AUTO_REFRESH_MS);
+      }
+
+      function stopAutoRefresh() {
+        if (__tasksAutoRefreshTimer) {
+          clearInterval(__tasksAutoRefreshTimer);
+          __tasksAutoRefreshTimer = null;
+        }
+      }
+
+      // Pause polling when tab is hidden, resume when visible
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          stopAutoRefresh();
+        } else {
+          loadTasks(); // refresh immediately when returning
+          startAutoRefresh();
+        }
+      });
+
+      // Clean up on page unload
+      window.addEventListener("beforeunload", stopAutoRefresh);
+    </script>
   </body>
 </html>

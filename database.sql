@@ -49,3 +49,22 @@ CREATE TABLE IF NOT EXISTS notifications (
     type VARCHAR(50) DEFAULT 'recall',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Tasks assigned by department heads to employees
+CREATE TABLE IF NOT EXISTS tasks (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	title VARCHAR(255) NOT NULL,
+	description TEXT,
+	due_date DATE,
+	status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
+	assigned_to_email VARCHAR(100) NOT NULL,
+	assigned_by_email VARCHAR(100) NOT NULL,
+	attachment_path VARCHAR(255) DEFAULT NULL,
+	submission_file_path VARCHAR(255) DEFAULT NULL,
+	submission_note TEXT DEFAULT NULL,
+	completed_at DATETIME DEFAULT NULL,
+	ack_note TEXT DEFAULT NULL,
+	ack_at DATETIME DEFAULT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+);
