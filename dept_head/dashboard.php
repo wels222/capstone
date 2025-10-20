@@ -723,23 +723,23 @@ if (!isset($_SESSION['user_id'])) {
                     <div class="header-container">
                         <div class="header-box">
                             <span class="category">Permanent</span>
-                            <div class="count">29</div>
-                            <span class="active-count">25 Active</span>
+                            <div class="count" id="count-permanent">0</div>
+                            <span class="active-count" id="active-permanent">0 Active</span>
                         </div>
                         <div class="header-box">
                             <span class="category">Casual</span>
-                            <div class="count">24</div>
-                            <span class="active-count">22 Active</span>
+                            <div class="count" id="count-casual">0</div>
+                            <span class="active-count" id="active-casual">0 Active</span>
                         </div>
                         <div class="header-box">
                             <span class="category">JO</span>
-                            <div class="count">25</div>
-                            <span class="active-count">20 Active</span>
+                            <div class="count" id="count-jo">0</div>
+                            <span class="active-count" id="active-jo">0 Active</span>
                         </div>
                         <div class="header-box">
                             <span class="category">OJT</span>
-                            <div class="count">21</div>
-                            <span class="active-count">19 Active</span>
+                            <div class="count" id="count-ojt">0</div>
+                            <span class="active-count" id="active-ojt">0 Active</span>
                         </div>
                     </div>
                     <div class="projects-events-container">
@@ -862,13 +862,13 @@ if (!isset($_SESSION['user_id'])) {
                     }
                 }
             };
-            
+
             const projectChart = document.getElementById('projectChart');
             if(projectChart) {
                 new Chart(projectChart, config);
             }
 
-            // Fetch and display events from database
+                // Fetch and display events from database
             fetch('../api/get_events.php')
                 .then(response => response.json())
                 .then(data => {
@@ -892,6 +892,59 @@ if (!isset($_SESSION['user_id'])) {
                     document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
                 });
         });
+
+        // Dept head counts: fetch current user, then employees, filter by department
+        async function updateDeptCounts(){
+            try{
+                const uResp = await fetch('../api/current_user.php');
+                const user = await uResp.json();
+                if(!user || !user.logged_in){ console.warn('No logged in user'); return; }
+                const dept = (user.department || '').toString();
+                // fetch all employees and filter by department
+                const empResp = await fetch('../api/get_employees.php');
+                const empJson = await empResp.json();
+                const employees = (empJson && empJson.employees) || [];
+                // Filter employees to the same department, exclude pending accounts and exclude HR role
+                const filtered = employees.filter(e => {
+                    const empDept = (e.department || '').toString();
+                    const role = (e.role || '').toString().toLowerCase();
+                    const status = (e.status || '').toString().toLowerCase();
+                    // must be same department
+                    if (empDept !== dept) return false;
+                    // exclude HR users from all counts
+                    if (role === 'hr') return false;
+                    // exclude accounts that are still pending
+                    if (status === 'pending') return false;
+                    return true;
+                });
+
+                // categories we track
+                const categories = ['Permanent','Casual','JO','OJT'];
+                const counts = { Permanent:0, Casual:0, JO:0, OJT:0 };
+                const active = { Permanent:0, Casual:0, JO:0, OJT:0 };
+                filtered.forEach(e=>{
+                    const pos = (e.position||'').toString();
+                    if(categories.includes(pos)){
+                        counts[pos] = (counts[pos]||0) + 1;
+                        if(((e.status||'').toString().toLowerCase()) === 'approved') active[pos] = (active[pos]||0) + 1;
+                    }
+                });
+
+                // update DOM
+                document.getElementById('count-permanent').textContent = counts['Permanent'] || 0;
+                document.getElementById('active-permanent').textContent = `${active['Permanent'] || 0} Active`;
+                document.getElementById('count-casual').textContent = counts['Casual'] || 0;
+                document.getElementById('active-casual').textContent = `${active['Casual'] || 0} Active`;
+                document.getElementById('count-jo').textContent = counts['JO'] || 0;
+                document.getElementById('active-jo').textContent = `${active['JO'] || 0} Active`;
+                document.getElementById('count-ojt').textContent = counts['OJT'] || 0;
+                document.getElementById('active-ojt').textContent = `${active['OJT'] || 0} Active`;
+            }catch(err){ console.error('updateDeptCounts error', err); }
+        }
+
+        // initialize and poll periodically
+        updateDeptCounts();
+        setInterval(updateDeptCounts, 12000); // refresh every 12s
     </script>
 </body>
 </html>
