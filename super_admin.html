@@ -79,7 +79,11 @@
         padding: 1rem 1.2rem;
         border-bottom: 1px solid #e5e7eb;
         font-size: 1rem;
+        vertical-align: middle;
       }
+      /* tighten action/status column spacing */
+      .action-col, .status-col { padding-top:0.6rem; padding-bottom:0.6rem; }
+      .action-cell .action-btn { margin-top:0; }
       th {
         background: #2563eb;
         color: #fff;
@@ -169,6 +173,8 @@
         min-width: 340px;
         max-width: 95vw;
         min-height: 120px;
+        max-height: 90vh; /* limit modal height */
+        overflow-y: auto; /* allow scrolling inside modal */
         position: relative;
         animation: modalIn 0.18s cubic-bezier(0.4, 2, 0.6, 1) 1;
       }
@@ -208,6 +214,63 @@
         margin-top: 1.5rem;
         justify-content: flex-end;
       }
+      /* Make html/body take full height so containers can use 100vh reliably */
+      html, body { height: 100%; }
+
+      /* Ensure the page fills the viewport and main content adapts */
+      .flex.min-h-screen { min-height: 100vh; }
+      aside { height: 100vh; }
+      main { min-height: 100vh; }
+
+      /* Action buttons: use a flexible wrapping container so they don't overlap */
+      .action-group {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        position: relative; /* ensure menus/buttons can layer */
+        z-index: 2;
+      }
+      /* Action cell helper to vertically align actions with row content */
+      .action-cell{ display:flex; justify-content:flex-end; align-items:center; position:relative; }
+      .action-btn {
+        padding: 0.35rem 0.8rem;
+        border-radius: 0.55rem;
+        font-size: 0.92rem;
+        font-weight: 600;
+        margin: 0;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 1px 6px rgba(30, 64, 175, 0.06);
+        transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+        white-space: normal;
+      }
+
+      /* Wizard styles for multi-step Add Account */
+      .wizard-step { display: none; }
+      .wizard-step.active { display: block; }
+      .wizard-progress { display:flex; gap:0.5rem; margin-bottom:1rem; }
+      .wizard-dot { width:10px; height:10px; border-radius:999px; background:#e6eefc; }
+      .wizard-dot.active { background:#2563eb; }
+
+      /* Tweak padding and size on smaller screens */
+      @media (max-width: 768px) {
+        th, td { padding: 0.6rem 0.8rem; font-size: 0.92rem; }
+        .action-btn { padding: 0.35rem 0.6rem; font-size: 0.85rem; }
+        .modal-content { padding: 1rem; }
+        aside { position: relative; height: auto; }
+        main { padding: 1rem; }
+      }
+  /* Search suggestions */
+  .search-wrap{ position: relative; }
+  .suggestions{ position: absolute; z-index: 50; left: 0; right: 0; background:#fff; border:1px solid #e5e7eb; border-radius:8px; margin-top:6px; box-shadow:0 6px 24px rgba(30,64,175,0.08); max-height:260px; overflow:auto; }
+  .suggestion-item{ padding:8px 10px; cursor:pointer; border-bottom:1px solid #f3f4f6; }
+  .suggestion-item:hover{ background:#f3f4f6; }
+  .suggestion-item{ margin:2px 0; }
+  .search-input{ min-width:220px; }
+  .actions-menu{ pointer-events:auto; }
+  .actions-menu{ z-index: 9999 !important; }
     </style>
     <!-- Modal for editing (structure, JS will fill content) -->
     <div id="modal" class="modal">
@@ -283,21 +346,7 @@
             />
           </div>
         </div>
-        <!-- Tabs -->
-        <div class="flex gap-4 mb-8">
-          <button
-            id="tab-accounts"
-            class="tab-btn bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-blue-700 hover:text-white"
-          >
-            Accounts
-          </button>
-          <button
-            id="tab-events"
-            class="tab-btn bg-blue-100 text-blue-700 px-6 py-2 rounded-lg font-semibold hover:bg-blue-600 hover:text-white"
-          >
-            Events
-          </button>
-        </div>
+        <!-- Tabs are handled in the sidebar; top tabs removed to avoid duplication -->
         <!-- Accounts Tab -->
         <section id="accounts-section">
           <div class="bg-white rounded-xl shadow p-6">
@@ -305,12 +354,18 @@
               <div class="text-xl font-bold text-blue-900">
                 Account Management
               </div>
-              <button
-                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
-                id="add-account-btn"
-              >
-                <i class="fas fa-user-plus"></i> Add Account
-              </button>
+              <div class="flex items-center gap-3">
+                <div class="search-wrap" style="min-width:220px;">
+                  <input id="account-search" class="search-input w-64 border rounded px-3 py-2" placeholder="Search accounts (name)" autocomplete="off" />
+                  <div id="search-suggestions" class="suggestions" style="display:none"></div>
+                </div>
+                <button
+                  class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+                  id="add-account-btn"
+                >
+                  <i class="fas fa-user-plus"></i> Add Account
+                </button>
+              </div>
             </div>
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-blue-100">
@@ -470,6 +525,7 @@
           const statusLabel = user.status
             ? user.status.charAt(0).toUpperCase() + user.status.slice(1)
             : "";
+          const isPending = (user.status || '').toString().toLowerCase() === 'pending';
           tbody.innerHTML += `<tr>
           <td>${user.lastname}, ${user.firstname} ${user.mi || ""}</td>
           <td>${user.email}</td>
@@ -478,65 +534,52 @@
           <td>${user.role || "N/A"}</td>
           <td>${statusLabel}</td>
           <td>
-            ${
-              user.status === "pending"
-                ? `
-              <button class="action-btn approve" onclick="approveUser(${user.id})">Approve</button>
-              <button class="action-btn decline" onclick="declineUser(${user.id})">Decline</button>
-            `
-                : ""
-            }
-            <button class="action-btn edit" onclick="editUser(${
-              user.id
-            })">Edit</button>
-            <button class="action-btn delete" onclick="deleteUser(${
-              user.id
-            })">Delete</button>
+            <div class="action-cell">
+              <button class="action-btn edit" onclick="toggleActionsMenu(event, ${user.id})">Actions ▾</button>
+              <div id="actions-menu-${user.id}" class="actions-menu" style="display:none; position:absolute; right:0; top:38px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 8px 32px rgba(30,64,175,0.08); z-index:60;">
+                <div style="padding:8px 10px; display:flex; flex-direction:column; gap:6px; min-width:160px;">
+                  <button class='action-btn edit' style='width:100%; text-align:left;' onclick='editUser(${user.id})'>Edit</button>
+                  ${isPending ? `<button class='action-btn approve' style='width:100%; text-align:left;' onclick='approveUser(${user.id})'>Approve</button>` : ''}
+                  ${isPending ? `<button class='action-btn decline' style='width:100%; text-align:left;' onclick='declineUser(${user.id})'>Decline</button>` : ''}
+                  <button class='action-btn delete' style='width:100%; text-align:left;' onclick='deleteUser(${user.id})'>Delete</button>
+                </div>
+              </div>
+            </div>
           </td>
         </tr>`;
         });
       }
       // CRUD logic for accounts
       document.getElementById("add-account-btn").onclick = function () {
-        openCrudModal(
-          "Add Account",
-          `
+        // Build a 3-step wizard form for adding account to avoid overcrowding
+        const wizardHtml = `
+        <div class='wizard-progress'>
+          <div class='wizard-dot active' data-step='1'></div>
+          <div class='wizard-dot' data-step='2'></div>
+          <div class='wizard-dot' data-step='3'></div>
+        </div>
         <form id='add-account-form' class='space-y-4'>
-          <div><label class='block text-sm font-medium'>Last Name</label><input name='lastname' class='w-full border rounded px-3 py-2' required></div>
-          <div><label class='block text-sm font-medium'>First Name</label><input name='firstname' class='w-full border rounded px-3 py-2' required></div>
-          <div><label class='block text-sm font-medium'>Middle Initial</label><input name='mi' maxlength='1' class='w-full border rounded px-3 py-2'></div>
-          <div><label class='block text-sm font-medium'>Department</label>
-            <select name='department' class='w-full border rounded px-3 py-2' required>
-              <option value=''>Select Department</option>
-              <option value="Mayor's Office">Mayor's Office</option>
-              <option value="Vice Mayor's Office">Vice Mayor's Office</option>
-            </select>
+          <div class='wizard-step active' data-step='1'>
+            <div><label class='block text-sm font-medium'>Last Name</label><input name='lastname' class='w-full border rounded px-3 py-2' required></div>
+            <div><label class='block text-sm font-medium'>First Name</label><input name='firstname' class='w-full border rounded px-3 py-2' required></div>
+            <div><label class='block text-sm font-medium'>Middle Initial</label><input name='mi' maxlength='1' class='w-full border rounded px-3 py-2'></div>
           </div>
-          <div><label class='block text-sm font-medium'>Role</label>
-            <select name='role' class='w-full border rounded px-3 py-2' required>
-              <option value=''>Select Role</option>
-              <option value="Employee">Employee</option>
-              <option value="Department Head">Department Head</option>
-              <option value="HR">HR</option>
-              <option value="Super Admin">Super Admin</option>
-            </select>
-              <option value="SB Office">SB Office</option>
-              <option value="Accounting">Accounting</option>
-              <option value="Budget">Budget</option>
-              <option value="Treasury">Treasury</option>
-              <option value="Assessor">Assessor</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Planning & Development">Planning & Development</option>
-              <option value="HR">HR</option>
-              <option value="Civil Registrar">Civil Registrar</option>
-              <option value="MSWDO">MSWDO</option>
-              <option value="MHO">MHO</option>
-              <option value="Agriculture">Agriculture</option>
-              <option value="Tourism">Tourism</option>
-              <option value="Market">Market</option>
-              <option value="General Services">General Services</option>
-            </select>
-          </div>
+          <div class='wizard-step' data-step='2'>
+            <div><label class='block text-sm font-medium'>Department</label>
+              <select name='department' class='w-full border rounded px-3 py-2' required>
+                <option value=''>Select Department</option>
+                <option value="Mayor's Office">Mayor's Office</option>
+                <option value="Vice Mayor's Office">Vice Mayor's Office</option>
+                <option value="SB Office">SB Office</option>
+                <option value="Accounting">Accounting</option>
+                <option value="Budget">Budget</option>
+                <option value="Treasury">Treasury</option>
+                <option value="Assessor">Assessor</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Planning & Development">Planning & Development</option>
+                <option value="HR">HR</option>
+              </select>
+            </div>
             <div><label class='block text-sm font-medium'>Position</label>
               <select name='position' class='w-full border rounded px-3 py-2' required>
                 <option value=''>Select Position</option>
@@ -546,6 +589,9 @@
                 <option value='OJT'>OJT</option>
               </select>
             </div>
+            <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' placeholder='0917xxxxxxx' /></div>
+          </div>
+          <div class='wizard-step' data-step='3'>
             <div><label class='block text-sm font-medium'>Role</label>
               <select name='role' class='w-full border rounded px-3 py-2' required>
                 <option value='employee'>Employee</option>
@@ -553,14 +599,68 @@
                 <option value='hr'>HR</option>
               </select>
             </div>
-            <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' placeholder='0917xxxxxxx' /></div>
             <div><label class='block text-sm font-medium'>Status</label><select name='status' class='w-full border rounded px-3 py-2'><option value='pending'>Pending</option><option value='approved'>Approved</option><option value='declined'>Declined</option></select></div>
-          <div><label class='block text-sm font-medium'>Email</label><input name='email' type='email' class='w-full border rounded px-3 py-2' required></div>
-          <div><label class='block text-sm font-medium'>Password</label><input name='password' type='password' class='w-full border rounded px-3 py-2' required></div>
+            <div><label class='block text-sm font-medium'>Email</label><input name='email' type='email' class='w-full border rounded px-3 py-2' required></div>
+            <div><label class='block text-sm font-medium'>Password</label><input name='password' type='password' class='w-full border rounded px-3 py-2' required></div>
+          </div>
         </form>
-      `,
-          `<button class='action-btn edit' onclick='submitAddAccount()'>Add</button>`
-        );
+        <div class='flex items-center justify-between mt-4'>
+          <div>
+            <button id='wizard-back' class='action-btn' style='display:none'>Back</button>
+          </div>
+          <div>
+            <button id='wizard-next' class='action-btn edit'>Next</button>
+            <button id='wizard-submit' class='action-btn edit' style='display:none'>Add</button>
+          </div>
+        </div>
+      `;
+
+        openCrudModal("Add Account", wizardHtml, "");
+
+        // Wizard behavior
+        let currentStep = 1;
+        const totalSteps = 3;
+        const setStep = (n) => {
+          currentStep = n;
+          document.querySelectorAll('.wizard-step').forEach(el=>el.classList.remove('active'));
+          document.querySelectorAll('.wizard-step[data-step]')[n-1].classList.add('active');
+          document.querySelectorAll('.wizard-dot').forEach((d,i)=>{
+            d.classList.toggle('active', i < n);
+          });
+          document.getElementById('wizard-back').style.display = n===1 ? 'none' : '';
+          document.getElementById('wizard-next').style.display = n===totalSteps ? 'none' : '';
+          document.getElementById('wizard-submit').style.display = n===totalSteps ? '' : 'none';
+        };
+        // attach handlers (use setTimeout to ensure DOM inside modal exists)
+        setTimeout(()=>{
+          document.getElementById('wizard-next').addEventListener('click', (e)=>{
+            e.preventDefault();
+            // simple validation for required inputs in current step
+            const stepEl = document.querySelector('.wizard-step.active');
+            const invalid = Array.from(stepEl.querySelectorAll('[required]')).some(i=>!i.value.trim());
+            if(invalid){
+              // highlight or simple alert
+              alert('Please fill required fields before continuing.');
+              return;
+            }
+            setStep(Math.min(totalSteps, currentStep+1));
+          });
+          document.getElementById('wizard-back').addEventListener('click', (e)=>{ e.preventDefault(); setStep(Math.max(1, currentStep-1)); });
+          document.getElementById('wizard-submit').addEventListener('click', (e)=>{
+            e.preventDefault();
+            const form = document.getElementById('add-account-form');
+            const data = Object.fromEntries(new FormData(form).entries());
+            // keep original fetch API and payload
+            fetch('api/super_admin_users.php', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'add', ...data })
+            }).then(r=>r.json()).then(()=>{
+              closeCrudModal();
+              fetchData();
+            });
+          });
+        }, 80);
       };
       window.submitAddAccount = function () {
         const form = document.getElementById("add-account-form");
@@ -577,128 +677,102 @@
           });
       };
       window.editUser = function (id) {
-        const user = users.find((u) => u.id == id);
-        openCrudModal(
-          "Edit Account",
-          `
-        <form id='edit-account-form' class='space-y-4'>
-          <div><label class='block text-sm font-medium'>Last Name</label><input name='lastname' class='w-full border rounded px-3 py-2' value='${
-            user.lastname
-          }' required></div>
-          <div><label class='block text-sm font-medium'>First Name</label><input name='firstname' class='w-full border rounded px-3 py-2' value='${
-            user.firstname
-          }' required></div>
-          <div><label class='block text-sm font-medium'>Middle Initial</label><input name='mi' maxlength='1' class='w-full border rounded px-3 py-2' value='${
-            user.mi || ""
-          }'></div>
-          <div><label class='block text-sm font-medium'>Department</label>
-            <select name='department' class='w-full border rounded px-3 py-2' required>
-              <option value=''>Select Department</option>
-              <option value="Mayor's Office" ${
-                user.department === "Mayor's Office" ? "selected" : ""
-              }>Mayor's Office</option>
-              <option value="Vice Mayor's Office" ${
-                user.department === "Vice Mayor's Office" ? "selected" : ""
-              }>Vice Mayor's Office</option>
-              <option value="SB Office" ${
-                user.department === "SB Office" ? "selected" : ""
-              }>SB Office</option>
-              <option value="Accounting" ${
-                user.department === "Accounting" ? "selected" : ""
-              }>Accounting</option>
-              <option value="Budget" ${
-                user.department === "Budget" ? "selected" : ""
-              }>Budget</option>
-              <option value="Treasury" ${
-                user.department === "Treasury" ? "selected" : ""
-              }>Treasury</option>
-              <option value="Assessor" ${
-                user.department === "Assessor" ? "selected" : ""
-              }>Assessor</option>
-              <option value="Engineering" ${
-                user.department === "Engineering" ? "selected" : ""
-              }>Engineering</option>
-              <option value="Planning & Development" ${
-                user.department === "Planning & Development" ? "selected" : ""
-              }>Planning & Development</option>
-              <option value="HR" ${
-                user.department === "HR" ? "selected" : ""
-              }>HR</option>
-              <option value="Civil Registrar" ${
-                user.department === "Civil Registrar" ? "selected" : ""
-              }>Civil Registrar</option>
-              <option value="MSWDO" ${
-                user.department === "MSWDO" ? "selected" : ""
-              }>MSWDO</option>
-              <option value="MHO" ${
-                user.department === "MHO" ? "selected" : ""
-              }>MHO</option>
-              <option value="Agriculture" ${
-                user.department === "Agriculture" ? "selected" : ""
-              }>Agriculture</option>
-              <option value="Tourism" ${
-                user.department === "Tourism" ? "selected" : ""
-              }>Tourism</option>
-              <option value="Market" ${
-                user.department === "Market" ? "selected" : ""
-              }>Market</option>
-              <option value="General Services" ${
-                user.department === "General Services" ? "selected" : ""
-              }>General Services</option>
-            </select>
+        // Build a 3-step wizard for editing (split fields to avoid overflow)
+        const user = users.find((u) => u.id == id) || {};
+        const wizardHtml = `
+          <div class='wizard-progress'>
+            <div class='wizard-dot active' data-step='1'></div>
+            <div class='wizard-dot' data-step='2'></div>
+            <div class='wizard-dot' data-step='3'></div>
           </div>
-          <div><label class='block text-sm font-medium'>Position</label>
-            <select name='position' class='w-full border rounded px-3 py-2' required>
-              <option value=''>Select Position</option>
-              <option value='Permanent' ${
-                user.position === "Permanent" ? "selected" : ""
-              }>Permanent</option>
-              <option value='Casual' ${
-                user.position === "Casual" ? "selected" : ""
-              }>Casual</option>
-              <option value='JO' ${
-                user.position === "JO" ? "selected" : ""
-              }>JO</option>
-              <option value='OJT' ${
-                user.position === "OJT" ? "selected" : ""
-              }>OJT</option>
-            </select>
+          <form id='edit-account-form' class='space-y-4'>
+            <div class='wizard-step active' data-step='1'>
+              <div><label class='block text-sm font-medium'>Last Name</label><input name='lastname' class='w-full border rounded px-3 py-2' value='${user.lastname||""}' required></div>
+              <div><label class='block text-sm font-medium'>First Name</label><input name='firstname' class='w-full border rounded px-3 py-2' value='${user.firstname||""}' required></div>
+              <div><label class='block text-sm font-medium'>Middle Initial</label><input name='mi' maxlength='1' class='w-full border rounded px-3 py-2' value='${user.mi||""}'></div>
+            </div>
+            <div class='wizard-step' data-step='2'>
+              <div><label class='block text-sm font-medium'>Department</label>
+                <select name='department' class='w-full border rounded px-3 py-2' required>
+                  <option value=''>Select Department</option>
+                  <option value="Mayor's Office" ${user.department==="Mayor's Office"? 'selected':''}>Mayor's Office</option>
+                  <option value="Vice Mayor's Office" ${user.department==="Vice Mayor's Office"? 'selected':''}>Vice Mayor's Office</option>
+                  <option value="SB Office" ${user.department==="SB Office"? 'selected':''}>SB Office</option>
+                  <option value="Accounting" ${user.department==="Accounting"? 'selected':''}>Accounting</option>
+                  <option value="Budget" ${user.department==="Budget"? 'selected':''}>Budget</option>
+                  <option value="Treasury" ${user.department==="Treasury"? 'selected':''}>Treasury</option>
+                  <option value="Assessor" ${user.department==="Assessor"? 'selected':''}>Assessor</option>
+                  <option value="Engineering" ${user.department==="Engineering"? 'selected':''}>Engineering</option>
+                  <option value="Planning & Development" ${user.department==="Planning & Development"? 'selected':''}>Planning & Development</option>
+                  <option value="HR" ${user.department==="HR"? 'selected':''}>HR</option>
+                  <option value="Civil Registrar" ${user.department==="Civil Registrar"? 'selected':''}>Civil Registrar</option>
+                  <option value="MSWDO" ${user.department==="MSWDO"? 'selected':''}>MSWDO</option>
+                  <option value="MHO" ${user.department==="MHO"? 'selected':''}>MHO</option>
+                  <option value="Agriculture" ${user.department==="Agriculture"? 'selected':''}>Agriculture</option>
+                  <option value="Tourism" ${user.department==="Tourism"? 'selected':''}>Tourism</option>
+                  <option value="Market" ${user.department==="Market"? 'selected':''}>Market</option>
+                  <option value="General Services" ${user.department==="General Services"? 'selected':''}>General Services</option>
+                </select>
+              </div>
+              <div><label class='block text-sm font-medium'>Position</label>
+                <select name='position' class='w-full border rounded px-3 py-2' required>
+                  <option value=''>Select Position</option>
+                  <option value='Permanent' ${user.position==='Permanent'?'selected':''}>Permanent</option>
+                  <option value='Casual' ${user.position==='Casual'?'selected':''}>Casual</option>
+                  <option value='JO' ${user.position==='JO'?'selected':''}>JO</option>
+                  <option value='OJT' ${user.position==='OJT'?'selected':''}>OJT</option>
+                </select>
+              </div>
+              <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' value='${user.contact_no||""}' /></div>
+            </div>
+            <div class='wizard-step' data-step='3'>
+              <div><label class='block text-sm font-medium'>Role</label>
+                <select name='role' class='w-full border rounded px-3 py-2' required>
+                  <option value='employee' ${user.role==='employee'?'selected':''}>Employee</option>
+                  <option value='department_head' ${user.role==='department_head'?'selected':''}>Department Head</option>
+                  <option value='hr' ${user.role==='hr'?'selected':''}>HR</option>
+                </select>
+              </div>
+              <div><label class='block text-sm font-medium'>Status</label><select name='status' class='w-full border rounded px-3 py-2'>
+                <option value='pending' ${user.status==='pending'?'selected':''}>Pending</option>
+                <option value='approved' ${user.status==='approved'?'selected':''}>Approved</option>
+                <option value='declined' ${user.status==='declined'?'selected':''}>Declined</option>
+              </select></div>
+              <div><label class='block text-sm font-medium'>Email</label><input name='email' type='email' class='w-full border rounded px-3 py-2' value='${user.email||""}' required></div>
+              <div><label class='block text-sm font-medium'>Password (leave blank to keep current)</label><input name='password' type='password' class='w-full border rounded px-3 py-2'></div>
+            </div>
+          </form>
+          <div class='flex items-center justify-between mt-4'>
+            <div>
+              <button id='edit-wizard-back' class='action-btn' style='display:none'>Back</button>
+            </div>
+            <div>
+              <button id='edit-wizard-next' class='action-btn edit'>Next</button>
+              <button id='edit-wizard-submit' class='action-btn edit' style='display:none'>Save</button>
+            </div>
           </div>
-          <div><label class='block text-sm font-medium'>Role</label>
-            <select name='role' class='w-full border rounded px-3 py-2' required>
-              <option value='employee' ${
-                user.role === "employee" ? "selected" : ""
-              }>Employee</option>
-              <option value='department_head' ${
-                user.role === "department_head" ? "selected" : ""
-              }>Department Head</option>
-              <option value='hr' ${
-                user.role === "hr" ? "selected" : ""
-              }>HR</option>
-            </select>
-          </div>
-          <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' value='${
-            user.contact_no || ""
-          }' /></div>
-          <div><label class='block text-sm font-medium'>Status</label><select name='status' class='w-full border rounded px-3 py-2'>
-            <option value='pending' ${
-              user.status === "pending" ? "selected" : ""
-            }>Pending</option>
-            <option value='approved' ${
-              user.status === "approved" ? "selected" : ""
-            }>Approved</option>
-            <option value='declined' ${
-              user.status === "declined" ? "selected" : ""
-            }>Declined</option>
-          </select></div>
-          <div><label class='block text-sm font-medium'>Email</label><input name='email' type='email' class='w-full border rounded px-3 py-2' value='${
-            user.email
-          }' required></div>
-          <div><label class='block text-sm font-medium'>Password (leave blank to keep current)</label><input name='password' type='password' class='w-full border rounded px-3 py-2'></div>
-        </form>
-      `,
-          `<button class='action-btn edit' onclick='submitEditAccount(${id})'>Save</button>`
-        );
+        `;
+        openCrudModal('Edit Account', wizardHtml, '');
+        // wizard logic
+        let curStep = 1; const total = 3;
+        const setStep = (n)=>{
+          curStep = n;
+          document.querySelectorAll('#crud-modal .wizard-step').forEach((el,i)=> el.classList.toggle('active', i===n-1));
+          document.querySelectorAll('#crud-modal .wizard-dot').forEach((d,i)=> d.classList.toggle('active', i < n));
+          document.getElementById('edit-wizard-back').style.display = n===1? 'none' : '';
+          document.getElementById('edit-wizard-next').style.display = n===total? 'none' : '';
+          document.getElementById('edit-wizard-submit').style.display = n===total? '' : 'none';
+        };
+        setTimeout(()=>{
+          document.getElementById('edit-wizard-next').addEventListener('click', (e)=>{ e.preventDefault();
+            const stepEl = document.querySelector('#crud-modal .wizard-step.active');
+            const invalid = Array.from(stepEl.querySelectorAll('[required]')).some(i=>!i.value.trim());
+            if(invalid){ alert('Please fill required fields'); return; }
+            setStep(Math.min(total, curStep+1));
+          });
+          document.getElementById('edit-wizard-back').addEventListener('click', (e)=>{ e.preventDefault(); setStep(Math.max(1, curStep-1)); });
+          document.getElementById('edit-wizard-submit').addEventListener('click', (e)=>{ e.preventDefault(); const form = document.getElementById('edit-account-form'); const data = Object.fromEntries(new FormData(form).entries()); fetch('api/super_admin_users.php', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ action:'edit', id, ...data }) }).then(r=>r.json()).then(()=>{ closeCrudModal(); fetchData(); }); });
+        },80);
       };
       window.submitEditAccount = function (id) {
         const form = document.getElementById("edit-account-form");
@@ -768,8 +842,10 @@
           <td>${event.location}</td>
           <td>${event.description}</td>
           <td>
-            <button class=\"action-btn edit\" onclick=\"editEvent(${event.id})\">Edit</button>
-            <button class=\"action-btn delete\" onclick=\"deleteEvent(${event.id})\">Delete</button>
+            <div class="action-group">
+              <button class="action-btn edit" onclick="editEvent(${event.id})">Edit</button>
+              <button class="action-btn delete" onclick="deleteEvent(${event.id})">Delete</button>
+            </div>
           </td>
         </tr>`;
         });
@@ -853,33 +929,7 @@
           });
       };
 
-      // Tab switching (sidebar only)
-      document.getElementById("tab-accounts").onclick = function () {
-        document.getElementById("accounts-section").style.display = "";
-        document.getElementById("events-section").style.display = "none";
-        this.classList.add(
-          "bg-gradient-to-r",
-          "from-blue-600",
-          "to-blue-500",
-          "text-white",
-          "border-blue-600",
-          "scale-105"
-        );
-        this.classList.remove(
-          "bg-white",
-          "text-blue-700",
-          "border-blue-200",
-          "hover:bg-blue-50"
-        );
-        document
-          .getElementById("tab-accounts-btn")
-          .classList.add("text-blue-700", "bg-blue-50");
-        document
-          .getElementById("tab-events-btn")
-          .classList.remove("text-blue-700", "bg-blue-50");
-        // Hide add event button when not on events tab
-        document.getElementById("add-event-btn").style.display = "none";
-      };
+      // Top tabs were removed from the header; sidebar buttons control tabs now.
       document.getElementById("tab-accounts-btn").onclick = function () {
         document.getElementById("accounts-section").style.display = "";
         document.getElementById("events-section").style.display = "none";
@@ -902,6 +952,124 @@
       };
       // On load, ensure add event button is only visible on events tab
       document.getElementById("add-event-btn").style.display = "none";
+
+      // Search suggestions (debounced) - do not auto-fill input, show suggestions only
+      (function(){
+        const input = document.getElementById('account-search');
+        const sugBox = document.getElementById('search-suggestions');
+        let timer = null;
+        function clearSuggestions(){ sugBox.innerHTML=''; sugBox.style.display='none'; }
+        function showSuggestions(list){
+          if(!list || !list.length){ clearSuggestions(); return; }
+          sugBox.innerHTML = '';
+      list.slice(0,8).forEach(u=>{
+        const div = document.createElement('div');
+        div.className='suggestion-item';
+        // show only name to keep UI compact
+        div.textContent = `${u.lastname}, ${u.firstname}`;
+            div.addEventListener('click', ()=>{
+              // open edit modal for selected user; do NOT mutate the search input value
+              if(typeof window.editUser === 'function') window.editUser(u.id);
+              clearSuggestions();
+            });
+            sugBox.appendChild(div);
+          });
+          sugBox.style.display = 'block';
+        }
+        input && input.addEventListener('input', (e)=>{
+          const q = e.target.value.trim().toLowerCase();
+          if(timer) clearTimeout(timer);
+          if(!q){ clearSuggestions(); return; }
+          timer = setTimeout(()=>{
+            // substring match on lastname or firstname only, rank startsWith higher
+            const matches = users.map(u=>({ u, score:0 })).map(o=>{
+              const name = `${o.u.lastname} ${o.u.firstname}`.toLowerCase();
+              if(name.startsWith(q)) o.score = 3; else if(name.includes(q)) o.score = 2; else o.score = 0;
+              return { id: o.u.id, score: o.score, lastname: o.u.lastname, firstname: o.u.firstname };
+            }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
+            showSuggestions(matches.map(m=>({ id: m.id, lastname: m.lastname, firstname: m.firstname })));
+          }, 220);
+        });
+        // hide suggestions when clicking outside
+        document.addEventListener('click', (ev)=>{
+          if(!document.querySelector('.search-wrap')?.contains(ev.target)) clearSuggestions();
+        });
+      })();
+
+      // Actions menu helpers
+      // Portal-style floating actions menu (single instance)
+      (function(){
+        let floatingMenu = null;
+        function ensureMenu(){
+          if(floatingMenu) return floatingMenu;
+          floatingMenu = document.createElement('div');
+          floatingMenu.id = 'floating-actions-menu';
+          floatingMenu.style.position = 'fixed';
+          floatingMenu.style.zIndex = 99999;
+          floatingMenu.style.display = 'none';
+          floatingMenu.style.minWidth = '110px';
+          floatingMenu.style.border = '1px solid #e5e7eb';
+          floatingMenu.style.borderRadius = '8px';
+          floatingMenu.style.boxShadow = '0 12px 40px rgba(30,64,175,0.08)';
+          floatingMenu.style.background = '#fff';
+          floatingMenu.style.padding = '6px';
+          floatingMenu.style.display = 'none';
+          document.body.appendChild(floatingMenu);
+          return floatingMenu;
+        }
+        window.toggleActionsMenu = function(evt, id){
+          evt.stopPropagation();
+          const user = users.find(u=>u.id==id);
+          if(!user) return;
+          const menu = ensureMenu();
+          // build menu content
+          menu.innerHTML = '';
+          const btn = (text, cls, onClick)=>{
+            const b = document.createElement('button');
+            b.className = 'action-btn '+(cls||'');
+            // Compact styles specific to floating menu
+            b.style.width='100%'; b.style.textAlign='left';
+            b.style.margin='2px 0'; b.style.padding='3px 8px';
+            b.style.borderRadius='5px';
+            b.style.fontSize='0.9rem';
+            b.style.boxShadow='none';
+            b.style.fontSize='0.95rem';
+            b.textContent = text;
+            b.onclick = (e)=>{ e.stopPropagation(); onClick && onClick(); closeFloatingMenu(); };
+            return b;
+          };
+          menu.appendChild(btn('Edit','edit', ()=> window.editUser(id)));
+          if((user.status||'').toString().toLowerCase() === 'pending'){
+            menu.appendChild(btn('Approve','approve', ()=> window.approveUser(id)));
+            menu.appendChild(btn('Decline','decline', ()=> window.declineUser(id)));
+          }
+          menu.appendChild(btn('Delete','delete', ()=> window.deleteUser(id)));
+          // position menu near button and clamp within viewport
+          const rect = evt.currentTarget.getBoundingClientRect();
+          const gap = 8;
+          // show to measure
+          menu.style.display = 'block';
+          menu.style.top = '0px'; menu.style.left = '-9999px';
+          const menuRect = menu.getBoundingClientRect();
+          // compute preferred positions
+          let top = rect.bottom + gap;
+          let left = rect.right - menuRect.width; // align right edge
+          // flip above if not enough space below
+          if(top + menuRect.height > window.innerHeight - 8){
+            top = rect.top - menuRect.height - gap;
+          }
+          // clamp to viewport
+          top = Math.max(8, Math.min(top, window.innerHeight - menuRect.height - 8));
+          left = Math.max(8, Math.min(left, window.innerWidth - menuRect.width - 8));
+          menu.style.top = top + 'px';
+          menu.style.left = left + 'px';
+        };
+        function closeFloatingMenu(){ const m = document.getElementById('floating-actions-menu'); if(m) m.style.display='none'; }
+        window.closeAllActionsMenus = closeFloatingMenu;
+        document.addEventListener('click', ()=>{ closeFloatingMenu(); });
+        window.addEventListener('scroll', ()=> closeFloatingMenu(), true);
+        window.addEventListener('resize', ()=> closeFloatingMenu());
+      })();
 
       fetchData();
     </script>
