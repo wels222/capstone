@@ -47,7 +47,7 @@ if ($user) {
 </head>
 <body class="bg-gray-100 p-6 lg:p-10">
 
-    <header class="bg-white rounded-xl shadow-md p-4 flex items-center justify-between z-10 sticky top-0">
+    <header class="bg-white rounded-xl shadow-md p-4 flex items-center justify-between z-50 sticky top-0">
         <div class="flex items-center space-x-4">
             <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <img src="../assets/logo.png" alt="Logo" class="rounded-full">
@@ -60,8 +60,16 @@ if ($user) {
                     <i class="fas fa-bell text-lg"></i>
                     <span id="notification-badge" style="display:none;" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full px-2 py-0.5 text-xs font-bold">!</span>
                 </button>
-                <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded shadow-lg z-50">
-                    <div id="notification-list" class="p-4"></div>
+                <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded shadow-lg z-50">
+                    <div class="flex items-center justify-between px-4 py-2 border-b">
+                        <strong class="text-sm">Notifications</strong>
+                        <div class="flex items-center gap-2">
+                            <button id="markAllReadBtn" class="text-xs text-blue-600 hover:underline">Mark all read</button>
+                            <button id="clearNotifBtn" class="text-xs text-red-600 hover:underline">Clear</button>
+                        </div>
+                    </div>
+                    <div id="notification-list" class="p-3 space-y-3 max-h-80 overflow-y-auto"></div>
+                    <div class="px-4 py-2 border-t text-center text-xs text-gray-500">Showing latest notifications</div>
                 </div>
             </div>
             <img id="profileIcon" src="<?php echo $profilePicture ? htmlspecialchars($profilePicture) : 'https://placehold.co/40x40/FF5733/FFFFFF?text=P'; ?>" alt="Profile" class="w-10 h-10 rounded-full cursor-pointer">
@@ -79,8 +87,8 @@ if ($user) {
     <main class="flex-grow p-4 overflow-y-auto mt-6">
         <div id="dashboard-page" class="container">
             <div class="bg-blue-600 w-full rounded-xl shadow-lg p-6 flex flex-col items-start text-white relative overflow-hidden mb-6">
-                <div class="absolute inset-0 bg-blue-700 bg-opacity-20 backdrop-blur-sm z-0"></div>
-                <div class="relative z-10 flex items-center space-x-6">
+                <div class="absolute inset-0 bg-blue-700 bg-opacity-20 backdrop-blur-sm z-10"></div>
+                <div class="relative z-20 flex items-center space-x-6">
                     <img id="profilePicture" src="<?php echo $profilePicture ? htmlspecialchars($profilePicture) : 'https://placehold.co/80x80/FFD700/000000?text=W+P'; ?>" alt="Profile" class="w-20 h-20 rounded-full border-4 border-white">
                     <div class="flex flex-col text-left">
                         <h2 id="profileName" class="text-3xl font-extrabold tracking-tight"><?php echo htmlspecialchars($fullName); ?></h2>
@@ -139,57 +147,128 @@ if ($user) {
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="col-span-1 md:col-span-3">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Leave</h3>
-                    </div>
-                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                        <div class="flex items-center justify-between w-full">
-                            <span class="font-medium text-gray-700">Vacation Leave</span>
-                            <span class="text-sm text-gray-500">05/07</span>
+                <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Leave</h3>
+                    <!-- Scrollable grid: show roughly 3 columns x 2 rows on md+ and allow vertical scroll -->
+                    <div class="relative">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[28rem] md:max-h-[20rem] overflow-y-auto pr-2">
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Vacation Leave</span>
+                                    <span class="text-sm text-gray-500">15 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 15 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Mandatory / Forced Leave</span>
+                                    <span class="text-sm text-gray-500">5 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 5 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Sick Leave</span>
+                                    <span class="text-sm text-gray-500">15 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 15 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Maternity Leave</span>
+                                    <span class="text-sm text-gray-500">105 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 105 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Paternity Leave</span>
+                                    <span class="text-sm text-gray-500">7 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 7 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Special Privilege Leave</span>
+                                    <span class="text-sm text-gray-500">3 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 3 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Solo Parent Leave</span>
+                                    <span class="text-sm text-gray-500">7 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 7 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Study Leave</span>
+                                    <span class="text-sm text-gray-500">6 months</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 6 months</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">10-Day VAWC Leave</span>
+                                    <span class="text-sm text-gray-500">10 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 10 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Rehabilitation Leave</span>
+                                    <span class="text-sm text-gray-500">6 months</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 6 months</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Special Leave Benefits for Women</span>
+                                    <span class="text-sm text-gray-500">60 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 60 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Special Emergency (Calamity) Leave</span>
+                                    <span class="text-sm text-gray-500">5 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 5 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
+
+                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="font-medium text-gray-700">Adoption Leave</span>
+                                    <span class="text-sm text-gray-500">60 days</span>
+                                </div>
+                                <p class="text-sm text-gray-500">Available - 60 days</p>
+                                <p class="text-sm text-gray-500">Used - 00</p>
+                            </div>
                         </div>
-                        <p class="text-sm text-gray-500">Available - 05</p>
-                        <p class="text-sm text-gray-500">Used - 02</p>
-                    </div>
-                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                        <div class="flex items-center justify-between w-full">
-                            <span class="font-medium text-gray-700">Maternity Leave</span>
-                            <span class="text-sm text-gray-500">105/105</span>
-                        </div>
-                        <p class="text-sm text-gray-500">Available - 105</p>
-                        <p class="text-sm text-gray-500">Used - 00</p>
-                    </div>
-                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                        <div class="flex items-center justify-between w-full">
-                            <span class="font-medium text-gray-700">Study Leave</span>
-                            <span class="text-sm text-gray-500">00/00</span>
-                        </div>
-                        <p class="text-sm text-gray-500">Available - 00</p>
-                        <p class="text-sm text-gray-500">Used - 00</p>
-                    </div>
-                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                        <div class="flex items-center justify-between w-full">
-                            <span class="font-medium text-gray-700">Mandatory Force Leave</span>
-                            <span class="text-sm text-gray-500">02/02</span>
-                        </div>
-                        <p class="text-sm text-gray-500">Available - 00</p>
-                        <p class="text-sm text-gray-500">Used - 02</p>
-                    </div>
-                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                        <div class="flex items-center justify-between w-full">
-                            <span class="font-medium text-gray-700">Social Leave Benefits</span>
-                            <span class="text-sm text-gray-500">00/00</span>
-                        </div>
-                        <p class="text-sm text-gray-500">Available - 00</p>
-                        <p class="text-sm text-gray-500">Used - 00</p>
-                    </div>
-                    <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                        <div class="flex items-center justify-between w-full">
-                            <span class="font-medium text-gray-700">Social Emergency</span>
-                            <span class="text-sm text-gray-500">00/00</span>
-                        </div>
-                        <p class="text-sm text-gray-500">Available - 00</p>
-                        <p class="text-sm text-gray-500">Used - 00</p>
                     </div>
                 </div>
 
@@ -327,31 +406,57 @@ if ($user) {
            const badge = document.getElementById('notification-badge');
            const dropdown = document.getElementById('notification-dropdown');
            const list = document.getElementById('notification-list');
-           // Fetch notifications for employee
-           fetch('notifications.php')
-               .then(response => response.json())
-               .then(data => {
-                   notifications = (data.success && Array.isArray(data.data)) ? data.data : [];
-                   if (notifications.length > 0) {
-                       badge.style.display = 'block';
-                   } else {
-                       badge.style.display = 'none';
-                   }
-                   list.innerHTML = '';
-                   if (notifications.length > 0) {
-                       notifications.forEach(n => {
-                           const div = document.createElement('div');
-                           div.className = 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-2 rounded shadow';
-                           div.innerHTML = `<strong>Notification:</strong> ${n.message} <span class="text-xs text-gray-500">${n.created_at}</span>`;
-                           list.appendChild(div);
-                       });
-                   } else {
-                       list.innerHTML = '<div class="text-gray-500 p-2">No notifications.</div>';
-                   }
+           // Fetch notifications for employee and render as scrollable cards
+           function renderNotifications(notifs) {
+               const nl = document.getElementById('notification-list');
+               nl.innerHTML = '';
+               if (!notifs || notifs.length === 0) {
+                   nl.innerHTML = '<div class="text-gray-500 p-2">No notifications.</div>';
+                   badge.style.display = 'none';
+                   return;
+               }
+
+               // show badge if there's any unread (simple heuristic)
+               const hasUnread = notifs.some(n => !n.read);
+               badge.style.display = hasUnread ? 'block' : 'none';
+
+               notifs.forEach(n => {
+                   const card = document.createElement('div');
+                   card.className = 'bg-yellow-50 border border-yellow-200 rounded p-3 shadow-sm';
+                   const readClass = n.read ? 'opacity-70' : 'opacity-100';
+                   card.innerHTML = `
+                       <div class="flex justify-between ${readClass}">
+                           <div>
+                               <div class="font-semibold text-sm text-yellow-800">Notification:</div>
+                               <div class="text-sm text-gray-700">${n.message}</div>
+                           </div>
+                           <div class="text-xs text-gray-500 ml-4">${n.created_at}</div>
+                       </div>
+                   `;
+                   nl.appendChild(card);
                });
+           }
+
+           function loadNotifications() {
+               fetch('notifications.php')
+                   .then(response => response.json())
+                   .then(data => {
+                       notifications = (data.success && Array.isArray(data.data)) ? data.data : [];
+                       renderNotifications(notifications);
+                   })
+                   .catch(() => {
+                       document.getElementById('notification-list').innerHTML = '<div class="text-gray-500 p-2">Failed to load notifications.</div>';
+                   });
+           }
+
+           loadNotifications();
            // Toggle dropdown on bell click
            bell.addEventListener('click', () => {
                dropdown.classList.toggle('hidden');
+               if (!dropdown.classList.contains('hidden')) {
+                   // refresh when opening
+                   loadNotifications();
+               }
            });
            // Hide dropdown when clicking outside
            document.addEventListener('click', (e) => {
@@ -360,6 +465,26 @@ if ($user) {
                }
            });
             // Profile Modal logic
+               // Notification actions: Mark all read & Clear
+               const markAllBtn = document.getElementById('markAllReadBtn');
+               const clearBtn = document.getElementById('clearNotifBtn');
+               if (markAllBtn) {
+                   markAllBtn.addEventListener('click', () => {
+                       fetch('notifications.php?action=mark_all_read', { method: 'POST' })
+                           .then(() => loadNotifications());
+                   });
+               }
+               if (clearBtn) {
+                   clearBtn.addEventListener('click', () => {
+                       if (!confirm('Clear all notifications?')) return;
+                       fetch('notifications.php?action=clear_all', { method: 'POST' })
+                           .then(() => loadNotifications());
+                   });
+               }
+           
+               // end notification actions
+           
+                // Profile Modal logic
             const profileIcon = document.getElementById('profileIcon');
             const profileModal = document.getElementById('profileModal');
             const logoutBtn = document.getElementById('logoutBtn');

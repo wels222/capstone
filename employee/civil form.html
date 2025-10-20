@@ -1093,49 +1093,28 @@
         // ...other auto-fill logic as needed...
       };
 
-      // --- Submit Button Logic ---
-      document.getElementById("submit-leave").onclick = function () {
-        // Gather all form data
-        const formData = {
-          employee_email: localStorage.getItem("userEmail"),
-          deptHead: document.getElementById("dept_head_select").value,
-          leave_type: localStorage.getItem("leaveType"),
-          dates:
-            (localStorage.getItem("leaveStartDate") || "") +
-            " - " +
-            (localStorage.getItem("leaveEndDate") || ""),
-          reason: localStorage.getItem("leaveReason") || "",
-          // Add more fields as needed
-        };
-        // Send to Dept Head (API call)
-        fetch("/capstone/api/submit-leave.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        }).then((res) => {
-          if (res.ok) {
-            alert("Leave request submitted!");
-            window.location.href = "leave-history.html";
-          } else {
-            alert("Error submitting leave request.");
-          }
-        });
-      };
+      // NOTE: the older simple onclick handler has been removed so the
+      // animated submission flow below is the single source of truth for
+      // submitting the civil form and redirecting after success.
 
-      document
-        .getElementById("submit-leave")
-        .addEventListener("click", function (e) {
+      (function () {
+        const btn = document.getElementById("submit-leave");
+        if (!btn) return;
+
+        let isSubmitting = false;
+
+        btn.addEventListener("click", async function (e) {
           e.preventDefault();
+          if (isSubmitting) return; // avoid duplicate submissions
 
-          // Confirmation dialog
           const confirmSubmit = confirm(
             "Are you sure you want to submit this leave application?"
           );
-          if (!confirmSubmit) {
-            return; // Exit if the user cancels
-          }
+          if (!confirmSubmit) return;
 
-          // Add animation
+          isSubmitting = true;
+          btn.disabled = true;
+
           const body = document.querySelector("body");
           const animationDiv = document.createElement("div");
           animationDiv.style.position = "fixed";
@@ -1151,64 +1130,81 @@
           animationDiv.innerHTML = `<div style="color: white; font-size: 2rem;">Submitting...</div>`;
           body.appendChild(animationDiv);
 
-          // Collect form data
-          const formData = {
-            office_dept: document.getElementById("office_dept").value,
-            name_last: document.getElementById("name_last").value,
-            name_first: document.getElementById("name_first").value,
-            name_middle: document.getElementById("name_middle").value,
-            date_filing: document.getElementById("date_filing").value,
-            position: document.getElementById("position").value,
-            salary: document.getElementById("salary").value,
-            leave_type: Array.from(
-              document.querySelectorAll("input[name='leave_type']:checked")
-            ).map((el) => el.id),
-            employee_email: document.getElementById("employee_email").value, // Added
-            dept_head_email: document.getElementById("dept_head_email").value, // Added
-          };
+          try {
+            const formData = {
+              office_dept: document.getElementById("office_dept")?.value || "",
+              name_last: document.getElementById("name_last")?.value || "",
+              name_first: document.getElementById("name_first")?.value || "",
+              name_middle: document.getElementById("name_middle")?.value || "",
+              date_filing: document.getElementById("date_filing")?.value || "",
+              position: document.getElementById("position")?.value || "",
+              salary: document.getElementById("salary")?.value || localStorage.getItem("leaveSalary") || "",
+              leave_type: Array.from(document.querySelectorAll("input[name='leave_type']:checked") || []).map((el) => el.id),
+              employee_email: document.getElementById("employee_email")?.value || localStorage.getItem("userEmail") || "",
+              dept_head_email: document.getElementById("dept_head_select")?.value || document.getElementById("dept_head_email")?.value || "",
+            };
 
-          // Send data to the backend
-          console.log("Submitting form data:", formData); // Debugging log
-          fetch("/capstone/api/submit_leave.php", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(formData),
-          })
-            .then((response) => {
-              console.log("Response received:", response); // Debugging log
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              return response.json();
-            })
-            .then((data) => {
-              console.log("Response data:", data); // Debugging log
-              if (data.success) {
-                alert("Leave application submitted successfully!");
-                // Redirect to the dashboard after animation
-                setTimeout(() => {
-                  body.removeChild(animationDiv);
-                  window.location.href = "/capstone/employee/dashboard.php";
-                }, 2000); // 2-second delay for animation
-              } else {
-                alert(
-                  `Failed to submit leave application: ${
-                    data.error || "Unknown error"
-                  }`
-                ); // Improved error feedback
-                body.removeChild(animationDiv); // Remove animation on failure
-              }
-            })
-            .catch((error) => {
-              console.error("Error during submission:", error); // Debugging log
-              alert(
-                "An error occurred while submitting the leave application."
-              );
-              body.removeChild(animationDiv); // Remove animation on error
+            console.log("Submitting form data:", formData);
+
+            // If we already have a leaveRequestId from previous flow, there is
+            // no need to POST again — just show the animation briefly and go
+            // back to the dashboard. This prevents errors when required
+            // fields (like dept head) are not present on this page.
+            const existingId = localStorage.getItem('leaveRequestId') || localStorage.getItem('leaveAppliedAt');
+            if (existingId && (!formData.employee_email || !formData.dept_head_email || !formData.leave_type || (Array.isArray(formData.leave_type) && formData.leave_type.length===0))) {
+              // treat as already-submitted: show animation for a moment then redirect
+              setTimeout(() => {
+                try { if (animationDiv && animationDiv.parentNode) body.removeChild(animationDiv); } catch (e) {}
+                window.location.href = "/capstone/employee/dashboard.php";
+              }, 900);
+              return;
+            }
+
+            // Validate required fields before POST. If missing and no existing
+            // submission id available, show a helpful message and abort.
+            if (!formData.employee_email || !formData.dept_head_email || !formData.leave_type || (Array.isArray(formData.leave_type) && formData.leave_type.length===0)) {
+              try { if (animationDiv && animationDiv.parentNode) body.removeChild(animationDiv); } catch (e) {}
+              isSubmitting = false;
+              btn.disabled = false;
+              alert('Required submission data is missing on this page. Please submit from the Leave Form page first.');
+              return;
+            }
+
+            const resp = await fetch("/capstone/api/submit_leave.php", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(formData),
             });
+
+            if (!resp.ok) throw new Error(`HTTP error! status: ${resp.status}`);
+            const data = await resp.json();
+
+            if (data && data.success) {
+              // persist id/applied_at if returned
+              if (data.id) localStorage.setItem('leaveRequestId', data.id);
+              if (data.applied_at) localStorage.setItem('leaveAppliedAt', data.applied_at);
+
+              alert("Leave application submitted successfully!");
+              // show the animation a bit then redirect to employee dashboard
+              setTimeout(() => {
+                try { if (animationDiv && animationDiv.parentNode) body.removeChild(animationDiv); } catch (e) {}
+                window.location.href = "/capstone/employee/dashboard.php";
+              }, 1200);
+            } else {
+              alert(`Failed to submit leave application: ${data?.error || "Unknown error"}`);
+              try { if (animationDiv && animationDiv.parentNode) body.removeChild(animationDiv); } catch (e) {}
+              isSubmitting = false;
+              btn.disabled = false;
+            }
+          } catch (error) {
+            console.error("Error during submission:", error);
+            alert("An error occurred while submitting the leave application.");
+            try { if (animationDiv && animationDiv.parentNode) body.removeChild(animationDiv); } catch (e) {}
+            isSubmitting = false;
+            btn.disabled = false;
+          }
         });
+      })();
     </script>
   </body>
 </html>
