@@ -10,12 +10,12 @@ if (!$byEmail) {
 	exit;
 }
 
-// Ensure tasks table exists (safety net)
+// Ensure tasks table exists (safety net). Use DATETIME for due_date so times are preserved.
 $createSql = "CREATE TABLE IF NOT EXISTS tasks (
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	title VARCHAR(255) NOT NULL,
 	description TEXT,
-	due_date DATE,
+	due_date DATETIME DEFAULT NULL,
 	status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
 	assigned_to_email VARCHAR(100) NOT NULL,
 	assigned_by_email VARCHAR(100) NOT NULL,
@@ -50,6 +50,19 @@ try {
 $status = $_GET['status'] ?? null; // pending|in_progress|completed
 
 try {
+	// If due_date column still exists as DATE in older tables, alter it to DATETIME so times are returned properly.
+	try {
+		$colCheck = $pdo->prepare("SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'tasks' AND column_name = 'due_date'");
+		$colCheck->execute();
+		$row = $colCheck->fetch(PDO::FETCH_ASSOC);
+		if ($row && isset($row['DATA_TYPE']) && strtolower($row['DATA_TYPE']) === 'date') {
+			// alter to DATETIME (keeps existing date values; time will be 00:00:00)
+			$pdo->exec("ALTER TABLE tasks MODIFY COLUMN due_date DATETIME DEFAULT NULL");
+		}
+	} catch (PDOException $__e) {
+		// ignore migration errors
+	}
+
 	if ($status) {
 		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, created_at FROM tasks WHERE assigned_by_email = ? AND status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
 		$stmt->execute([$byEmail, $status]);

@@ -20,6 +20,12 @@
         backdrop-filter: blur(5px);
         z-index: 1000;
       }
+      /* Filter button active state */
+      .filter-btn.active {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 18px rgba(16, 24, 40, 0.08);
+        outline: 2px solid rgba(0,0,0,0.04);
+      }
     </style>
   </head>
   <body class="bg-gray-100 p-6 lg:p-10">
@@ -109,6 +115,12 @@
               In Progress
             </button>
             <button
+              data-status="missed"
+              class="filter-btn bg-red-200 text-red-800 px-4 py-2 rounded-full text-sm font-semibold hover:bg-red-300 transition-colors"
+            >
+              Missed
+            </button>
+            <button
               data-status="completed"
               class="filter-btn bg-green-200 text-green-800 px-4 py-2 rounded-full text-sm font-semibold hover:bg-green-300 transition-colors"
             >
@@ -170,12 +182,51 @@
                 >
               </div>
             </div>
-          </div>
         </div>
       </div>
     </main>
 
     <!-- Add Task Modal -->
+    <!-- Submit Modal (moved here so it's not nested inside the Attachment modal) -->
+    <div
+      id="submit-modal"
+      class="fixed inset-0 modal-bg flex items-center justify-center hidden"
+    >
+      <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-2xl mx-auto w-full">
+        <div class="flex justify-between items-center mb-4">
+          <h3 id="submit-modal-title" class="text-2xl font-bold text-gray-800">Submit Task</h3>
+          <button id="close-submit-modal" class="text-gray-500 hover:text-gray-700 text-lg">&times;</button>
+        </div>
+        <form id="submit-form" class="space-y-4" enctype="multipart/form-data">
+          <input type="hidden" id="submit-task-id" name="id" />
+          <div>
+            <label for="submit-note" class="block text-sm font-medium text-gray-700">Description</label>
+            <textarea id="submit-note" name="note" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter a short description" required></textarea>
+          </div>
+          <div>
+            <label for="submit-file" class="block text-sm font-medium text-gray-700">Upload file</label>
+            <input id="submit-file" name="file" type="file" class="mt-1 block w-full" required />
+          </div>
+          <div class="flex justify-end space-x-4">
+            <button type="button" id="cancel-submit" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors">Submit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+      <!-- Pending notice modal: shown when user attempts to submit while task is still pending -->
+      <div id="pending-modal" class="fixed inset-0 modal-bg flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-xl shadow-xl max-w-md w-full">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">Cannot Submit Yet</h3>
+            <button id="close-pending-modal" class="text-gray-500 hover:text-gray-700">&times;</button>
+          </div>
+          <p class="text-sm text-gray-700 mb-4">This task is still pending. You must acknowledge or mark it as in-progress before you can submit a final file.</p>
+          <div class="flex justify-end">
+            <button id="pending-ok" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">OK</button>
+          </div>
+        </div>
+      </div>
     <div
       id="add-task-modal"
       class="fixed inset-0 modal-bg flex items-center justify-center hidden"
@@ -280,6 +331,14 @@
         const attachmentDownload = document.getElementById(
           "attachment-download"
         );
+        // Submit modal refs
+        const submitModal = document.getElementById("submit-modal");
+        const closeSubmitModalBtn = document.getElementById("close-submit-modal");
+        const submitForm = document.getElementById("submit-form");
+        const submitTaskIdInput = document.getElementById("submit-task-id");
+        const submitNoteInput = document.getElementById("submit-note");
+        const submitFileInput = document.getElementById("submit-file");
+        const cancelSubmitBtn = document.getElementById("cancel-submit");
         // no submit button anymore
 
         let currentTaskToUpdateId = null;
@@ -295,16 +354,62 @@
             return d;
           }
         }
+        function fmtDateTime(d) {
+          if (!d) return "";
+          try {
+            const dt = parseLocalDateTime(d);
+            if (!dt) return d;
+            return dt.toLocaleString(undefined, {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            });
+          } catch (e) {
+            return d;
+          }
+        }
+        function timeAgo(d) {
+          if (!d) return "";
+          try {
+            const now = new Date();
+            const t = parseLocalDateTime(d);
+            const diff = Math.floor((t - now) / 1000);
+            const abs = Math.abs(diff);
+            if (abs < 60) return diff >= 0 ? `in ${abs}s` : `${abs}s ago`;
+            if (abs < 3600) return diff >= 0 ? `in ${Math.floor(abs/60)}m` : `${Math.floor(abs/60)}m ago`;
+            if (abs < 86400) return diff >= 0 ? `in ${Math.floor(abs/3600)}h` : `${Math.floor(abs/3600)}h ago`;
+            return diff >= 0 ? `in ${Math.floor(abs/86400)}d` : `${Math.floor(abs/86400)}d ago`;
+          } catch(e){ return ""; }
+        }
+
+        // Parse backend datetime string like "YYYY-MM-DD HH:MM[:SS]" or with 'T' into a local Date
+        function parseLocalDateTime(s) {
+          if (!s) return null;
+          const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+          if (m) {
+            const y = parseInt(m[1], 10);
+            const mo = parseInt(m[2], 10) - 1;
+            const day = parseInt(m[3], 10);
+            const hh = parseInt(m[4], 10);
+            const mm = parseInt(m[5], 10);
+            const ss = m[6] ? parseInt(m[6], 10) : 0;
+            return new Date(y, mo, day, hh, mm, ss);
+          }
+          const fallback = new Date(s);
+          return isNaN(fallback.getTime()) ? null : fallback;
+        }
 
         async function fetchTasks(filterStatus) {
           try {
-            const qs =
-              filterStatus && filterStatus !== "all"
-                ? "?status=" +
-                  (filterStatus === "in-progress"
-                    ? "in_progress"
-                    : filterStatus)
-                : "";
+            let qs = "";
+            // 'missed' is a client-side derived filter — fetch all and filter locally
+            if (filterStatus && filterStatus !== "all" && filterStatus !== "missed") {
+              qs = "?status=" + (filterStatus === "in-progress" ? "in_progress" : filterStatus);
+            }
             const res = await fetch("../api/tasks_list_employee.php" + qs, {
               credentials: "include",
             });
@@ -314,18 +419,44 @@
                 '<p class="text-center text-red-600">Failed to load tasks.</p>';
               return;
             }
-            tasks = data.tasks.map((t) => ({
-              id: t.id,
-              title: t.title,
-              description: t.description || "",
-              dueDate: fmtDate(t.due_date),
-              status: (t.status || "pending").replace("_", "-"),
-              attachment: t.attachment_path || null,
-              submissionNote: t.submission_note || "",
-              ackNote: t.ack_note || "",
-              ackAt: t.ack_at || null,
-            }));
-            renderTasks(tasks);
+            tasks = data.tasks.map((t) => {
+              const dueRaw = t.due_date;
+              let isMissed = false;
+              try {
+                    if (dueRaw && parseLocalDateTime(dueRaw) && parseLocalDateTime(dueRaw) < new Date() && (t.status !== 'completed')) {
+                  isMissed = true;
+                }
+              } catch (e) { /* ignore parse errors */ }
+              return {
+                id: t.id,
+                title: t.title,
+                description: t.description || "",
+                dueRaw: dueRaw,
+                dueDate: fmtDate(dueRaw),
+                status: (t.status || "pending").replace("_", "-"),
+                isMissed: isMissed,
+                attachment: t.attachment_path || null,
+                submissionFile: t.submission_file_path || null,
+                submissionNote: t.submission_note || "",
+                ackNote: t.ack_note || "",
+                ackAt: t.ack_at || null,
+              };
+            });
+            // Apply client-side filtering so overdue tasks (isMissed) are shown only in 'missed'
+            if (filterStatus === "missed") {
+              renderTasks(tasks.filter((t) => t.isMissed));
+            } else if (filterStatus === "in-progress") {
+              // Only include in-progress tasks that are NOT missed
+              renderTasks(tasks.filter((t) => (t.status === 'in-progress') && !t.isMissed));
+            } else if (filterStatus === "pending") {
+              // Only include pending tasks that are NOT missed
+              renderTasks(tasks.filter((t) => (t.status === 'pending') && !t.isMissed));
+            } else if (filterStatus === "completed") {
+              renderTasks(tasks.filter((t) => (t.status === 'completed')));
+            } else {
+              // all: show everything (including missed)
+              renderTasks(tasks);
+            }
           } catch (err) {
             tasksContainer.innerHTML =
               '<p class="text-center text-red-600">Network error loading tasks.</p>';
@@ -346,13 +477,22 @@
           }
 
           tasksToRender.forEach((task) => {
-            const statusText = task.status.replace("-", " ");
-            const statusColor =
-              task.status === "pending"
-                ? "bg-yellow-100 text-yellow-800"
-                : task.status === "in-progress"
-                ? "bg-blue-100 text-blue-800"
-                : "bg-green-100 text-green-800";
+            // Determine if task is overdue (missed). If so, show missed regardless of status (except completed)
+            let displayStatus = task.status.replace("-", " ");
+            let statusColor = "bg-green-100 text-green-800"; // default for completed
+            if (task.isMissed) {
+              displayStatus = "missed";
+              statusColor = "bg-red-100 text-red-800";
+            } else if (task.status === "pending") {
+              displayStatus = "pending";
+              statusColor = "bg-yellow-100 text-yellow-800";
+            } else if (task.status === "in-progress") {
+              displayStatus = "in progress";
+              statusColor = "bg-blue-100 text-blue-800";
+            } else if (task.status === "completed") {
+              displayStatus = "completed";
+              statusColor = "bg-green-100 text-green-800";
+            }
 
             const taskElement = document.createElement("div");
             taskElement.classList.add(
@@ -363,40 +503,56 @@
               "border",
               "border-gray-200"
             );
-            taskElement.innerHTML = `
+      taskElement.innerHTML = `
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm font-semibold ${statusColor} px-3 py-1 rounded-full capitalize">${statusText}</span>
-                            <span class="text-xs text-gray-500">Due: ${
-                              task.dueDate
-                            }</span>
+              <span class="text-sm font-semibold ${statusColor} px-3 py-1 rounded-full capitalize">${displayStatus}</span>
+                            <div class="flex items-center space-x-2">
+                              <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v-4"></path></svg>
+                              <div class="text-xs text-gray-500">${fmtDateTime(task.dueRaw)}</div>
+                              <div class="text-xs text-gray-400">· ${timeAgo(task.dueRaw)}</div>
+                            </div>
                         </div>
                         <h3 class="text-lg font-bold text-gray-800 mb-2">${
                           task.title
                         }</h3>
-                        <p class="text-sm text-gray-600 mb-4">${
+                        <p class="text-sm text-gray-600 mb-2">${
                           task.description
                         }</p>
-                        ${
-                          task.attachment
-                            ? `<button data-id="${task.id}" class="open-attachment-btn text-sm text-white bg-gray-700 px-3 py-1 rounded hover:bg-gray-800 inline-flex items-center"><i class="fas fa-paperclip mr-2"></i>View attachment</button>`
-                            : ""
-                        }
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="h-2.5 rounded-full ${
-                              task.status === "completed"
-                                ? "bg-green-600"
-                                : task.status === "in-progress"
-                                ? "bg-blue-600"
-                                : "bg-yellow-600"
-                            }" style="width: ${
-              task.status === "completed"
-                ? "100"
-                : task.status === "in-progress"
-                ? "60"
-                : "20"
-            }%"></div>
+                        ${task.submissionNote ? `<p class="text-sm italic text-gray-500 mb-2"><strong>Submission note:</strong> ${task.submissionNote}</p>` : ''}
+                        <div class="flex items-center gap-2 mb-3">
+                          ${
+                            task.attachment
+                              ? `<button data-id="${task.id}" class="open-attachment-btn text-sm text-white bg-gray-700 px-3 py-1 rounded hover:bg-gray-800 inline-flex items-center"><i class="fas fa-paperclip mr-2"></i>View attachment</button>`
+                              : ""
+                          }
+                          ${task.submissionFile ? `<a href="../${task.submissionFile}" target="_blank" class="text-sm text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 inline-flex items-center"><i class="fas fa-file-alt mr-2"></i>View submission</a>` : ''}
                         </div>
-                        
+                        <div class="flex items-center justify-between">
+                          <div>
+                            ${task.status !== 'completed' ? `<button data-id="${task.id}" class="open-submit-btn text-sm text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 inline-flex items-center"><i class="fas fa-upload mr-2"></i>Submit</button>` : `<span class="text-sm text-gray-500">Completed</span>`}
+                          </div>
+                          <div class="w-full ml-4">
+                              <div class="w-full bg-gray-200 rounded-full h-2.5">
+                              <div class="h-2.5 rounded-full ${
+                                displayStatus === "completed"
+                                  ? "bg-green-600"
+                                  : displayStatus === "in progress"
+                                  ? "bg-blue-600"
+                                  : displayStatus === "missed"
+                                  ? "bg-red-600"
+                                  : "bg-yellow-600"
+                              }" style="width: ${
+                displayStatus === "completed"
+                  ? "100"
+                  : displayStatus === "in progress"
+                  ? "60"
+            : displayStatus === "missed"
+              ? "100"
+                  : "20"
+              }%"></div>
+                            </div>
+                          </div>
+                        </div>
                     `;
             tasksContainer.appendChild(taskElement);
           });
@@ -432,23 +588,14 @@
 
         // Event listener for the Add Task form submission
         // Employee's Add Task form was previously local-only; disable or repurpose as needed.
-        if (addTaskForm) {
-          addTaskForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            // Optional: allow employees to add personal tasks — not persisted for now
-            addTaskModal.classList.add("hidden");
-            addTaskForm.reset();
-            showToast(
-              "This form is disabled. Tasks are assigned by your department head."
-            );
-          });
-        }
-
-        // Event listener for View attachment buttons
         if (tasksContainer) {
           tasksContainer.addEventListener("click", (e) => {
-            if (e.target.classList.contains("open-attachment-btn")) {
-              const btn = e.target;
+            // Use closest() so clicks on inner icons or children still resolve to the button element
+            const attachBtn = e.target.closest && e.target.closest('.open-attachment-btn');
+            const submitBtn = e.target.closest && e.target.closest('.open-submit-btn');
+
+            if (attachBtn) {
+              const btn = attachBtn;
               currentTaskToUpdateId = parseInt(btn.dataset.id);
               // Reset UI
               ackNoteInput.value = "";
@@ -469,6 +616,28 @@
               attachmentModal.classList.remove("hidden");
               // Autofocus textarea for quick typing
               setTimeout(() => ackNoteInput && ackNoteInput.focus(), 0);
+              return; // stop to ensure only attachment logic runs
+            }
+
+            if (submitBtn) {
+              const btn = submitBtn;
+              const id = parseInt(btn.dataset.id);
+              currentTaskToUpdateId = id;
+              const tsk = tasks.find((t) => t.id === id);
+              // Only allow final submission when the task is in-progress
+              if (tsk && tsk.status !== 'in-progress') {
+                const pendingModal = document.getElementById('pending-modal');
+                if (pendingModal) pendingModal.classList.remove('hidden');
+                return;
+              }
+              submitTaskIdInput.value = String(id);
+              submitNoteInput.value = '';
+              submitFileInput.value = '';
+              const modalTitle = document.getElementById('submit-modal-title');
+              if (modalTitle && tsk) modalTitle.textContent = `Submit ${tsk.title}`;
+              submitModal.classList.remove('hidden');
+              setTimeout(() => submitNoteInput && submitNoteInput.focus(), 0);
+              return;
             }
           });
         }
@@ -570,18 +739,103 @@
           });
         }
 
-        // Event listener for filter buttons (maps in-progress <-> in_progress)
-        if (filterBtns) {
-          filterBtns.forEach((btn) => {
-            btn.addEventListener("click", (e) => {
-              const statusFilter = e.target.dataset.status; // 'all' | 'pending' | 'in-progress' | 'completed'
-              fetchTasks(statusFilter);
-            });
+        // Submit modal controls
+        if (closeSubmitModalBtn) closeSubmitModalBtn.addEventListener('click', () => submitModal.classList.add('hidden'));
+        if (cancelSubmitBtn) cancelSubmitBtn.addEventListener('click', () => submitModal.classList.add('hidden'));
+        if (submitModal) {
+          submitModal.addEventListener('click', (e) => {
+            if (e.target === submitModal) submitModal.classList.add('hidden');
           });
         }
 
-        // Initial load
-        fetchTasks("all");
+        // Pending modal controls (OK and close)
+        const pendingModal = document.getElementById('pending-modal');
+        const pendingOkBtn = document.getElementById('pending-ok');
+        const closePendingBtn = document.getElementById('close-pending-modal');
+        if (pendingOkBtn) pendingOkBtn.addEventListener('click', () => pendingModal && pendingModal.classList.add('hidden'));
+        if (closePendingBtn) closePendingBtn.addEventListener('click', () => pendingModal && pendingModal.classList.add('hidden'));
+        if (pendingModal) {
+          pendingModal.addEventListener('click', (e) => {
+            if (e.target === pendingModal) pendingModal.classList.add('hidden');
+          });
+        }
+
+        // Handle submit form upload
+        if (submitForm) {
+          submitForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = submitTaskIdInput.value;
+            const note = (submitNoteInput.value || '').trim();
+            const file = submitFileInput.files && submitFileInput.files[0];
+            if (!note) { showToast('Description is required'); return; }
+            if (!file) { showToast('File is required'); return; }
+            const fd = new FormData();
+            fd.append('id', id);
+            fd.append('note', note);
+            fd.append('file', file);
+            fetch('../api/tasks_submit.php', { method: 'POST', body: fd, credentials: 'include' })
+              .then(r => r.json())
+              .then(data => {
+                if (!data.success) throw new Error(data.error || 'Upload failed');
+                // Update local task state
+                const idx = tasks.findIndex(t => t.id === parseInt(id));
+                if (idx !== -1) {
+                  tasks[idx].status = 'completed';
+                  tasks[idx].submissionFile = data.file || tasks[idx].submissionFile;
+                  tasks[idx].submissionNote = note;
+                }
+                renderTasks();
+                submitModal.classList.add('hidden');
+                showToast('Task submitted successfully');
+              })
+              .catch(err => {
+                showToast(err.message || 'Failed to submit task');
+              });
+          });
+        }
+
+        // Event listener for filter buttons (maps in-progress <-> in_progress)
+        if (filterBtns) {
+          // set default active
+          if (filterBtns.length > 0) {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            filterBtns[0].classList.add('active');
+          }
+          // current filter used by auto-refresh
+          let __currentTaskFilter = 'all';
+          filterBtns.forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+              const statusFilter = btn.dataset.status || 'all'; // use the button's dataset
+              // toggle active class
+              filterBtns.forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              __currentTaskFilter = statusFilter;
+              fetchTasks(statusFilter);
+            });
+          });
+
+          // Auto-refresh (1 second) while page visible
+          const AUTO_REFRESH_MS = 1000; // 1s
+          let __tasksAutoRefreshTimer = null;
+          function startAutoRefresh() {
+            if (__tasksAutoRefreshTimer) return;
+            __tasksAutoRefreshTimer = setInterval(() => {
+              if (!document.hidden) fetchTasks(__currentTaskFilter);
+            }, AUTO_REFRESH_MS);
+          }
+          function stopAutoRefresh() {
+            if (__tasksAutoRefreshTimer) {
+              clearInterval(__tasksAutoRefreshTimer);
+              __tasksAutoRefreshTimer = null;
+            }
+          }
+          document.addEventListener('visibilitychange', () => {
+            if (document.hidden) stopAutoRefresh(); else { fetchTasks(__currentTaskFilter); startAutoRefresh(); }
+          });
+          window.addEventListener('beforeunload', stopAutoRefresh);
+          // Initial load and start auto-refresh
+          fetchTasks('all').then(() => startAutoRefresh());
+        }
       });
     </script>
   </body>

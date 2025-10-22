@@ -14,7 +14,7 @@ $createSql = "CREATE TABLE IF NOT EXISTS tasks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    due_date DATE,
+    due_date DATETIME DEFAULT NULL,
     status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
     assigned_to_email VARCHAR(100) NOT NULL,
     assigned_by_email VARCHAR(100) NOT NULL,

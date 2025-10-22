@@ -16,7 +16,7 @@ $createSql = "CREATE TABLE IF NOT EXISTS tasks (
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	title VARCHAR(255) NOT NULL,
 	description TEXT,
-	due_date DATE,
+	due_date DATETIME DEFAULT NULL,
 	status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
 	assigned_to_email VARCHAR(100) NOT NULL,
 	assigned_by_email VARCHAR(100) NOT NULL,
@@ -35,7 +35,25 @@ try {
 // Support multipart/form-data for file upload
 $title = $_POST['title'] ?? null;
 $description = $_POST['description'] ?? null;
-$due_date = $_POST['due_date'] ?? null; // YYYY-MM-DD
+$due_date = $_POST['due_date'] ?? null; // may be 'YYYY-MM-DDTHH:MM' or 'YYYY-MM-DD HH:MM[:SS]'
+
+// Normalize due_date: convert 'T' separator to space and ensure seconds are present
+if ($due_date) {
+	// Replace HTML5 datetime-local 'T' with space
+	$due_date = str_replace('T', ' ', $due_date);
+	// If seconds are missing (format 'YYYY-MM-DD HH:MM'), append ':00'
+	if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $due_date)) {
+		$due_date .= ':00';
+	}
+	// Optionally, further validate by attempting to create a DateTime
+	try {
+		$dt = new DateTime($due_date);
+		$due_date = $dt->format('Y-m-d H:i:s');
+	} catch (Exception $e) {
+		// If parsing fails, set to null so DB stores null
+		$due_date = null;
+	}
+}
 $assigned_to_email = $_POST['assigned_to_email'] ?? null;
 
 if (!$title || !$assigned_to_email) {
