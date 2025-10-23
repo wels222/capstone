@@ -63,11 +63,16 @@ try {
 		// ignore migration errors
 	}
 
+		// Try to ensure status enum includes 'missed' (best-effort; ignore errors)
+		try {
+			$pdo->exec("ALTER TABLE tasks MODIFY COLUMN status ENUM('pending','in_progress','completed','missed') NOT NULL DEFAULT 'pending'");
+		} catch (PDOException $__e) { /* ignore */ }
+
 	if ($status) {
-		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, created_at FROM tasks WHERE assigned_by_email = ? AND status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
+		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks WHERE assigned_by_email = ? AND status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
 		$stmt->execute([$byEmail, $status]);
 	} else {
-		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, created_at FROM tasks WHERE assigned_by_email = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
+		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks WHERE assigned_by_email = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
 		$stmt->execute([$byEmail]);
 	}
 	$tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -17,7 +17,7 @@ try {
         title VARCHAR(255) NOT NULL,
         description TEXT,
     due_date DATETIME DEFAULT NULL,
-        status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
+        status ENUM('pending','in_progress','completed','missed') NOT NULL DEFAULT 'pending',
         assigned_to_email VARCHAR(100) NOT NULL,
         assigned_by_email VARCHAR(100) NOT NULL,
         attachment_path VARCHAR(255) DEFAULT NULL,
@@ -45,6 +45,7 @@ try {
 
 $taskId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 $note = trim($_POST['note'] ?? '');
+$mode = trim($_POST['mode'] ?? '');
 if ($taskId <= 0 || $note === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'Task and description are required']);
@@ -67,34 +68,113 @@ try {
 }
 
 // Require a file upload
-if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'File is required']);
-    exit;
-}
-
+// Note: For missed tasks we allow note-only iaDJUST requests (file optional). For normal submissions, file is required.
 $submission_path = null;
-$tmpPath = $_FILES['file']['tmp_name'];
-$origName = basename($_FILES['file']['name']);
-$ext = pathinfo($origName, PATHINFO_EXTENSION);
-$safeExt = preg_replace('/[^a-zA-Z0-9]/', '', $ext);
-$targetDir = __DIR__ . '/../uploads/task_submissions/';
-$fileName = uniqid('submission_') . ($safeExt ? ('.' . $safeExt) : '');
-$dest = $targetDir . $fileName;
-
-// Move if directory exists and writable
-if (@is_dir($targetDir) && @is_writable($targetDir) && @move_uploaded_file($tmpPath, $dest)) {
-    $submission_path = 'uploads/task_submissions/' . $fileName;
+if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+    // no file uploaded; keep submission_path null
 } else {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Upload directory not available']);
-    exit;
+    $tmpPath = $_FILES['file']['tmp_name'];
+    $origName = basename($_FILES['file']['name']);
+    $ext = pathinfo($origName, PATHINFO_EXTENSION);
+    $safeExt = preg_replace('/[^a-zA-Z0-9]/', '', $ext);
+    $targetDir = __DIR__ . '/../uploads/task_submissions/';
+    $fileName = uniqid('submission_') . ($safeExt ? ('.' . $safeExt) : '');
+    $dest = $targetDir . $fileName;
+    // Move if directory exists and writable
+    if (@is_dir($targetDir) && @is_writable($targetDir) && @move_uploaded_file($tmpPath, $dest)) {
+        $submission_path = 'uploads/task_submissions/' . $fileName;
+    } else {
+        // keep null and continue; for missed note-only we allow null
+        $submission_path = null;
+    }
 }
 
 try {
-    $stmt = $pdo->prepare('UPDATE tasks SET status = "completed", submission_file_path = ?, submission_note = ?, completed_at = NOW() WHERE id = ? AND assigned_to_email = ?');
-    $stmt->execute([$submission_path, $note, $taskId, $email]);
-    echo json_encode(['success' => true, 'file' => $submission_path]);
+    // Check current task status to decide behavior
+    $check = $pdo->prepare('SELECT status, due_date, submission_note, assigned_by_email FROM tasks WHERE id = ? AND assigned_to_email = ?');
+    $check->execute([$taskId, $email]);
+    $row = $check->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Task not found']);
+        exit;
+    }
+
+    $currentStatus = $row['status'] ?? '';
+    $currentDue = $row['due_date'] ?? null;
+    $existingNote = $row['submission_note'] ?? '';
+
+    // If client explicitly requested append mode, treat as an iaDJUST (note-only) request.
+    if ($mode === 'append' || $currentStatus === 'missed') {
+        // Get employee name and position for the appended note
+        $employeeName = $email;
+        $employeePosition = '';
+        try {
+            $u = $pdo->prepare('SELECT firstname, lastname FROM users WHERE email = ? LIMIT 1');
+            $u->execute([$email]);
+            $ur = $u->fetch(PDO::FETCH_ASSOC);
+            if ($ur) { $employeeName = trim(($ur['firstname'] ?? '') . ' ' . ($ur['lastname'] ?? '')); }
+        } catch (PDOException $e) { /* ignore */ }
+        try {
+            $p = $pdo->prepare('SELECT position FROM employees WHERE email = ? LIMIT 1');
+            $p->execute([$email]);
+            $pr = $p->fetch(PDO::FETCH_ASSOC);
+            if ($pr && !empty($pr['position'])) { $employeePosition = $pr['position']; }
+        } catch (PDOException $e) { /* ignore */ }
+
+        $timestamp = (new DateTime())->format('Y-m-d H:i:s');
+        // Employee submission on a missed task -> append adjustment note (with name, email, position, timestamp) and extend due date by 1 day
+        // Store the adjustment note separately so it's only visible to department heads.
+        try {
+            // ensure adjustment_note column exists
+            $checkCols = $pdo->prepare("SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'tasks'");
+            $checkCols->execute();
+            $cols = array_map(fn($r) => $r['column_name'], $checkCols->fetchAll(PDO::FETCH_ASSOC));
+            if (!in_array('adjustment_note', $cols)) {
+                $pdo->exec("ALTER TABLE tasks ADD COLUMN adjustment_note TEXT DEFAULT NULL");
+            }
+        } catch (PDOException $e) {
+            // ignore
+        }
+
+        // Save the plain note (no name meta) into adjustment_note. Do NOT change status or due_date here.
+        $stmt = $pdo->prepare('UPDATE tasks SET adjustment_note = ? WHERE id = ? AND assigned_to_email = ?');
+        $stmt->execute([$note, $taskId, $email]);
+
+        // Create a notification for the assigning department head (note only, no name meta)
+        $deptHeadEmail = $row['assigned_by_email'] ?? null;
+        if ($deptHeadEmail) {
+            try {
+                // ensure notifications table exists (with is_read flag)
+                $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    recipient_email VARCHAR(150) NOT NULL,
+                    message TEXT NOT NULL,
+                    type VARCHAR(50) DEFAULT 'task',
+                    is_read TINYINT(1) DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )");
+                $msg = "Adjustment request for task #{$taskId}: {$note}";
+                $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, message, type) VALUES (?, ?, ?)');
+                $ins->execute([$deptHeadEmail, $msg, 'task_adjust']);
+            } catch (PDOException $e) { /* ignore notification errors */ }
+        }
+
+        echo json_encode(['success' => true, 'file' => $submission_path, 'adjustment_note' => $note]);
+        exit;
+    } else {
+        // Normal submission: mark completed
+        // For normal submissions, file is required
+        if (!$submission_path) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'File is required for normal submission']);
+            exit;
+        }
+        $stmt = $pdo->prepare('UPDATE tasks SET status = "completed", submission_file_path = ?, submission_note = ?, completed_at = NOW() WHERE id = ? AND assigned_to_email = ?');
+        $stmt->execute([$submission_path, $note, $taskId, $email]);
+        echo json_encode(['success' => true, 'file' => $submission_path]);
+        exit;
+    }
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Failed to update task']);

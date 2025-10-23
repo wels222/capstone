@@ -199,13 +199,15 @@
         </div>
         <form id="submit-form" class="space-y-4" enctype="multipart/form-data">
           <input type="hidden" id="submit-task-id" name="id" />
+          <input type="hidden" id="submit-mode-input" name="mode" value="submit" />
+          <div id="submit-mode-label" class="text-sm text-gray-500 mb-2 hidden">Append mode: file not required</div>
           <div>
             <label for="submit-note" class="block text-sm font-medium text-gray-700">Description</label>
             <textarea id="submit-note" name="note" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter a short description" required></textarea>
           </div>
-          <div>
+          <div id="submit-file-wrapper">
             <label for="submit-file" class="block text-sm font-medium text-gray-700">Upload file</label>
-            <input id="submit-file" name="file" type="file" class="mt-1 block w-full" required />
+            <input id="submit-file" name="file" type="file" class="mt-1 block w-full" />
           </div>
           <div class="flex justify-end space-x-4">
             <button type="button" id="cancel-submit" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Cancel</button>
@@ -341,7 +343,8 @@
         const cancelSubmitBtn = document.getElementById("cancel-submit");
         // no submit button anymore
 
-        let currentTaskToUpdateId = null;
+  let currentTaskToUpdateId = null;
+  // submit mode is stored per-form in #submit-mode-input to keep append and submit independent
 
         // --- DATA FROM API ---
         let tasks = []; // {id,title,description,due_date,status,attachment_path}
@@ -529,7 +532,12 @@
                         </div>
                         <div class="flex items-center justify-between">
                           <div>
-                            ${task.status !== 'completed' ? `<button data-id="${task.id}" class="open-submit-btn text-sm text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 inline-flex items-center"><i class="fas fa-upload mr-2"></i>Submit</button>` : `<span class="text-sm text-gray-500">Completed</span>`}
+                                            ${task.status !== 'completed' ? `
+                                              <div class="inline-flex items-center gap-2">
+                                                <button data-id="${task.id}" class="open-submit-btn text-sm text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 inline-flex items-center"><i class="fas fa-upload mr-2"></i>Submit</button>
+                                                ${task.isMissed ? `<button data-id="${task.id}" class="open-append-btn text-sm text-white bg-red-600 px-3 py-1 rounded hover:bg-red-700 inline-flex items-center"><i class="fas fa-plus mr-2"></i>Append</button>` : ''}
+                                              </div>
+                                            ` : `<span class="text-sm text-gray-500">Completed</span>`}
                           </div>
                           <div class="w-full ml-4">
                               <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -619,6 +627,26 @@
               return; // stop to ensure only attachment logic runs
             }
 
+            const appendBtn = e.target.closest && e.target.closest('.open-append-btn');
+            if (appendBtn) {
+              const btn = appendBtn;
+              const id = parseInt(btn.dataset.id);
+              currentTaskToUpdateId = id;
+              const tsk = tasks.find((t) => t.id === id);
+              // Open submit modal in append (iaDJUST) mode: file optional
+              submitTaskIdInput.value = String(id);
+              submitNoteInput.value = '';
+              submitFileInput.value = '';
+              const modalTitle = document.getElementById('submit-modal-title');
+              if (modalTitle && tsk) modalTitle.textContent = `Request adjustment — ${tsk.title}`;
+              // Update submit button label
+              const submitBtnEl = submitForm.querySelector('button[type=submit]');
+              if (submitBtnEl) submitBtnEl.textContent = 'Send Append';
+              showSubmitModal('append');
+              setTimeout(() => submitNoteInput && submitNoteInput.focus(), 0);
+              return;
+            }
+
             if (submitBtn) {
               const btn = submitBtn;
               const id = parseInt(btn.dataset.id);
@@ -630,12 +658,16 @@
                 if (pendingModal) pendingModal.classList.remove('hidden');
                 return;
               }
+              // Normal final submission mode: require file
               submitTaskIdInput.value = String(id);
               submitNoteInput.value = '';
               submitFileInput.value = '';
               const modalTitle = document.getElementById('submit-modal-title');
               if (modalTitle && tsk) modalTitle.textContent = `Submit ${tsk.title}`;
-              submitModal.classList.remove('hidden');
+              // Update submit button label
+              const submitBtnEl2 = submitForm.querySelector('button[type=submit]');
+              if (submitBtnEl2) submitBtnEl2.textContent = 'Submit';
+              showSubmitModal('submit');
               setTimeout(() => submitNoteInput && submitNoteInput.focus(), 0);
               return;
             }
@@ -740,13 +772,69 @@
         }
 
         // Submit modal controls
-        if (closeSubmitModalBtn) closeSubmitModalBtn.addEventListener('click', () => submitModal.classList.add('hidden'));
-        if (cancelSubmitBtn) cancelSubmitBtn.addEventListener('click', () => submitModal.classList.add('hidden'));
+        function closeSubmitModal() {
+          // Hide the submit modal and reset state
+          if (submitModal) {
+            submitModal.classList.add('hidden');
+            submitModal.style.display = 'none';
+          }
+          // Reset form and input mode
+          if (submitForm) submitForm.reset();
+          const submitModeInput = document.getElementById('submit-mode-input');
+          if (submitModeInput) submitModeInput.value = 'submit';
+          if (submitFileWrapper) submitFileWrapper.style.display = '';
+          if (submitFileInput) submitFileInput.required = true;
+          // Also ensure other modals are closed to avoid overlapping containers
+          if (attachmentModal) attachmentModal.classList.add('hidden');
+          if (pendingModal) pendingModal.classList.add('hidden');
+        }
+        if (closeSubmitModalBtn) closeSubmitModalBtn.addEventListener('click', () => closeSubmitModal());
+        if (cancelSubmitBtn) cancelSubmitBtn.addEventListener('click', (e) => { e.stopPropagation(); closeSubmitModal(); });
+        const submitFileWrapper = document.getElementById('submit-file-wrapper');
+        function showSubmitModal(mode) {
+          const m = mode || 'submit';
+          // set the hidden input so submit handler reads the mode from the form (keeps flows independent)
+          const submitModeInput = document.getElementById('submit-mode-input');
+          if (submitModeInput) submitModeInput.value = m;
+          const submitModeLabel = document.getElementById('submit-mode-label');
+          if (m === 'append') {
+            // hide file chooser and make file optional
+            if (submitFileWrapper) submitFileWrapper.style.display = 'none';
+            if (submitFileInput) submitFileInput.required = false;
+            if (submitModeLabel) submitModeLabel.classList.remove('hidden');
+          } else {
+            if (submitFileWrapper) submitFileWrapper.style.display = '';
+            if (submitFileInput) submitFileInput.required = true;
+            if (submitModeLabel) submitModeLabel.classList.add('hidden');
+          }
+          if (submitModal) {
+            submitModal.classList.remove('hidden');
+            // make sure overlay is visible
+            submitModal.style.display = 'flex';
+          }
+        }
+
         if (submitModal) {
           submitModal.addEventListener('click', (e) => {
-            if (e.target === submitModal) submitModal.classList.add('hidden');
+            if (e.target === submitModal) {
+              closeSubmitModal();
+            }
           });
         }
+
+        // Update close button handlers to also reset state
+        if (closeSubmitModalBtn) closeSubmitModalBtn.addEventListener('click', () => {
+          submitModal.classList.add('hidden');
+          submitMode = 'submit';
+          if (submitFileWrapper) submitFileWrapper.style.display = '';
+          if (submitFileInput) submitFileInput.required = true;
+        });
+        if (cancelSubmitBtn) cancelSubmitBtn.addEventListener('click', () => {
+          submitModal.classList.add('hidden');
+          submitMode = 'submit';
+          if (submitFileWrapper) submitFileWrapper.style.display = '';
+          if (submitFileInput) submitFileInput.required = true;
+        });
 
         // Pending modal controls (OK and close)
         const pendingModal = document.getElementById('pending-modal');
@@ -767,26 +855,58 @@
             const id = submitTaskIdInput.value;
             const note = (submitNoteInput.value || '').trim();
             const file = submitFileInput.files && submitFileInput.files[0];
+            const submitModeInput = document.getElementById('submit-mode-input');
+            const mode = submitModeInput ? (submitModeInput.value || 'submit') : 'submit';
             if (!note) { showToast('Description is required'); return; }
-            if (!file) { showToast('File is required'); return; }
+            // In 'submit' mode, file is required. In 'append' mode, file is optional.
+            if (mode === 'submit' && !file) { showToast('File is required'); return; }
             const fd = new FormData();
             fd.append('id', id);
             fd.append('note', note);
-            fd.append('file', file);
+            if (file) fd.append('file', file);
+            // Put explicit mode from the form into FormData
+            fd.append('mode', mode);
+            // If this is an append, close the modal immediately for UX and perform the network call in background
+            if (mode === 'append') {
+              // close now
+              if (submitModal) {
+                submitModal.classList.add('hidden');
+                submitModal.style.display = 'none';
+              }
+              if (submitForm) submitForm.reset();
+              if (submitFileWrapper) submitFileWrapper.style.display = '';
+              if (submitFileInput) submitFileInput.required = true;
+              const submitModeInputEl = document.getElementById('submit-mode-input');
+              if (submitModeInputEl) submitModeInputEl.value = 'submit';
+            }
+
             fetch('../api/tasks_submit.php', { method: 'POST', body: fd, credentials: 'include' })
               .then(r => r.json())
               .then(data => {
                 if (!data.success) throw new Error(data.error || 'Upload failed');
-                // Update local task state
+                // Update local task state depending on mode
                 const idx = tasks.findIndex(t => t.id === parseInt(id));
                 if (idx !== -1) {
-                  tasks[idx].status = 'completed';
-                  tasks[idx].submissionFile = data.file || tasks[idx].submissionFile;
-                  tasks[idx].submissionNote = note;
+                  if (mode === 'submit') {
+                    // normal final submission: update local state
+                    tasks[idx].status = 'completed';
+                    tasks[idx].submissionFile = data.file || tasks[idx].submissionFile;
+                    tasks[idx].submissionNote = note;
+                  } else if (mode === 'append') {
+                    // append: do NOT change task status or notes locally.
+                    // The adjustment_note is visible only to the dept head; the task becomes pending only after dept head updates it.
+                  }
                 }
                 renderTasks();
-                submitModal.classList.add('hidden');
-                showToast('Task submitted successfully');
+                // Reset form and UI (for submit mode this will also close modal)
+                const finishedMode = mode;
+                if (finishedMode === 'submit') {
+                  if (submitForm) submitForm.reset();
+                  if (submitFileWrapper) submitFileWrapper.style.display = '';
+                  if (submitFileInput) submitFileInput.required = true;
+                  if (submitModal) { submitModal.classList.add('hidden'); submitModal.style.display = 'none'; }
+                }
+                showToast(finishedMode === 'submit' ? 'Task submitted successfully' : 'Append request sent');
               })
               .catch(err => {
                 showToast(err.message || 'Failed to submit task');

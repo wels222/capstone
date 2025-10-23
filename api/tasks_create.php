@@ -11,19 +11,19 @@ if (!$byEmail) {
 	exit;
 }
 
-// Ensure tasks table exists
+// Ensure tasks table exists (include 'missed' status)
 $createSql = "CREATE TABLE IF NOT EXISTS tasks (
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	title VARCHAR(255) NOT NULL,
 	description TEXT,
 	due_date DATETIME DEFAULT NULL,
-	status ENUM('pending','in_progress','completed') NOT NULL DEFAULT 'pending',
+	status ENUM('pending','in_progress','completed','missed') NOT NULL DEFAULT 'pending',
 	assigned_to_email VARCHAR(100) NOT NULL,
 	assigned_by_email VARCHAR(100) NOT NULL,
 	attachment_path VARCHAR(255) DEFAULT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
-)";
+);";
 try {
 	$pdo->exec($createSql);
 } catch (PDOException $e) {
@@ -78,10 +78,24 @@ if (!empty($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_E
 	}
 }
 
+// Determine initial status: if due_date is in the past and not completed, mark as 'missed'
+$initialStatus = 'pending';
+if ($due_date) {
+	try {
+		$checkDt = new DateTime($due_date);
+		$now = new DateTime();
+		if ($checkDt < $now) {
+			$initialStatus = 'missed';
+		}
+	} catch (Exception $e) {
+		// ignore and leave as pending
+	}
+}
+
 try {
 	$stmt = $pdo->prepare('INSERT INTO tasks (title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path) VALUES (?, ?, ?, ?, ?, ?, ?)');
-	$stmt->execute([$title, $description, $due_date ?: null, 'pending', $assigned_to_email, $byEmail, $attachment_path]);
-	echo json_encode(['success' => true, 'id' => $pdo->lastInsertId(), 'attachment_path' => $attachment_path]);
+	$stmt->execute([$title, $description, $due_date ?: null, $initialStatus, $assigned_to_email, $byEmail, $attachment_path]);
+	echo json_encode(['success' => true, 'id' => $pdo->lastInsertId(), 'attachment_path' => $attachment_path, 'status' => $initialStatus]);
 } catch (PDOException $e) {
 	http_response_code(500);
 	echo json_encode(['success' => false, 'error' => 'Database insert error']);

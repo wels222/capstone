@@ -26,12 +26,23 @@ try { $pdo->exec($createSql); } catch (PDOException $e) {}
 
 $status = $_GET['status'] ?? null; // optional filter
 try {
+    // Best-effort migrations: ensure due_date is DATETIME and status enum includes 'missed'
+    try {
+        $colCheck = $pdo->prepare("SELECT DATA_TYPE FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'tasks' AND column_name = 'due_date'");
+        $colCheck->execute();
+        $row = $colCheck->fetch(PDO::FETCH_ASSOC);
+        if ($row && isset($row['DATA_TYPE']) && strtolower($row['DATA_TYPE']) === 'date') {
+            $pdo->exec("ALTER TABLE tasks MODIFY COLUMN due_date DATETIME DEFAULT NULL");
+        }
+    } catch (PDOException $__e) { }
+    try { $pdo->exec("ALTER TABLE tasks MODIFY COLUMN status ENUM('pending','in_progress','completed','missed') NOT NULL DEFAULT 'pending'"); } catch (PDOException $__e) {}
+
     if ($status) {
-        $stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, ack_note, ack_at, created_at FROM tasks WHERE assigned_to_email = ? AND status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
-        $stmt->execute([$email, $status]);
+           $stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, created_at FROM tasks WHERE assigned_to_email = ? AND status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
+           $stmt->execute([$email, $status]);
     } else {
-        $stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, ack_note, ack_at, created_at FROM tasks WHERE assigned_to_email = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
-        $stmt->execute([$email]);
+           $stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, created_at FROM tasks WHERE assigned_to_email = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
+           $stmt->execute([$email]);
     }
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode(['success' => true, 'tasks' => $tasks]);
