@@ -159,6 +159,31 @@ if ($user_email) {
     <script>
     const serverUserEmail = <?= json_encode($user_email) ?>;
     document.addEventListener('DOMContentLoaded', () => {
+      let hasServerSignature = false;
+      // If a signature already exists on the server, make the upload optional and inform the user
+      fetch('/capstone/api/employee_signature.php')
+        .then(r => r.json())
+        .then(sig => {
+          if (sig && sig.success && sig.hasSignature) {
+            hasServerSignature = true;
+            const sigInput = document.getElementById('signature');
+            const label = document.querySelector('label[for="signature"]');
+            if (sigInput) {
+              sigInput.removeAttribute('required');
+            }
+            if (label) {
+              label.innerHTML = 'E-Signature (existing on file will be reused if none is uploaded)';
+            }
+            const help = document.createElement('p');
+            help.className = 'text-xs text-gray-500 mt-1';
+            help.textContent = 'We found your saved signature. You may skip uploading; it will be reused.';
+            const parent = sigInput ? sigInput.parentElement : null;
+            if (parent) parent.appendChild(help);
+          }
+        })
+        .catch(() => {/* non-blocking */});
+
+      // Note: Actual submission will be done on the Civil Form page.
       // Load department heads dynamically
       fetch('../api/dept_heads.php')
         .then(response => response.json())
@@ -272,7 +297,7 @@ if ($user_email) {
         document.getElementById('salaryInput').value = document.getElementById('salaryInput').value || '';
       }
 
-      // On submit, validate required specify fields and send FormData with file upload to API and include a structured 'details' JSON for Section 6
+      // On submit, validate fields then save data locally and redirect to Civil Form for final submission
       document.getElementById('leaveAppForm').onsubmit = function(e) {
         e.preventDefault();
 
@@ -324,9 +349,25 @@ if ($user_email) {
         const deptHead = document.getElementById('dept_head_select').value || '';
         if (!deptHead) { alert('Please select a Department Head.'); document.getElementById('dept_head_select').focus(); return false; }
 
-        // Ensure signature file selected
+        // Ensure signature file selected unless an existing signature is on file
         const sigInput = document.getElementById('signature');
-        if (!sigInput || !sigInput.files || !sigInput.files[0]) { alert('Please upload your e-signature.'); markInvalid(sigInput); return false; }
+        const hasFile = sigInput && sigInput.files && sigInput.files[0];
+        // We allow skipping upload if server already has a saved signature; this was checked on load and 'required' removed.
+        if (sigInput && sigInput.hasAttribute('required') && !hasFile) {
+          alert('Please upload your e-signature.');
+          markInvalid(sigInput);
+          return false;
+        }
+
+        // If there's a saved server signature and no new file chosen, confirm reuse
+        if (!hasFile && hasServerSignature) {
+          const okReuse = confirm('A saved e-signature was found. Do you want to use your saved signature for this application?');
+          if (!okReuse) {
+            alert('Please upload a new e-signature if you don\'t want to reuse the saved one.');
+            markInvalid(sigInput);
+            return false;
+          }
+        }
 
         const details = {
           leave_types: [leaveType], // main selected leave type
@@ -362,43 +403,32 @@ if ($user_email) {
         details.reliefOfficer = document.getElementById('reliefOfficer').value || '';
         details.salary = document.getElementById('salaryInput').value || '';
 
-        const fd = new FormData();
-        fd.append('employee_email', serverUserEmail || localStorage.getItem('userEmail'));
-        fd.append('deptHead', deptHead);
-        fd.append('leave_type', leaveType);
-        fd.append('dates', details.dates);
-        fd.append('reason', document.getElementById('reason').value || '');
-        fd.append('salary', details.salary);
-        fd.append('duration', details.duration);
-        fd.append('reliefOfficer', details.reliefOfficer);
-        fd.append('commutation', details.commutation);
-        fd.append('details', JSON.stringify(details));
+        function proceedToCivilForm(signatureDataUri) {
+          try {
+            localStorage.setItem('leaveDetails', JSON.stringify(details));
+            localStorage.setItem('leaveType', leaveType);
+            localStorage.setItem('leaveStartDate', document.getElementById('startDate').value);
+            localStorage.setItem('leaveEndDate', document.getElementById('endDate').value);
+            localStorage.setItem('leaveDuration', details.duration);
+            localStorage.setItem('leaveReason', document.getElementById('reason').value);
+            localStorage.setItem('leaveCommutation', details.commutation);
+            localStorage.setItem('leaveReliefOfficer', details.reliefOfficer);
+            localStorage.setItem('leaveSalary', details.salary);
+            localStorage.setItem('dept_head_email', deptHead);
+            if (serverUserEmail) localStorage.setItem('userEmail', serverUserEmail);
+            if (signatureDataUri) localStorage.setItem('leaveSignatureData', signatureDataUri);
+          } catch(e) {}
+          window.location.href = 'civil form.html';
+        }
 
-        if (sigInput && sigInput.files && sigInput.files[0]) fd.append('signature', sigInput.files[0]);
-
-        fetch('../api/submit_leave.php', { method: 'POST', body: fd })
-          .then(res => res.json())
-          .then(result => {
-            if (result && result.success) {
-              // persist the structured details for civil form rendering
-              localStorage.setItem('leaveDetails', JSON.stringify(details));
-              localStorage.setItem('leaveType', leaveType);
-              localStorage.setItem('leaveStartDate', document.getElementById('startDate').value);
-              localStorage.setItem('leaveEndDate', document.getElementById('endDate').value);
-              localStorage.setItem('leaveDuration', details.duration);
-              localStorage.setItem('leaveReason', document.getElementById('reason').value);
-              localStorage.setItem('leaveCommutation', details.commutation);
-              localStorage.setItem('leaveReliefOfficer', details.reliefOfficer);
-              localStorage.setItem('leaveSalary', details.salary);
-              if (result.signature_path) localStorage.setItem('leaveSignaturePath', result.signature_path);
-              if (result.signature_data) localStorage.setItem('leaveSignatureData', result.signature_data);
-              if (result.id) localStorage.setItem('leaveRequestId', result.id);
-              if (result.applied_at) localStorage.setItem('leaveAppliedAt', result.applied_at);
-              window.location.href = 'civil form.html';
-            } else {
-              alert('Error submitting leave request: ' + (result.error || 'Unknown'));
-            }
-          }).catch(err => { console.error(err); alert('Error submitting leave request.'); });
+        if (hasFile) {
+          const reader = new FileReader();
+          reader.onload = () => proceedToCivilForm(reader.result);
+          reader.onerror = () => proceedToCivilForm(null);
+          reader.readAsDataURL(sigInput.files[0]);
+        } else {
+          proceedToCivilForm(null);
+        }
       };
     });
     </script>

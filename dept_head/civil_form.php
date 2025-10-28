@@ -14,11 +14,38 @@ if ($leave_id) {
         $stmt2 = $pdo->prepare('SELECT * FROM users WHERE email = ?');
         $stmt2->execute([$leave['employee_email']]);
         $user = $stmt2->fetch(PDO::FETCH_ASSOC);
+    // Try to fetch salary from employees table if available
+    try {
+      $stmt3 = $pdo->prepare('SELECT salary FROM employees WHERE email = ?');
+      $stmt3->execute([$leave['employee_email']]);
+      $empSalaryRow = $stmt3->fetch(PDO::FETCH_ASSOC);
+      if ($empSalaryRow && isset($empSalaryRow['salary'])) {
+        $user['salary'] = $empSalaryRow['salary'];
+      }
+    } catch (PDOException $e) { /* ignore */ }
     }
 }
 
 function field($arr, $key) {
     return isset($arr[$key]) ? $arr[$key] : '';
+}
+// Decode structured details JSON
+$details = [];
+if (!empty($leave['details'])) {
+  $d = json_decode($leave['details'], true);
+  if (is_array($d)) $details = $d;
+}
+// Prefer the salary the employee actually entered on the form
+$displaySalary = '';
+// Prefer exactly what the employee typed.
+if (!empty($details['snapshot']['salary']['value'])) {
+  $displaySalary = $details['snapshot']['salary']['value'];
+} elseif (!empty($details['salary'])) {
+  // Legacy path (submitted from Apply Leave page): salary saved directly in details
+  $displaySalary = $details['salary'];
+} elseif (!empty($user['salary'])) {
+  // Fallback to DB salary if nothing was supplied in the form
+  $displaySalary = $user['salary'];
 }
 ?>
 <!DOCTYPE html>
@@ -39,7 +66,12 @@ function field($arr, $key) {
     .text-xxs { font-size: 0.65rem; }
     .checkbox-label { display: flex; align-items: flex-start; line-height: 1.1; }
     .checkbox-label input[type="checkbox"], .checkbox-label input[type="radio"] { margin-top: 2px; margin-right: 0.25rem; min-width: 1rem; min-height: 1rem; accent-color: #1f2937; }
-    @media print { .form-container { max-width: 21cm !important; width: 21cm !important; min-height: 29.7cm !important; } }
+    @media print {
+      @page { size: A4 portrait; margin: 12mm; }
+      html, body { width: 210mm; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .form-container { width: 186mm !important; max-width: 186mm !important; margin: 0 auto !important; box-shadow: none !important; background: #fff !important; padding: 6mm; min-height: auto !important; }
+      .no-print { display: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -141,7 +173,7 @@ function field($arr, $key) {
           </div>
           <div class="w-1/3 flex items-center pl-2 border-l border-white">
             <span class="font-bold">5. SALARY</span>
-            <input type="text" id="salary" class="form-underline text-center inline-block w-auto ml-1 p-0 flex-grow text-xs" value="<?= htmlspecialchars($user['salary'] ?? '') ?>" readonly />
+            <input type="text" id="salary" class="form-underline text-center inline-block w-auto ml-1 p-0 flex-grow text-xs" value="<?= htmlspecialchars($displaySalary) ?>" readonly />
           </div>
         </div>
       </div>
@@ -158,60 +190,60 @@ function field($arr, $key) {
             <div class="font-bold mb-1">6.A TYPE OF LEAVE TO BE AVAILED OF</div>
             <div class="space-y-1">
               <label class="checkbox-label" for="vl">
-                <input type="checkbox" id="vl" name="leave_type" <?= ($leave['leave_type'] == 'Vacation Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="vl" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Vacation Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Vacation Leave (Sec. 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292)</span>
               </label>
               <label class="checkbox-label" for="mfl">
-                <input type="checkbox" id="mfl" name="leave_type" <?= ($leave['leave_type'] == 'Mandatory/Forced Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="mfl" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Mandatory/Forced Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Mandatory/Forced Leave (Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292)</span>
               </label>
               <label class="checkbox-label" for="sl">
-                <input type="checkbox" id="sl" name="leave_type" <?= ($leave['leave_type'] == 'Sick Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="sl" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Sick Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Sick Leave (Sec. 43, Rule XVI, Omnibus Rules Implementing E.O. No. 292)</span>
               </label>
               <label class="checkbox-label" for="ml">
-                <input type="checkbox" id="ml" name="leave_type" <?= ($leave['leave_type'] == 'Maternity Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="ml" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Maternity Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Maternity Leave (R.A. No. 11210 / IRR issued by CSC, DOLE and SSS)</span>
               </label>
               <label class="checkbox-label" for="pl">
-                <input type="checkbox" id="pl" name="leave_type" <?= ($leave['leave_type'] == 'Paternity Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="pl" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Paternity Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Paternity Leave (R.A. No. 8187 / CSC MC No. 71, s. 1998, as amended)</span>
               </label>
               <label class="checkbox-label" for="spl">
-                <input type="checkbox" id="spl" name="leave_type" <?= ($leave['leave_type'] == 'Special Privilege Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="spl" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Special Privilege Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Special Privilege Leave (Sec. 21, Rule XVI, Omnibus Rules Implementing E.O. No. 292)</span>
               </label>
               <label class="checkbox-label" for="solopl">
-                <input type="checkbox" id="solopl" name="leave_type" <?= ($leave['leave_type'] == 'Solo Parent Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="solopl" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Solo Parent Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Solo Parent Leave (RA No. 8972 / CSC MC No. 8, s. 2004)</span>
               </label>
               <label class="checkbox-label" for="studyl">
-                <input type="checkbox" id="studyl" name="leave_type" <?= ($leave['leave_type'] == 'Study Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="studyl" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Study Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Study Leave (Sec. 68, Rule XVI, Omnibus Rules Implementing E.O. No. 292)</span>
               </label>
               <label class="checkbox-label" for="vawc">
-                <input type="checkbox" id="vawc" name="leave_type" <?= ($leave['leave_type'] == '10-Day VAWC Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="vawc" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', '10-Day VAWC Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">10-Day VAWC Leave (RA No. 9262 / CSC MC No. 15, s. 2005)</span>
               </label>
               <label class="checkbox-label" for="rehab">
-                <input type="checkbox" id="rehab" name="leave_type" <?= ($leave['leave_type'] == 'Rehabilitation Privilege' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="rehab" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Rehabilitation Privilege') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Rehabilitation Privilege (Sec. 55, Rule XVI, Omnibus Rules Implementing E.O. No. 292)</span>
               </label>
               <label class="checkbox-label" for="splwomen">
-                <input type="checkbox" id="splwomen" name="leave_type" <?= ($leave['leave_type'] == 'Special Leave Benefits for Women' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="splwomen" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Special Leave Benefits for Women') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Special Leave Benefits for Women (RA No. 9710 / CSC MC No. 25, s. 2010)</span>
               </label>
               <label class="checkbox-label" for="secl">
-                <input type="checkbox" id="secl" name="leave_type" <?= ($leave['leave_type'] == 'Special Emergency (Calamity) Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="secl" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Special Emergency (Calamity) Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Special Emergency (Calamity) Leave (CSC MC No. 2, s. 2012, as amended)</span>
               </label>
               <label class="checkbox-label" for="adoptl">
-                <input type="checkbox" id="adoptl" name="leave_type" <?= ($leave['leave_type'] == 'Adoption Leave' ? 'checked' : '') ?> disabled />
+                <input type="checkbox" id="adoptl" name="leave_type" <?= (strpos($leave['leave_type'] ?? '', 'Adoption Leave') !== false ? 'checked' : '') ?> disabled />
                 <span class="ml-1 text-xxs">Adoption Leave (R.A. No. 8552)</span>
               </label>
               <div class="mt-2 text-xxs flex items-center">
                 Others:
-                <input type="text" id="other_leave_specify" class="form-underline w-2/3 ml-1 p-0 text-xs" value="<?= htmlspecialchars($leave['details'] ?? '') ?>" readonly />
+                <input type="text" id="other_leave_specify" class="form-underline w-2/3 ml-1 p-0 text-xs" value="<?= htmlspecialchars($details['snapshot']['other_leave_specify']['value'] ?? '') ?>" readonly />
               </div>
             </div>
           </div>
@@ -227,25 +259,25 @@ function field($arr, $key) {
               </p>
               <div class="ml-3 space-y-1">
                 <label class="checkbox-label" for="loc_ph">
-                  <input type="checkbox" id="loc_ph" name="vl_loc" <?= (field($leave, 'vl_loc') == 'Within the Philippines' ? 'checked' : '') ?> disabled /><span
+                  <input type="checkbox" id="loc_ph" name="vl_loc" <?= (!empty($details['section6b']['vl']['withinPH']) ? 'checked' : '') ?> disabled /><span
                     class="ml-1 text-xxs w-full flex items-center"
                     >Within the Philippines
                     <input
                       type="text"
                       id="vl_loc_within_specify"
                       class="form-underline w-3/5 ml-1 p-0 text-xs"
-                      value="<?= field($leave, 'vl_loc_within_specify') ?>"
+                      value="<?= htmlspecialchars($details['section6b']['vl']['withinSpecify'] ?? '') ?>"
                     /></span>
                 </label>
                 <label class="checkbox-label" for="loc_ab">
-                  <input type="checkbox" id="loc_ab" name="vl_loc" <?= (field($leave, 'vl_loc') == 'Abroad' ? 'checked' : '') ?> disabled /><span
+                  <input type="checkbox" id="loc_ab" name="vl_loc" <?= (!empty($details['section6b']['vl']['abroad']) ? 'checked' : '') ?> disabled /><span
                     class="ml-1 text-xxs w-full flex items-center"
                     >Abroad (Specify)
                     <input
                       type="text"
                       id="vl_loc_abroad_specify"
                       class="form-underline w-3/5 ml-1 p-0 text-xs"
-                      value="<?= field($leave, 'vl_loc_abroad_specify') ?>"
+                      value="<?= htmlspecialchars($details['section6b']['vl']['abroadSpecify'] ?? '') ?>"
                     /></span>
                 </label>
               </div>
@@ -256,25 +288,25 @@ function field($arr, $key) {
               <p class="text-xxs font-semibold mb-1">In case of Sick Leave:</p>
               <div class="ml-3 space-y-1">
                 <label class="checkbox-label" for="sl_hosp">
-                  <input type="checkbox" id="sl_hosp" name="sl_type" <?= (field($leave, 'sl_type') == 'In Hospital' ? 'checked' : '') ?> disabled /><span
+                  <input type="checkbox" id="sl_hosp" name="sl_type" <?= (!empty($details['section6b']['sl']['inHospital']) ? 'checked' : '') ?> disabled /><span
                     class="ml-1 text-xxs w-full flex flex-col"
                     >In Hospital (Specify Illness)
                     <input
                       type="text"
                       id="sl_hosp_illness"
                       class="form-underline w-full p-0 text-xs mt-1"
-                      value="<?= field($leave, 'sl_hosp_illness') ?>"
+                      value="<?= htmlspecialchars($details['section6b']['sl']['hospitalIllness'] ?? '') ?>"
                     /></span>
                 </label>
                 <label class="checkbox-label" for="sl_out">
-                  <input type="checkbox" id="sl_out" name="sl_type" <?= (field($leave, 'sl_type') == 'Out Patient' ? 'checked' : '') ?> disabled /><span
+                  <input type="checkbox" id="sl_out" name="sl_type" <?= (!empty($details['section6b']['sl']['outPatient']) ? 'checked' : '') ?> disabled /><span
                     class="ml-1 text-xxs w-full flex flex-col"
                     >Out Patient (Specify Illness)
                     <input
                       type="text"
                       id="sl_out_illness"
                       class="form-underline w-full p-0 text-xs mt-1"
-                      value="<?= field($leave, 'sl_out_illness') ?>"
+                      value="<?= htmlspecialchars($details['section6b']['sl']['outIllness'] ?? '') ?>"
                     /></span>
                 </label>
               </div>
@@ -292,7 +324,7 @@ function field($arr, $key) {
                     type="text"
                     id="splwomen_illness_input"
                     class="form-underline w-full ml-1 p-0 text-xs mt-1"
-                    value="<?= field($leave, 'splwomen_illness_input') ?>"
+                    value="<?= htmlspecialchars($details['section6b']['splwomen']['illness'] ?? '') ?>"
                 /></span>
               </div>
             </div>
@@ -302,13 +334,13 @@ function field($arr, $key) {
               <p class="text-xxs font-semibold mb-1">In case of Study Leave:</p>
               <div class="ml-3 space-y-1">
                 <label class="checkbox-label" for="sl_md">
-                  <input type="checkbox" id="sl_md" name="study_type" <?= (field($leave, 'study_type') == "Master's Degree" ? 'checked' : '') ?> disabled /><span
+                  <input type="checkbox" id="sl_md" name="study_type" <?= (!empty($details['section6b']['study']['masters']) ? 'checked' : '') ?> disabled /><span
                     class="ml-1 text-xxs"
                     >Completion of Master's Degree</span
                   >
                 </label>
                 <label class="checkbox-label" for="sl_bar">
-                  <input type="checkbox" id="sl_bar" name="study_type" <?= (field($leave, 'study_type') == 'BAR/Board Examination Review' ? 'checked' : '') ?> disabled /><span
+                  <input type="checkbox" id="sl_bar" name="study_type" <?= (!empty($details['section6b']['study']['bar']) ? 'checked' : '') ?> disabled /><span
                     class="ml-1 text-xxs"
                     >BAR/Board Examination Review</span
                   >
@@ -319,7 +351,7 @@ function field($arr, $key) {
                     type="text"
                     id="study_other_input"
                     class="form-underline w-3/4 ml-1 p-0 text-xs"
-                    value="<?= field($leave, 'study_other_input') ?>"
+                    value="<?= htmlspecialchars($details['section6b']['study']['other'] ?? '') ?>"
                   />
                 </div>
               </div>
@@ -330,13 +362,13 @@ function field($arr, $key) {
               <p class="text-xxs font-semibold mb-1">Others:</p>
               <div class="ml-3 space-y-1">
                 <label class="checkbox-label" for="mlc">
-                  <input type="checkbox" id="mlc" name="other_type" <?= (field($leave, 'other_type') == 'Monetization of Leave Credits' ? 'checked' : '') ?> disabled /><span
+                  <input type="checkbox" id="mlc" name="other_type" <?= (!empty($details['section6b']['others']['mlc']) ? 'checked' : '') ?> disabled /><span
                     class="ml-1 text-xxs"
                     >Monetization of Leave Credits</span
                   >
                 </label>
                 <label class="checkbox-label" for="tl">
-                  <input type="checkbox" id="tl" name="other_type" <?= (field($leave, 'other_type') == 'Terminal Leave' ? 'checked' : '') ?> disabled /><span
+                  <input type="checkbox" id="tl" name="other_type" <?= (!empty($details['section6b']['others']['tl']) ? 'checked' : '') ?> disabled /><span
                     class="ml-1 text-xxs"
                     >Terminal Leave</span
                   >
@@ -359,7 +391,7 @@ function field($arr, $key) {
               type="text"
               id="num_working_days"
               class="form-underline w-3/4 p-0 text-center text-sm mb-2"
-              value="<?= htmlspecialchars($leave['num_working_days'] ?? '') ?>"
+              value="<?= htmlspecialchars($details['num_working_days'] ?? '') ?>"
               readonly
             />
             <div class="font-bold mb-1">INCLUSIVE DATES</div>
@@ -368,7 +400,7 @@ function field($arr, $key) {
               type="text"
               id="inclusive_dates"
               class="form-underline w-3/4 p-0 text-center text-sm"
-              value="<?= htmlspecialchars($leave['dates'] ?? '') ?>"
+              value="<?= htmlspecialchars($leave['dates'] ?? ($details['inclusive_dates'] ?? '')) ?>"
               readonly
             />
           </div>
@@ -384,7 +416,7 @@ function field($arr, $key) {
                   name="commutation"
                   value="Not Requested"
                   class="mt-0.5"
-                  <?= (field($leave, 'commutation') == 'Not Requested' ? 'checked' : '') ?> disabled
+                  <?= (($details['commutation'] ?? '') === 'Not Requested' ? 'checked' : '') ?> disabled
                 /><span class="ml-1">Not Requested</span>
               </label>
               <label class="checkbox-label" for="comm_req">
@@ -394,14 +426,18 @@ function field($arr, $key) {
                   name="commutation"
                   value="Requested"
                   class="mt-0.5"
-                  <?= (field($leave, 'commutation') == 'Requested' ? 'checked' : '') ?> disabled
+                  <?= (($details['commutation'] ?? '') === 'Requested' ? 'checked' : '') ?> disabled
                 /><span class="ml-1">Requested</span>
               </label>
             </div>
             <!-- Signature of Applicant -->
             <div class="mt-6 text-center pt-2 text-xs">
-              <div id="signature_container" class="w-full">
-                <input type="text" id="signature_text" class="form-underline w-full text-center text-sm" value="<?= htmlspecialchars($leave['signature_path'] ?? '') ?>" readonly />
+              <div id="signature_container" class="w-full" style="text-align:center;">
+                <?php if (!empty($leave['signature_path'])): ?>
+                  <img src="/capstone/<?= ltrim($leave['signature_path'], '/') ?>" alt="Signature" style="max-height:60px; object-fit:contain; display:block; margin:0 auto;" />
+                <?php else: ?>
+                  <input type="text" id="signature_text" class="form-underline w-full text-center text-sm" value="" readonly />
+                <?php endif; ?>
               </div>
               <p class="mt-0.5 font-normal">(Signature of Applicant)</p>
             </div>
@@ -641,7 +677,7 @@ function field($arr, $key) {
 
   <!-- Print Button -->
   <div class="mt-4 text-center">
-    <button onclick="window.print()" class="bg-blue-500 text-white px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">Print Form</button>
+    <button onclick="window.print()" class="no-print bg-blue-500 text-white px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">Print Form</button>
   </div>
 </div>
 </body>

@@ -52,6 +52,13 @@
         min-height: 1rem;
         accent-color: #1f2937;
       }
+      /* Print to A4 and hide non-print UI */
+      @media print {
+        @page { size: A4 portrait; margin: 12mm; }
+        html, body { width: 210mm; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .form-container { width: 186mm !important; max-width: 186mm !important; margin: 0 auto !important; box-shadow: none !important; background: #fff !important; padding: 6mm; min-height: auto !important; }
+        #routing-controls, #submit-leave, .no-print { display: none !important; }
+      }
     </style>
   </head>
   <body>
@@ -721,6 +728,24 @@
         </div>
       </div>
 
+      <!-- Routing and sender info (print-hidden) -->
+      <div id="routing-controls" class="mt-4 bg-white rounded-xl shadow p-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <div>
+            <label for="dept_head_select" class="block text-sm font-semibold text-gray-800">Send to Department Head</label>
+            <select id="dept_head_select" class="mt-1 w-full border rounded p-2 text-sm">
+              <option value="">Loading department heads...</option>
+            </select>
+            <p class="text-xxs text-gray-500 mt-1">All filled-in data will be sent exactly as shown.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-800">Employee Email</label>
+            <input id="employee_email" type="email" class="mt-1 w-full border rounded p-2 text-sm" placeholder="you@domain.com" />
+            <p class="text-xxs text-gray-500 mt-1">Auto-filled from session; you can adjust if needed.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Submit Button -->
       <div class="mt-4 text-center">
         <button
@@ -737,8 +762,71 @@
       document.getElementById("current-leave-type").textContent =
         localStorage.getItem("leaveType") || "Civil Service Form";
 
+      // Helpers
+      function textOfLabelFor(id) {
+        const lbl = document.querySelector('label[for="' + id + '"]');
+        if (!lbl) return "";
+        const span = lbl.querySelector("span");
+        return (span ? span.textContent : lbl.textContent || "").trim();
+      }
+
+      function collectStructuredData() {
+        const leaveTypeInputs = Array.from(document.querySelectorAll("input[name='leave_type']"));
+        const leave_type_selected = leaveTypeInputs.filter(x => x.checked).map(x => x.id);
+        const leave_type_display = leaveTypeInputs.filter(x => x.checked).map(x => textOfLabelFor(x.id));
+
+        const details6b = {
+          vl: {
+            withinPH: !!document.getElementById("loc_ph")?.checked,
+            withinSpecify: document.getElementById("vl_loc_within_specify")?.value || "",
+            abroad: !!document.getElementById("loc_ab")?.checked,
+            abroadSpecify: document.getElementById("vl_loc_abroad_specify")?.value || "",
+          },
+          sl: {
+            inHospital: !!document.getElementById("sl_hosp")?.checked,
+            hospitalIllness: document.getElementById("sl_hosp_illness")?.value || "",
+            outPatient: !!document.getElementById("sl_out")?.checked,
+            outIllness: document.getElementById("sl_out_illness")?.value || "",
+          },
+          splwomen: { illness: document.getElementById("splwomen_illness_input")?.value || "" },
+          study: {
+            masters: !!document.getElementById("sl_md")?.checked,
+            bar: !!document.getElementById("sl_bar")?.checked,
+            other: document.getElementById("study_other_input")?.value || "",
+          },
+          others: { mlc: !!document.getElementById("mlc")?.checked, tl: !!document.getElementById("tl")?.checked },
+        };
+
+        const commutation = document.querySelector('input[name="commutation"]:checked')?.value || "";
+
+        return {
+          leave_type: leave_type_selected,
+          leave_type_display,
+          details6b,
+          num_working_days: document.getElementById("num_working_days")?.value || "",
+          inclusive_dates: document.getElementById("inclusive_dates")?.value || "",
+          commutation,
+        };
+      }
+
+      function collectFormSnapshot() {
+        const snapshot = {};
+        const all = document.querySelectorAll("input, select, textarea");
+        all.forEach((el, idx) => {
+          const key = el.id || el.name || ("field_" + idx);
+          if (el.type === "checkbox" || el.type === "radio") {
+            snapshot[key] = { type: el.type, checked: !!el.checked, value: el.value ?? "" };
+          } else {
+            snapshot[key] = { type: el.type || el.tagName.toLowerCase(), value: el.value ?? "" };
+          }
+        });
+        return snapshot;
+      }
+
       // --- Auto-fill form fields from DB and localStorage ---
       window.onload = function () {
+        // No auto-disable or auto-submit: user must click Submit to send.
+
         // Fetch current logged-in user (session-backed)
         fetch("/capstone/api/current_user.php")
           .then((res) => res.json())
@@ -753,6 +841,8 @@
               document.getElementById("position").value = data.position || "";
               document.getElementById("salary").value =
                 localStorage.getItem("leaveSalary") || "";
+              const emailInput = document.getElementById("employee_email");
+              if (emailInput) emailInput.value = data.email || localStorage.getItem("userEmail") || "";
             } else {
               // fallback to employee-info endpoint if needed
               fetch(
@@ -773,6 +863,8 @@
                     emp.position || "";
                   document.getElementById("salary").value =
                     localStorage.getItem("leaveSalary") || emp.salary || "";
+                  const emailInput = document.getElementById("employee_email");
+                  if (emailInput) emailInput.value = emp.email || localStorage.getItem("userEmail") || "";
                 })
                 .catch(() => {});
             }
@@ -784,13 +876,17 @@
           .then((res) => res.json())
           .then((heads) => {
             const select = document.getElementById("dept_head_select");
-            select.innerHTML = "";
-            heads.forEach((h) => {
-              const opt = document.createElement("option");
-              opt.value = h.email;
-              opt.textContent = h.department + " (" + h.name + ")";
-              select.appendChild(opt);
-            });
+            if (select) {
+              const savedDH = localStorage.getItem("dept_head_email") || "";
+              select.innerHTML = "<option value=\"\">-- Select Department Head --</option>";
+              heads.forEach((h) => {
+                const opt = document.createElement("option");
+                opt.value = h.email;
+                opt.textContent = h.department + " (" + h.name + ")";
+                select.appendChild(opt);
+              });
+              if (savedDH) select.value = savedDH;
+            }
           });
 
         // Auto-check leave type
@@ -799,23 +895,64 @@
           "Sick Leave": "sl",
           "Maternity Leave": "ml",
           "Paternity Leave": "pl",
+          // Support both with and without slash
           "Mandatory Forced Leave": "mfl",
+          "Mandatory/Forced Leave": "mfl",
           "Special Privilege Leave": "spl",
           "Study Leave": "studyl",
           "10-Day VAWC Leave": "vawc",
+          // Support both "for Women" and "Benefits for Women"
           "Special Leave for Women": "splwomen",
+          "Special Leave Benefits for Women": "splwomen",
           "Special Emergency (Calamity) Leave": "secl",
           "Adoption Leave": "adoptl",
+          // Common misspelling/synonym
+          "Adaptation Leave": "adoptl",
           "Monetization of Leave Credits": "mlc",
           "Terminal Leave": "tl",
         };
         const leaveType = localStorage.getItem("leaveType");
-        if (leaveType && leaveTypeMap[leaveType]) {
-          const leaveCheckbox = document.querySelector(
-            'input[name="leave_type"][id="' + leaveTypeMap[leaveType] + '"]'
-          );
-          if (leaveCheckbox) leaveCheckbox.checked = true;
-        }
+        (function autoCheckLeaveType(){
+          function normalize(str){
+            return String(str || '')
+              .toLowerCase()
+              .replace(/adaptation/g, 'adoption')
+              .replace(/[^a-z]/g, '');
+          }
+          if (!leaveType) return;
+          let targetId = leaveTypeMap[leaveType] || null;
+          // Extra-robust direct includes to handle variants like
+          // "Adaptation Leave (R.A. No. 8552)" or partial strings.
+          const ltLow = leaveType.toLowerCase();
+          if (!targetId) {
+            if (ltLow.includes('adapt') || ltLow.includes('adopt')) targetId = 'adoptl';
+            else if (ltLow.includes('mandatory') && ltLow.includes('forced')) targetId = 'mfl';
+            else if (ltLow.includes('special privilege')) targetId = 'spl';
+            else if (ltLow.includes('study leave')) targetId = 'studyl';
+            else if (ltLow.includes('sick leave')) targetId = 'sl';
+            else if (ltLow.includes('vacation leave')) targetId = 'vl';
+            else if (ltLow.includes('maternity')) targetId = 'ml';
+            else if (ltLow.includes('paternity')) targetId = 'pl';
+            else if (ltLow.includes('vawc')) targetId = 'vawc';
+            else if (ltLow.includes('rehabilitation')) targetId = 'rehab';
+            else if (ltLow.includes('special leave') && ltLow.includes('women')) targetId = 'splwomen';
+            else if (ltLow.includes('special emergency') || ltLow.includes('calamity')) targetId = 'secl';
+            else if (ltLow.includes('monetization')) targetId = 'mlc';
+            else if (ltLow.includes('terminal leave')) targetId = 'tl';
+          }
+          if (targetId) {
+            const leaveCheckbox = document.querySelector('input[name="leave_type"][id="' + targetId + '"]');
+            if (leaveCheckbox) { leaveCheckbox.checked = true; return; }
+          }
+          // Fallback: try to match by label text (case-insensitive contains)
+          const normLt = normalize(leaveType);
+          const inputs = Array.from(document.querySelectorAll('input[name="leave_type"]'));
+          for (const inp of inputs) {
+            const labelText = textOfLabelFor(inp.id);
+            const normLbl = normalize(labelText);
+            if (normLbl && (normLbl.indexOf(normLt) !== -1 || normLt.indexOf(normLbl) !== -1)) { inp.checked = true; return; }
+          }
+        })();
 
         // Try to read structured details first
         const storedDetailsRaw = localStorage.getItem("leaveDetails");
@@ -1036,60 +1173,52 @@
           }
         }
 
-        // Display signature image. Prefer data URI stored as 'leaveSignatureData' (no server file needed),
-        // otherwise fall back to path stored as 'leaveSignaturePath' (legacy behavior).
-        const sigData = localStorage.getItem("leaveSignatureData");
-        const sigPath = localStorage.getItem("leaveSignaturePath");
-        if (sigData || sigPath) {
-          // Place the image inside the signature area (replace the input)
+        // Display signature image with robust fallbacks
+        (function renderSignature() {
           const sigContainer = document.getElementById("signature_container");
-          if (sigContainer) {
-            sigContainer.innerHTML = ""; // clear
+          if (!sigContainer) return;
+          function mount(src){
+            sigContainer.innerHTML = "";
             const wrapper = document.createElement("div");
             wrapper.style.width = "100%";
             wrapper.style.height = "70px";
             wrapper.style.display = "flex";
             wrapper.style.alignItems = "center";
             wrapper.style.justifyContent = "center";
-
             const img = document.createElement("img");
             img.alt = "Signature";
             img.style.maxHeight = "60px";
             img.style.objectFit = "contain";
             img.style.display = "block";
-
-            if (sigData) {
-              // data URI available -> use it immediately
-              img.src = sigData;
-            } else {
-              // Build candidate src paths and try them until one loads
-              const raw = String(sigPath || "");
-              const cleaned = raw.replace(/^\/+/, ""); // remove leading slashes
-              const candidates = [];
-              if (/^https?:\/\//i.test(raw)) candidates.push(raw);
-              candidates.push("../" + cleaned);
-              candidates.push("/" + cleaned);
-              candidates.push(cleaned);
-
-              img.onerror = function () {
-                if (candidates.length > 0) {
-                  img.src = candidates.shift();
-                } else {
-                  img.remove();
-                  const txt = document.createElement("div");
-                  txt.textContent = "(Signature not found)";
-                  txt.style.fontStyle = "italic";
-                  txt.style.color = "#666";
-                  wrapper.appendChild(txt);
-                }
-              };
-              img.src = candidates.shift();
-            }
-
+            img.src = src;
             wrapper.appendChild(img);
             sigContainer.appendChild(wrapper);
           }
-        }
+          const sigData = localStorage.getItem("leaveSignatureData");
+          const sigPath = localStorage.getItem("leaveSignaturePath");
+          if (sigData) { mount(sigData); return; }
+          function tryCandidates(rawPath){
+            const raw = String(rawPath || "");
+            const cleaned = raw.replace(/^\/+/, "");
+            const candidates = [];
+            if (/^https?:\/\//i.test(raw)) candidates.push(raw);
+            candidates.push("../" + cleaned);
+            candidates.push("/capstone/" + cleaned);
+            candidates.push("/" + cleaned);
+            candidates.push(cleaned);
+            if (!candidates.length) return false;
+            const img = new Image();
+            img.onload = function(){ mount(this.src); };
+            img.onerror = function(){
+              if (candidates.length) img.src = candidates.shift();
+              else fetch('/capstone/api/employee_signature.php').then(r=>r.json()).then(s=>{ if (s && s.success && s.hasSignature && s.url) mount(s.url); }).catch(()=>{});
+            };
+            img.src = candidates.shift();
+            return true;
+          }
+          if (sigPath) { if (!tryCandidates(sigPath)) fetch('/capstone/api/employee_signature.php').then(r=>r.json()).then(s=>{ if (s && s.success && s.hasSignature && s.url) mount(s.url); }).catch(()=>{}); }
+          else { fetch('/capstone/api/employee_signature.php').then(r=>r.json()).then(s=>{ if (s && s.success && s.hasSignature && s.url) mount(s.url); }).catch(()=>{}); }
+        })();
         // ...other auto-fill logic as needed...
       };
 
@@ -1102,6 +1231,15 @@
         if (!btn) return;
 
         let isSubmitting = false;
+        const tokenKey = 'leaveRequestToken';
+        function getOrCreateToken() {
+          let tok = sessionStorage.getItem(tokenKey);
+          if (!tok) {
+            tok = (Date.now().toString(36) + '-' + Math.random().toString(36).slice(2));
+            try { sessionStorage.setItem(tokenKey, tok); } catch(e) {}
+          }
+          return tok;
+        }
 
         btn.addEventListener("click", async function (e) {
           e.preventDefault();
@@ -1111,6 +1249,20 @@
             "Are you sure you want to submit this leave application?"
           );
           if (!confirmSubmit) return;
+
+          // If no inline signature data is present, but a saved signature may exist on the server,
+          // ask the user to confirm reusing it.
+          try {
+            const localSigData = localStorage.getItem('leaveSignatureData');
+            if (!localSigData) {
+              const r = await fetch('/capstone/api/employee_signature.php');
+              const s = await r.json();
+              if (s && s.success && s.hasSignature) {
+                const okReuse = confirm('We found your saved e-signature. Do you want to use it for this submission?');
+                if (!okReuse) return; // let the user go back and upload via Apply page
+              }
+            }
+          } catch (e) { /* non-blocking */ }
 
           isSubmitting = true;
           btn.disabled = true;
@@ -1131,6 +1283,10 @@
           body.appendChild(animationDiv);
 
           try {
+            const structured = collectStructuredData();
+            const snapshot = collectFormSnapshot();
+            const leave_type_csv = (structured.leave_type_display || structured.leave_type || []).join(", ");
+
             const formData = {
               office_dept: document.getElementById("office_dept")?.value || "",
               name_last: document.getElementById("name_last")?.value || "",
@@ -1139,26 +1295,33 @@
               date_filing: document.getElementById("date_filing")?.value || "",
               position: document.getElementById("position")?.value || "",
               salary: document.getElementById("salary")?.value || localStorage.getItem("leaveSalary") || "",
-              leave_type: Array.from(document.querySelectorAll("input[name='leave_type']:checked") || []).map((el) => el.id),
+              leave_type: leave_type_csv,
+              dates: structured.inclusive_dates,
+              reason: "",
               employee_email: document.getElementById("employee_email")?.value || localStorage.getItem("userEmail") || "",
               dept_head_email: document.getElementById("dept_head_select")?.value || document.getElementById("dept_head_email")?.value || "",
+              deptHead: document.getElementById("dept_head_select")?.value || document.getElementById("dept_head_email")?.value || "",
+              details: {
+                section6b: structured.details6b,
+                num_working_days: structured.num_working_days,
+                inclusive_dates: structured.inclusive_dates,
+                commutation: structured.commutation,
+                leave_type_ids: structured.leave_type,
+                leave_type_display: structured.leave_type_display,
+                snapshot,
+              },
+              signature_data_uri: localStorage.getItem("leaveSignatureData") || null,
+              request_token: getOrCreateToken(),
             };
+
+            // Remember chosen dept head
+            if (formData.dept_head_email) {
+              try { localStorage.setItem('dept_head_email', formData.dept_head_email); } catch(e) {}
+            }
 
             console.log("Submitting form data:", formData);
 
-            // If we already have a leaveRequestId from previous flow, there is
-            // no need to POST again — just show the animation briefly and go
-            // back to the dashboard. This prevents errors when required
-            // fields (like dept head) are not present on this page.
-            const existingId = localStorage.getItem('leaveRequestId') || localStorage.getItem('leaveAppliedAt');
-            if (existingId && (!formData.employee_email || !formData.dept_head_email || !formData.leave_type || (Array.isArray(formData.leave_type) && formData.leave_type.length===0))) {
-              // treat as already-submitted: show animation for a moment then redirect
-              setTimeout(() => {
-                try { if (animationDiv && animationDiv.parentNode) body.removeChild(animationDiv); } catch (e) {}
-                window.location.href = "/capstone/employee/dashboard.php";
-              }, 900);
-              return;
-            }
+            // No bypass: always require required fields and explicit click to submit.
 
             // Validate required fields before POST. If missing and no existing
             // submission id available, show a helpful message and abort.
@@ -1183,6 +1346,8 @@
               // persist id/applied_at if returned
               if (data.id) localStorage.setItem('leaveRequestId', data.id);
               if (data.applied_at) localStorage.setItem('leaveAppliedAt', data.applied_at);
+              if (data.signature_path) localStorage.setItem('leaveSignaturePath', data.signature_path);
+              try { sessionStorage.removeItem(tokenKey); } catch(e) {}
 
               alert("Leave application submitted successfully!");
               // show the animation a bit then redirect to employee dashboard

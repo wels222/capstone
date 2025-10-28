@@ -2,24 +2,24 @@
 header('Content-Type: application/json');
 require_once '../db.php';
 
-// If you want to avoid storing uploaded files on disk (to save storage),
-// set this to false. When false, signatures will be returned as a data URI
-// in the response under 'signature_data' and will NOT be written to uploads/.
-$SAVE_UPLOADS = false;
+// Persist signatures to disk so they can be reused across submissions
+$SAVE_UPLOADS = true; // kept for compatibility; we now always keep ONE file per employee
 
 // Ensure the leave_requests table exists (safety net in case database.sql wasn't applied)
 $createTableSql = "CREATE TABLE IF NOT EXISTS leave_requests (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    employee_email VARCHAR(100) NOT NULL,
-    dept_head_email VARCHAR(100) NOT NULL,
-    leave_type VARCHAR(255) NOT NULL,
-    dates VARCHAR(255) NOT NULL,
-    reason TEXT,
-    signature_path VARCHAR(255) DEFAULT NULL,
-    details TEXT DEFAULT NULL,
-    status ENUM('pending','approved','declined') NOT NULL DEFAULT 'pending',
-    applied_at DATETIME NOT NULL,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  employee_email VARCHAR(100) NOT NULL,
+  dept_head_email VARCHAR(100) NOT NULL,
+  leave_type VARCHAR(255) NOT NULL,
+  dates VARCHAR(255) NOT NULL,
+  reason TEXT,
+  signature_path VARCHAR(255) DEFAULT NULL,
+  details LONGTEXT DEFAULT NULL,
+  request_token VARCHAR(100) NULL,
+  status ENUM('pending','approved','declined') NOT NULL DEFAULT 'pending',
+  applied_at DATETIME NOT NULL,
+  updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_request_token (request_token)
 );";
 try {
   $pdo->exec($createTableSql);
@@ -28,27 +28,36 @@ try {
   http_response_code(500); echo json_encode(['error' => 'Failed to ensure leave_requests table exists', 'details' => $e->getMessage()]); exit;
 }
 
-// Ensure 'details' column exists (in case the live table was created earlier without it)
+// Ensure 'details' LONGTEXT and request_token columns exist and unique key
 try {
-  $colStmt = $pdo->prepare("SELECT COUNT(*) AS cnt FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'leave_requests' AND column_name = 'details'");
+  $pdo->exec("ALTER TABLE leave_requests MODIFY COLUMN details LONGTEXT");
+  // request_token column
+  $colStmt = $pdo->prepare("SELECT COUNT(*) AS cnt FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'leave_requests' AND column_name = 'request_token'");
   $colStmt->execute();
   $colRes = $colStmt->fetch(PDO::FETCH_ASSOC);
   if (!$colRes || intval($colRes['cnt']) === 0) {
-    // add the column
-    try {
-      $pdo->exec("ALTER TABLE leave_requests ADD COLUMN details TEXT DEFAULT NULL");
-    } catch (PDOException $ae) {
-      // intentionally not logging to disk to avoid creating a logs/ folder.
-      // Keep silent and allow the subsequent insert to surface any issues.
-    }
+    try { $pdo->exec("ALTER TABLE leave_requests ADD COLUMN request_token VARCHAR(100) NULL"); } catch(PDOException $e) { }
   }
+  // unique key
+  try { $pdo->exec("ALTER TABLE leave_requests ADD UNIQUE KEY uq_request_token (request_token)"); } catch(PDOException $e) { }
 } catch (PDOException $e) {
   // ignore and continue; the insert will report more details if necessary
 }
 
+// Ensure employee_signatures table exists
+try {
+  $pdo->exec("CREATE TABLE IF NOT EXISTS employee_signatures (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_email VARCHAR(100) NOT NULL UNIQUE,
+    file_path VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+} catch (PDOException $e) { }
+
 // Support both JSON body and multipart/form-data (for file upload)
 $employee_email = $_POST['employee_email'] ?? null;
-$dept_head_email = $_POST['deptHead'] ?? ($_POST['dept_head'] ?? null);
+$dept_head_email = $_POST['dept_head_email'] ?? ($_POST['deptHead'] ?? ($_POST['dept_head'] ?? null));
 $leave_type = $_POST['leave_type'] ?? null;
 $dates = $_POST['dates'] ?? null;
 $reason = $_POST['reason'] ?? null;
@@ -57,56 +66,35 @@ $applied_at = date('Y-m-d H:i:s');
 $signature_path = null;
 // details: JSON string (6.A/6.B selections and other structured fields)
 $details_json = null;
+$request_token = $_POST['request_token'] ?? null;
+$signature_data_uri = null;
 
 // If JSON body was provided
 if (!$employee_email) {
   $data = json_decode(file_get_contents('php://input'), true);
   if ($data) {
     $employee_email = $data['employee_email'] ?? $employee_email;
-    $dept_head_email = $data['deptHead'] ?? $dept_head_email;
+    $dept_head_email = $data['dept_head_email'] ?? ($data['deptHead'] ?? ($data['dept_head'] ?? $dept_head_email));
     $leave_type = $data['leave_type'] ?? $leave_type;
     $dates = $data['dates'] ?? $dates;
     $reason = $data['reason'] ?? $reason;
     if (isset($data['details'])) $details_json = json_encode($data['details']);
+    $request_token = $data['request_token'] ?? $request_token;
+    $signature_data_uri = $data['signature_data_uri'] ?? null;
   }
 }
 
-// Handle file upload if present
-// Note: we will NOT create an uploads/ folder. Instead we always read the
-// uploaded file into memory and prepare a data URI as a fallback. If
-// $SAVE_UPLOADS is true we will attempt to move the uploaded file, but we
-// will NOT call mkdir(). If the move fails, we silently fall back to the
-// in-memory data URI. This prevents automatic creation of any folders.
+// Capture any uploaded signature or data URI into memory; we will later store
+// a SINGLE deterministic file per employee and overwrite it if needed.
+$uploaded_bin = null; $uploaded_ext = null;
 if (!empty($_FILES['signature']) && $_FILES['signature']['error'] === UPLOAD_ERR_OK) {
   $tmpPath = $_FILES['signature']['tmp_name'];
   $origName = basename($_FILES['signature']['name']);
-  $ext = pathinfo($origName, PATHINFO_EXTENSION);
-  $allowed = ['png','jpg','jpeg','gif'];
-  if (!in_array(strtolower($ext), $allowed)) {
-    http_response_code(400); echo json_encode(['error'=>'Invalid file type']); exit;
-  }
-
-  // Read the raw file into memory so we can always return a data URI
+  $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+  $allowed = ['png','jpg','jpeg','gif','webp'];
+  if (!in_array($ext, $allowed)) { http_response_code(400); echo json_encode(['error'=>'Invalid file type']); exit; }
   $raw = @file_get_contents($tmpPath);
-  if ($raw !== false) {
-    $mime = mime_content_type($tmpPath) ?: ('image/' . strtolower($ext));
-    $b64 = base64_encode($raw);
-    $signature_data = 'data:' . $mime . ';base64,' . $b64;
-    $signature_path = null; // default: not saved to disk
-
-    // If configured to save uploads, attempt move WITHOUT creating directories.
-    if ($SAVE_UPLOADS) {
-      $targetDir = __DIR__ . '/../uploads/signatures/';
-      $fileName = uniqid('sig_') . '.' . $ext;
-      $dest = $targetDir . $fileName;
-      // attempt move; if it fails (e.g., directory missing) we silently keep signature_data
-      if (@move_uploaded_file($tmpPath, $dest)) {
-        $signature_path = 'uploads/signatures/' . $fileName;
-        // optionally free signature_data if you prefer not to return the inline data
-        // $signature_data = null;
-      }
-    }
-  }
+  if ($raw !== false) { $uploaded_bin = $raw; $uploaded_ext = $ext === 'jpeg' ? 'jpg' : $ext; }
 }
 
 if (isset($_POST['details'])) {
@@ -117,17 +105,77 @@ if (isset($_POST['details'])) {
     }
 }
 
+// Normalize leave_type: accept array or CSV
+if (is_array($leave_type)) { $leave_type = implode(', ', $leave_type); }
+
 if (!$employee_email || !$dept_head_email || !$leave_type) {
   http_response_code(400); echo json_encode(['error'=>'Missing required fields']); exit;
 }
 
 try {
-  $stmt = $pdo->prepare("INSERT INTO leave_requests (employee_email, dept_head_email, leave_type, dates, reason, signature_path, details, status, applied_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-  $stmt->execute([$employee_email, $dept_head_email, $leave_type, $dates, $reason, $signature_path, $details_json, $status, $applied_at]);
+  // Reuse existing employee signature if present
+  $existingSig = null;
+  try {
+    $st = $pdo->prepare('SELECT file_path FROM employee_signatures WHERE employee_email = ?');
+    $st->execute([$employee_email]);
+    $existingSig = $st->fetchColumn();
+  } catch (PDOException $e) {}
+
+  // If signature data URI is provided, decode into uploaded_bin
+  if (!$uploaded_bin && !empty($signature_data_uri) && strpos($signature_data_uri, 'data:image/') === 0) {
+    $parts = explode(',', $signature_data_uri, 2);
+    if (count($parts) === 2) {
+      $meta = $parts[0]; $b64 = $parts[1];
+      $ext = 'png';
+      if (preg_match('#data:image/(\w+);base64#i', $meta, $m)) { $ext = strtolower($m[1]); }
+      $bin = base64_decode($b64);
+      if ($bin !== false) { $uploaded_bin = $bin; $uploaded_ext = $ext === 'jpeg' ? 'jpg' : $ext; }
+    }
+  }
+
+  // Determine deterministic signature path (one file per employee)
+  $emailKey = strtolower(trim($employee_email));
+  $hash = sha1($emailKey);
+  $final_ext = $uploaded_ext ?: (pathinfo((string)$existingSig, PATHINFO_EXTENSION) ?: 'png');
+  $fileName = 'sig_' . substr($hash, 0, 24) . '.' . $final_ext;
+  $relPath = 'uploads/signatures/' . $fileName;
+  $absPath = __DIR__ . '/../' . $relPath;
+
+  if ($uploaded_bin) {
+    // Ensure folders exist
+    if (!is_dir(dirname($absPath))) { @mkdir(dirname($absPath), 0777, true); }
+    if (@file_put_contents($absPath, $uploaded_bin) !== false) {
+      $signature_path = $relPath;
+      // Update mapping table
+      try {
+        $ins = $pdo->prepare('INSERT INTO employee_signatures (employee_email, file_path) VALUES (?, ?) ON DUPLICATE KEY UPDATE file_path = VALUES(file_path)');
+        $ins->execute([$employee_email, $signature_path]);
+      } catch (PDOException $e) { }
+      // Optionally remove old file if different
+      if ($existingSig && $existingSig !== $signature_path) {
+        $oldAbs = __DIR__ . '/../' . ltrim($existingSig, '/');
+        if (strpos(realpath($oldAbs) ?: '', realpath(__DIR__ . '/../uploads/signatures')) === 0) { @unlink($oldAbs); }
+      }
+    }
+  } else {
+    // No new signature provided; reuse existing if any
+    if ($existingSig) { $signature_path = $existingSig; }
+  }
+
+  // Idempotent insert
+  $stmt = $pdo->prepare("INSERT INTO leave_requests (employee_email, dept_head_email, leave_type, dates, reason, signature_path, details, request_token, status, applied_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+  $stmt->execute([$employee_email, $dept_head_email, $leave_type, $dates, $reason, $signature_path, $details_json, $request_token, $status, $applied_at]);
   $insertId = $pdo->lastInsertId();
-  $res = ['success'=>true, 'id' => $insertId, 'signature_path' => $signature_path, 'details' => $details_json, 'applied_at' => $applied_at];
-  if (!empty($signature_data)) $res['signature_data'] = $signature_data;
-  echo json_encode($res);
+  echo json_encode(['success'=>true, 'id'=>$insertId, 'signature_path'=>$signature_path, 'applied_at'=>$applied_at]);
 } catch (PDOException $e) {
+  // On duplicate request_token, fetch and return existing
+  if (strpos($e->getMessage(), 'uq_request_token') !== false || strpos($e->getMessage(), 'Duplicate entry') !== false) {
+    try {
+      $sel = $pdo->prepare('SELECT id, applied_at, signature_path FROM leave_requests WHERE request_token = ?');
+      $sel->execute([$request_token]);
+      $row = $sel->fetch(PDO::FETCH_ASSOC);
+      if ($row) { echo json_encode(['success'=>true, 'id'=>$row['id'], 'signature_path'=>$row['signature_path'], 'applied_at'=>$row['applied_at']]); return; }
+    } catch (PDOException $e2) {}
+  }
   http_response_code(500); echo json_encode(['error'=>'DB insert failed', 'details' => $e->getMessage()]);
 }

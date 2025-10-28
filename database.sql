@@ -34,11 +34,22 @@ CREATE TABLE IF NOT EXISTS leave_requests (
 	dates VARCHAR(255) NOT NULL,
 	reason TEXT,
 	signature_path VARCHAR(255) DEFAULT NULL,
-	details TEXT DEFAULT NULL,
+	details LONGTEXT DEFAULT NULL,
+	request_token VARCHAR(100) NULL,
 	status ENUM('pending','approved','declined') NOT NULL DEFAULT 'pending',
 	decline_reason TEXT DEFAULT NULL,
 	approved_by_hr TINYINT(1) NOT NULL DEFAULT 0,
 	applied_at DATETIME NOT NULL,
+	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+	UNIQUE KEY uq_request_token (request_token)
+);
+
+-- Persist employee signature for reuse
+CREATE TABLE IF NOT EXISTS employee_signatures (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	employee_email VARCHAR(100) NOT NULL UNIQUE,
+	file_path VARCHAR(255) NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );
 
