@@ -142,8 +142,9 @@ try {
         $stmt->execute([$note, $taskId, $email]);
 
         // Create a notification for the assigning department head (note only, no name meta)
+        // Do NOT create a notification if the recipient would be the submitting employee.
         $deptHeadEmail = $row['assigned_by_email'] ?? null;
-        if ($deptHeadEmail) {
+        if ($deptHeadEmail && $deptHeadEmail !== $email) {
             try {
                 // ensure notifications table exists (with is_read flag)
                 $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (

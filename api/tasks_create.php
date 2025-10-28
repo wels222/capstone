@@ -95,7 +95,28 @@ if ($due_date) {
 try {
 	$stmt = $pdo->prepare('INSERT INTO tasks (title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path) VALUES (?, ?, ?, ?, ?, ?, ?)');
 	$stmt->execute([$title, $description, $due_date ?: null, $initialStatus, $assigned_to_email, $byEmail, $attachment_path]);
-	echo json_encode(['success' => true, 'id' => $pdo->lastInsertId(), 'attachment_path' => $attachment_path, 'status' => $initialStatus]);
+	$lastId = $pdo->lastInsertId();
+
+	// Create an in-app notification for the assignee
+	try {
+		// Ensure notifications table exists (best-effort)
+		$pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			recipient_email VARCHAR(150) NOT NULL,
+			message TEXT NOT NULL,
+			type VARCHAR(50) DEFAULT 'task',
+			is_read TINYINT(1) DEFAULT 0,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)");
+
+		$noteMsg = 'You have been assigned a new task: ' . ($title ?: 'Untitled');
+		$noteStmt = $pdo->prepare("INSERT INTO notifications (recipient_email, message, type) VALUES (?, ?, ?)");
+		$noteStmt->execute([$assigned_to_email, $noteMsg, 'task']);
+	} catch (PDOException $ne) {
+		// Non-fatal: allow task creation to succeed even if notification insert fails
+	}
+
+	echo json_encode(['success' => true, 'id' => $lastId, 'attachment_path' => $attachment_path, 'status' => $initialStatus]);
 } catch (PDOException $e) {
 	http_response_code(500);
 	echo json_encode(['success' => false, 'error' => 'Database insert error']);

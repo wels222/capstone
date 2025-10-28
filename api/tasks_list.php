@@ -3,12 +3,10 @@ header('Content-Type: application/json');
 session_start();
 require_once __DIR__ . '/../db.php';
 
-// Get current user (department head)
+// Current session info (optional). We allow public access so tasks remain visible
+// even when there is no logged-in user. Session values may be empty.
 $byEmail = $_SESSION['email'] ?? null;
-if (!$byEmail) {
-	echo json_encode(['success' => false, 'error' => 'Not authenticated']);
-	exit;
-}
+$roleNorm = strtolower($_SESSION['role'] ?? $_SESSION['position'] ?? '');
 
 // Ensure tasks table exists (safety net). Use DATETIME for due_date so times are preserved.
 $createSql = "CREATE TABLE IF NOT EXISTS tasks (
@@ -68,12 +66,13 @@ try {
 			$pdo->exec("ALTER TABLE tasks MODIFY COLUMN status ENUM('pending','in_progress','completed','missed') NOT NULL DEFAULT 'pending'");
 		} catch (PDOException $__e) { /* ignore */ }
 
+	// Return all tasks regardless of who is logged in. Keep status filter if provided.
 	if ($status) {
-		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks WHERE assigned_by_email = ? AND status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
-		$stmt->execute([$byEmail, $status]);
+		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks WHERE status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
+		$stmt->execute([$status]);
 	} else {
-		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks WHERE assigned_by_email = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
-		$stmt->execute([$byEmail]);
+		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks ORDER BY due_date IS NULL, due_date ASC, id DESC');
+		$stmt->execute();
 	}
 	$tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 	echo json_encode(['success' => true, 'tasks' => $tasks]);
