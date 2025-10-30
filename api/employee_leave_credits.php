@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: application/json');
+session_start();
 require_once __DIR__ . '/../db.php';
 
 // Fixed entitlements (in days); months converted as 30 days per month
@@ -98,10 +99,14 @@ function parse_dates_and_count_days($dates_str, $details) {
 }
 
 try {
+    // Prefer explicit email param, otherwise fall back to session email if logged in.
     $email = isset($_GET['email']) ? trim($_GET['email']) : '';
     if ($email === '') {
+        $email = isset($_SESSION['email']) ? trim($_SESSION['email']) : '';
+    }
+    if ($email === '') {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Missing email parameter']);
+        echo json_encode(['success' => false, 'error' => 'Missing email parameter or not authenticated']);
         exit;
     }
 

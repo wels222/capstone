@@ -148,7 +148,7 @@ if ($user) {
                 </div>
 
                 <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Leave</h3>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Leave Credits</h3>
                     <!-- Scrollable grid: show roughly 3 columns x 2 rows on md+ and allow vertical scroll -->
                     <div class="relative">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[28rem] md:max-h-[20rem] overflow-y-auto pr-2">

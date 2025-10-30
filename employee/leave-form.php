@@ -403,6 +403,20 @@ if ($user_email) {
         details.reliefOfficer = document.getElementById('reliefOfficer').value || '';
         details.salary = document.getElementById('salaryInput').value || '';
 
+        function showFormAlert(msg) {
+          let alert = document.getElementById('applyAlert');
+          if (!alert) {
+            alert = document.createElement('div');
+            alert.id = 'applyAlert';
+            alert.className = 'mb-4 p-3 rounded text-sm bg-red-50 text-red-700 border border-red-200';
+            const container = document.querySelector('form#leaveAppForm');
+            if (container) container.parentNode.insertBefore(alert, container);
+          }
+          alert.textContent = msg;
+          // scroll into view
+          alert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
         function proceedToCivilForm(signatureDataUri) {
           try {
             localStorage.setItem('leaveDetails', JSON.stringify(details));
@@ -421,14 +435,73 @@ if ($user_email) {
           window.location.href = 'civil form.html';
         }
 
-        if (hasFile) {
-          const reader = new FileReader();
-          reader.onload = () => proceedToCivilForm(reader.result);
-          reader.onerror = () => proceedToCivilForm(null);
-          reader.readAsDataURL(sigInput.files[0]);
-        } else {
-          proceedToCivilForm(null);
-        }
+        // Check available credits before proceeding
+        (function checkCreditsAndProceed() {
+          const dur = parseInt(details.duration, 10) || 0;
+          const userEmailForCheck = serverUserEmail || localStorage.getItem('userEmail') || '';
+          if (!userEmailForCheck) {
+            // cannot validate without user email; proceed anyway
+            finalizeProceed();
+            return;
+          }
+
+          const creditsApi = `/capstone/api/employee_leave_credits.php?email=${encodeURIComponent(userEmailForCheck)}`;
+
+          function normalizeKey(s) {
+            return (s || '').toString().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+          }
+
+          fetch(creditsApi)
+            .then(r => r.json())
+            .then(js => {
+              if (!js || !js.success || !Array.isArray(js.data)) {
+                finalizeProceed(); // allow when API doesn't provide data
+                return;
+              }
+              const items = js.data;
+              const normTarget = normalizeKey(leaveType);
+              let matched = items.find(it => normalizeKey(it.type) === normTarget);
+              if (!matched) {
+                // try contains match
+                matched = items.find(it => normalizeKey(it.type).includes(normTarget) || normTarget.includes(normalizeKey(it.type)));
+              }
+
+              if (!matched) {
+                finalizeProceed();
+                return;
+              }
+
+              const avail = Number(matched.available || 0);
+              if (dur <= 0) {
+                showFormAlert('Please select valid start and end dates to compute duration.');
+                return;
+              }
+
+              if (dur > avail) {
+                showFormAlert(`Insufficient balance: requested ${dur} day(s) but only ${avail} available for ${matched.type}.`);
+                return;
+              }
+
+              // enough balance
+              finalizeProceed();
+            })
+            .catch(err => {
+              console.error('Failed to validate leave credits', err);
+              // on failure, allow proceed to keep UX resilient
+              finalizeProceed();
+            });
+
+          function finalizeProceed() {
+            if (hasFile) {
+              const reader = new FileReader();
+              reader.onload = () => proceedToCivilForm(reader.result);
+              reader.onerror = () => proceedToCivilForm(null);
+              reader.readAsDataURL(sigInput.files[0]);
+            } else {
+              proceedToCivilForm(null);
+            }
+          }
+        })();
       };
     });
     </script>
