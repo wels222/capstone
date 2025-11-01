@@ -433,112 +433,6 @@
         cursor: pointer;
         transition: color 0.2s;
       }
-
-      .header-profile .notification-icon:hover {
-        color: #3b82f6;
-      }
-
-      /* Employees Section Styles */
-      .employee-tabs {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 2rem;
-        overflow-x: auto;
-      }
-
-      .employee-tab-btn {
-        padding: 0.75rem 1.5rem;
-        font-size: 0.95rem;
-        font-weight: 500;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        transition: background-color 0.2s, color 0.2s, transform 0.2s;
-        border: 1px solid #d1d5db;
-      }
-
-      .employee-tab-btn.active {
-        font-weight: 600;
-        transform: translateY(-2px);
-        color: #fff;
-        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.1);
-        border-color: transparent;
-      }
-
-      /* Category-specific button colors matching dashboard boxes */
-      .employee-tab-btn[data-category="Permanent"].active {
-        background-color: #3b82f6;
-      }
-      .employee-tab-btn[data-category="Casual"].active {
-        background-color: #93c5fd;
-      }
-      .employee-tab-btn[data-category="JO"].active {
-        background-color: #22d3ee;
-      }
-      .employee-tab-btn[data-category="OJT"].active {
-        background-color: #60a5fa;
-      }
-
-      .employee-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-      }
-
-      .employee-card {
-        background-color: #fff;
-        padding: 1.5rem;
-        border-radius: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        text-align: center;
-        position: relative;
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-      }
-
-      .employee-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
-      }
-
-      .employee-card .active-status {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        width: 12px;
-        height: 12px;
-        background-color: #10b981; /* Green color for active status */
-        border-radius: 50%;
-        border: 2px solid #fff;
-      }
-
-      .employee-card .profile-image {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #e5e7eb;
-        margin-bottom: 1rem;
-      }
-
-      .employee-card .employee-name {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 0.25rem;
-      }
-
-      .employee-card .employee-category {
-        font-size: 0.85rem;
-        font-weight: 500;
-      }
-
-      /* Category-specific card colors */
-      .employee-card[data-category="Permanent"] .employee-category {
-        color: #3b82f6;
-      }
-      .employee-card[data-category="Casual"] .employee-category {
-        color: #93c5fd;
-      }
       .employee-card[data-category="JO"] .employee-category {
         color: #22d3ee;
       }
@@ -1077,6 +971,11 @@
               >
             </li>
             <li class="nav-item">
+              <a href="employees.html"
+                ><i class="fas fa-users"></i> Employees</a
+              >
+            </li>
+            <li class="nav-item">
               <a href="leave-status.html"
                 ><i class="fas fa-calendar-alt"></i> Leave Status</a
               >
@@ -1518,33 +1417,51 @@
         }
       });
 
-      function fetchLeaveRequests() {
-        fetch("/capstone/api/get_leave_requests.php")
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              window._leaveRequests = data.data; // Store globally for recall modal
-              // Leave Request (pending only)
-              const tbodyRequest = document.querySelector(
-                "#leave-request tbody"
-              );
-              tbodyRequest.innerHTML = "";
-              // Leave History (approved/declined/recall)
-              const tbodyHistory = document.querySelector(
-                "#leave-history tbody"
-              );
-              tbodyHistory.innerHTML = "";
-              // Leave Recall (approved/declined only)
-              const tbodyRecall = document.querySelector("#leave-recall tbody");
-              tbodyRecall.innerHTML = "";
-              data.data.forEach((request) => {
-                const name =
-                  (request.firstname ? request.firstname : "") +
-                  (request.lastname ? " " + request.lastname : "");
-                // Leave Request Table (pending only)
-                if (request.status === "pending") {
-                  const row = document.createElement("tr");
-                  row.innerHTML = `
+      async function fetchLeaveRequests() {
+        try {
+          const [resReq, resUser] = await Promise.all([
+            fetch("/capstone/api/get_leave_requests.php"),
+            fetch("/capstone/api/current_user.php"),
+          ]);
+          const reqJson = await resReq.json();
+          const userJson = await resUser.json();
+
+          if (!reqJson.success) return;
+
+          const currentEmail =
+            userJson && userJson.logged_in
+              ? (userJson.email || "").toString().toLowerCase()
+              : null;
+
+          let requests = Array.isArray(reqJson.data) ? reqJson.data : [];
+          if (currentEmail) {
+            requests = requests.filter(
+              (r) =>
+                (r.dept_head_email || "").toString().toLowerCase() ===
+                currentEmail
+            );
+          }
+
+          window._leaveRequests = requests; // Store globally for recall modal
+
+          // Leave Request (pending only)
+          const tbodyRequest = document.querySelector("#leave-request tbody");
+          tbodyRequest.innerHTML = "";
+          // Leave History (approved/declined/recall)
+          const tbodyHistory = document.querySelector("#leave-history tbody");
+          tbodyHistory.innerHTML = "";
+          // Leave Recall (approved/declined only)
+          const tbodyRecall = document.querySelector("#leave-recall tbody");
+          tbodyRecall.innerHTML = "";
+
+          requests.forEach((request) => {
+            const name =
+              (request.firstname ? request.firstname : "") +
+              (request.lastname ? " " + request.lastname : "");
+            // Leave Request Table (pending only)
+            if (request.status === "pending") {
+              const row = document.createElement("tr");
+              row.innerHTML = `
 
                     <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
                     <td class="border border-gray-300 px-4 py-2 text-left">${
@@ -1568,14 +1485,13 @@
                       </select>
                     </td>
                   `;
-                  tbodyRequest.appendChild(row);
-                }
-                // Leave History Table (approved/declined/recall)
-                if (
-                  ["approved", "declined", "recall"].includes(request.status)
-                ) {
-                  const historyRow = document.createElement("tr");
-                  historyRow.innerHTML = `
+              tbodyRequest.appendChild(row);
+            }
+
+            // Leave History Table (approved/declined/recall)
+            if (["approved", "declined", "recall"].includes(request.status)) {
+              const historyRow = document.createElement("tr");
+              historyRow.innerHTML = `
                     <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
                     <td class="border border-gray-300 px-4 py-2 text-left">${
                       request.leave_type || ""
@@ -1593,12 +1509,13 @@
                       request.status.slice(1)
                     }</td>
                   `;
-                  tbodyHistory.appendChild(historyRow);
-                }
-                // Only add to recall table if approved (not declined)
-                if (request.status === "approved") {
-                  const recallRow = document.createElement("tr");
-                  recallRow.innerHTML = `
+              tbodyHistory.appendChild(historyRow);
+            }
+
+            // Only add to recall table if approved (not declined)
+            if (request.status === "approved") {
+              const recallRow = document.createElement("tr");
+              recallRow.innerHTML = `
                     <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
                     <td class="border border-gray-300 px-4 py-2 text-left">${
                       request.leave_type || ""
@@ -1617,16 +1534,12 @@
                       )})">Recall</button>
                     </td>
                   `;
-                  tbodyRecall.appendChild(recallRow);
-                }
-              });
-            } else {
-              console.error("Failed to fetch leave requests:", data.error);
+              tbodyRecall.appendChild(recallRow);
             }
-          })
-          .catch((error) =>
-            console.error("Error fetching leave requests:", error)
-          );
+          });
+        } catch (error) {
+          console.error("Failed to fetch leave requests", error);
+        }
       }
 
       // Open recall modal with real-time info

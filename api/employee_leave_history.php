@@ -63,7 +63,9 @@ try {
     $user = $stmtU->fetch(PDO::FETCH_ASSOC) ?: ['firstname' => '', 'lastname' => '', 'contact_no' => ''];
 
     // Fetch leave requests for this user
-    $stmt = $pdo->prepare("SELECT id, leave_type, dates, status, details, applied_at FROM leave_requests WHERE employee_email = ? ORDER BY applied_at DESC");
+    // Only include leaves that have been fully approved by HR.
+    // This ensures the employee's leave history only shows entries after HR approval.
+    $stmt = $pdo->prepare("SELECT id, leave_type, dates, status, details, applied_at, approved_by_hr FROM leave_requests WHERE employee_email = ? AND status = 'approved' AND approved_by_hr = 1 ORDER BY applied_at DESC");
     $stmt->execute([$email]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

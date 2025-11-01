@@ -157,7 +157,8 @@ if ($user_email) {
     </main>
 
     <script>
-    const serverUserEmail = <?= json_encode($user_email) ?>;
+  const serverUserEmail = <?= json_encode($user_email) ?>;
+  const serverUserDepartment = <?= json_encode($user_department) ?>;
     document.addEventListener('DOMContentLoaded', () => {
       let hasServerSignature = false;
       // If a signature already exists on the server, make the upload optional and inform the user
@@ -194,6 +195,8 @@ if ($user_email) {
             const opt = document.createElement('option');
             opt.value = head.email;
             opt.textContent = `${head.name} (${head.department})`;
+            // store department on the option for client-side validation
+            if (head.department) opt.dataset.department = head.department;
             select.appendChild(opt);
           });
         })
@@ -346,8 +349,18 @@ if ($user_email) {
         }
 
         // Ensure dept head selected
-        const deptHead = document.getElementById('dept_head_select').value || '';
-        if (!deptHead) { alert('Please select a Department Head.'); document.getElementById('dept_head_select').focus(); return false; }
+        const deptHeadSelectEl = document.getElementById('dept_head_select');
+        const deptHead = deptHeadSelectEl.value || '';
+        if (!deptHead) { alert('Please select a Department Head.'); deptHeadSelectEl.focus(); return false; }
+
+        // Validate selected dept head belongs to same department as the applicant
+        try {
+          const selectedDept = deptHeadSelectEl.options[deptHeadSelectEl.selectedIndex]?.dataset?.department || '';
+          if (serverUserDepartment && selectedDept && serverUserDepartment !== selectedDept) {
+            showFormAlert('You may only select a Department Head from your own department.');
+            return false;
+          }
+        } catch(e) { /* non-blocking */ }
 
         // Ensure signature file selected unless an existing signature is on file
         const sigInput = document.getElementById('signature');

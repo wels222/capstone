@@ -702,6 +702,9 @@ if (!isset($_SESSION['user_id'])) {
                         <a href="#"><i class="fas fa-th-large"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
+                        <a href="employees.html"><i class="fas fa-users"></i> Employees</a>
+                    </li>
+                    <li class="nav-item">
                         <a href="leave-status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
                     </li>
                     <li class="nav-item">

@@ -43,6 +43,18 @@ if ($user) {
             backdrop-filter: blur(5px);
             z-index: 1000;
         }
+        /* To-dos analytics sticky header and layout tweaks */
+        #todos-analytics { position: sticky; top: 1.25rem; align-self: start; }
+        #todos-analytics .overview-header { position: sticky; top: 0.75rem; z-index: 20; background: transparent; padding-top: 0.25rem; }
+        #todos-list { max-height: 36rem; overflow-y: auto; padding-right: 0.5rem; }
+
+        /* Keep analytics panel in normal flow; on larger screens only adjust list height.
+           Avoid position:fixed to preserve original layout. */
+        #todos-last-updated { display: inline-block; width: 7.5rem; text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Courier New', monospace; color: #9CA3AF; }
+        @media (min-width: 768px) {
+            /* Slightly increase list height on larger viewports but keep the analytics panel in-flow */
+            #todos-list { max-height: calc(100vh - 14rem); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-6 lg:p-10">
@@ -284,32 +296,40 @@ if ($user) {
                             </svg>
                         </div>
                     </div>
-                    <ul>
-                        <li class="py-2 border-b last:border-0 flex justify-between items-center">
-                            <span>Complete Onboarding Document Upload</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </li>
-                        <li class="py-2 border-b last:border-0 flex justify-between items-center">
-                            <span>Follow up on clients on documents</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </li>
-                        <li class="py-2 border-b last:border-0 flex justify-between items-center">
-                            <span>Design wireframes for LMS</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </li>
-                        <li class="py-2 border-b last:border-0 flex justify-between items-center">
-                            <span>Create case study for next IT project</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </li>
-                    </ul>
+                    <div id="todos-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="md:col-span-2">
+                            <div id="todos-list" class="space-y-3">
+                                <!-- Real-time tasks will be injected here as professional cards -->
+                            </div>
+                        </div>
+                        <div id="todos-analytics" class="md:col-span-1 bg-gray-50 p-4 rounded-lg">
+                            <div class="flex items-center justify-between mb-3 overview-header">
+                                <h4 class="text-sm font-semibold text-gray-700">Tasks Overview</h4>
+                                <span id="todos-last-updated" class="text-xs text-gray-400">--</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <div class="p-2 bg-white rounded shadow-sm text-center">
+                                    <div class="text-xs text-gray-500">Pending</div>
+                                    <div id="count-pending" class="text-xl font-bold text-yellow-600">0</div>
+                                </div>
+                                <div class="p-2 bg-white rounded shadow-sm text-center">
+                                    <div class="text-xs text-gray-500">In Progress</div>
+                                    <div id="count-inprogress" class="text-xl font-bold text-blue-600">0</div>
+                                </div>
+                                <div class="p-2 bg-white rounded shadow-sm text-center">
+                                    <div class="text-xs text-gray-500">Completed</div>
+                                    <div id="count-completed" class="text-xl font-bold text-green-600">0</div>
+                                </div>
+                                <div class="p-2 bg-white rounded shadow-sm text-center">
+                                    <div class="text-xs text-gray-500">Missed</div>
+                                    <div id="count-missed" class="text-xl font-bold text-red-600">0</div>
+                                </div>
+                            </div>
+                            <div class="bg-white p-3 rounded shadow-sm">
+                                <canvas id="todosChart" width="200" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-xl shadow-md p-6">
@@ -397,6 +417,141 @@ if ($user) {
         </div>
 
     </main>
+        <script>
+        // Realtime To-dos: professional UI + analytics (counts + donut) polling tasks assigned to the logged-in user
+        (function(){
+            const listEl = document.getElementById('todos-list');
+            const lastUpdatedEl = document.getElementById('todos-last-updated');
+            const countPendingEl = document.getElementById('count-pending');
+            const countInprogressEl = document.getElementById('count-inprogress');
+            const countCompletedEl = document.getElementById('count-completed');
+            const countMissedEl = document.getElementById('count-missed');
+            const chartEl = document.getElementById('todosChart');
+            if (!listEl || !chartEl) return;
+
+            let todosChart = null;
+            function initChart(){
+                try{
+                    const ctx = chartEl.getContext('2d');
+                    todosChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Pending','In Progress','Completed','Missed'],
+                            datasets: [{
+                                data: [0,0,0,0],
+                                backgroundColor: ['#f59e0b','#3b82f6','#10b981','#ef4444']
+                            }]
+                        },
+                        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth:12 } } } }
+                    });
+                }catch(e){ console.warn('Chart init failed', e); }
+            }
+
+            function formatDue(d){ if(!d) return ''; try{ const dt = new Date(d.replace(' ', 'T')); return dt.toLocaleString(); }catch(e){ return d; } }
+
+            function renderList(tasks){
+                const filtered = tasks.filter(t => t.status === 'pending' || t.status === 'in_progress');
+                listEl.innerHTML = '';
+                if (filtered.length === 0) {
+                    listEl.innerHTML = '<div class="py-6 text-center text-sm text-gray-500">No pending tasks</div>';
+                    return;
+                }
+
+                filtered.forEach(t => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white p-3 rounded-lg shadow-sm flex items-start justify-between gap-4 hover:shadow-md transition';
+
+                    const left = document.createElement('div');
+                    left.className = 'flex-1 min-w-0';
+                    const title = document.createElement('div');
+                    title.className = 'font-semibold text-gray-800 truncate';
+                    title.textContent = t.title || '(untitled)';
+                    const meta = document.createElement('div');
+                    meta.className = 'text-xs text-gray-500 mt-1';
+                    meta.textContent = (t.assigned_by_email?('Assigned by '+t.assigned_by_email):'') + (t.due_date?(' • due '+ formatDue(t.due_date)): '');
+                    left.appendChild(title);
+                    left.appendChild(meta);
+
+                    const right = document.createElement('div');
+                    right.className = 'flex flex-col items-end gap-2';
+                    const badge = document.createElement('div');
+                    badge.className = 'text-xs px-2 py-1 rounded-full font-semibold ' + (t.status==='pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800');
+                    badge.textContent = t.status === 'pending' ? 'Pending' : 'In Progress';
+                    const view = document.createElement('a');
+                    view.className = 'text-xs text-gray-400 hover:text-blue-600';
+                    view.href = '/capstone/employee/task.html';
+                    view.textContent = 'View';
+                    right.appendChild(badge);
+                    right.appendChild(view);
+
+                    card.appendChild(left);
+                    card.appendChild(right);
+                    listEl.appendChild(card);
+                });
+            }
+
+            function updateAnalytics(stats){
+                countPendingEl.textContent = stats.pending;
+                countInprogressEl.textContent = stats.in_progress;
+                countCompletedEl.textContent = stats.completed;
+                countMissedEl.textContent = stats.missed;
+                if(todosChart && todosChart.data && Array.isArray(todosChart.data.datasets)){
+                    todosChart.data.datasets[0].data = [stats.pending, stats.in_progress, stats.completed, stats.missed];
+                    todosChart.update();
+                }
+                const now = new Date();
+                if(lastUpdatedEl) lastUpdatedEl.textContent = now.toLocaleTimeString();
+            }
+
+            async function fetchTasks(){
+                try{
+                    const r = await fetch('/capstone/api/tasks_list_employee.php');
+                    if (!r.ok) throw new Error('network');
+                    const js = await r.json();
+                    if (!js || !js.success || !Array.isArray(js.tasks)) {
+                        listEl.innerHTML = '<div class="py-2 text-sm text-red-500">Failed to load tasks</div>';
+                        return;
+                    }
+
+                    // compute missed flag and stats
+                    const now = new Date();
+                    let stats = { pending:0, in_progress:0, completed:0, missed:0 };
+                    js.tasks.forEach(t => {
+                        const status = (t.status||'').toLowerCase();
+                        let isMissed = false;
+                        if(t.due_date){ try{ const due = new Date((t.due_date||'').replace(' ', 'T')); if(due && !isNaN(due.getTime()) && due < now && status !== 'completed') isMissed = true; }catch(e){} }
+                        if(isMissed) stats.missed++;
+                        if(status === 'pending') stats.pending++;
+                        else if(status === 'in_progress') stats.in_progress++;
+                        else if(status === 'completed') stats.completed++;
+                    });
+
+                    renderList(js.tasks);
+                    updateAnalytics(stats);
+                }catch(e){
+                    console.error('Failed to fetch tasks', e);
+                    listEl.innerHTML = '<div class="py-2 text-sm text-red-500">Failed to load tasks</div>';
+                }
+            }
+
+            // initialize
+            initChart();
+            fetchTasks();
+            const POLL_MS = 1000; // poll every 1 second for realtime
+            let pollId = setInterval(fetchTasks, POLL_MS);
+            // Update the 'last updated' clock every second
+            let clockInterval = setInterval(()=>{ if(lastUpdatedEl) lastUpdatedEl.textContent = new Date().toLocaleTimeString(); }, 1000);
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    clearInterval(pollId); pollId = null;
+                    clearInterval(clockInterval); clockInterval = null;
+                } else {
+                    if (!pollId) { pollId = setInterval(fetchTasks, POLL_MS); fetchTasks(); }
+                    if (!clockInterval) { clockInterval = setInterval(()=>{ if(lastUpdatedEl) lastUpdatedEl.textContent = new Date().toLocaleTimeString(); }, 1000); }
+                }
+            });
+        })();
+        </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {

@@ -37,6 +37,10 @@ try {
 		if (!in_array('completed_at', $cols)) {
 			$pdo->exec("ALTER TABLE tasks ADD COLUMN completed_at DATETIME DEFAULT NULL");
 		}
+		// ensure adjustment_note column exists (used by dept head to add notes)
+		if (!in_array('adjustment_note', $cols)) {
+			try { $pdo->exec("ALTER TABLE tasks ADD COLUMN adjustment_note TEXT DEFAULT NULL"); } catch (PDOException $__e) { /* ignore */ }
+		}
 	} catch (PDOException $ie) { /* ignore to not block listing */ }
 } catch (PDOException $e) {
 	http_response_code(500);
