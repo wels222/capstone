@@ -181,6 +181,24 @@ if (!isset($_SESSION['user_id'])) {
             font-size: 0.8rem;
             color: #9ca3af;
             font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        
+        .header-box .active-count::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #10b981; /* Green color for active */
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+        
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
         }
 
         .projects-events-container {
@@ -907,17 +925,25 @@ if (!isset($_SESSION['user_id'])) {
             window.addEventListener('beforeunload', ()=>{ if(_dashTasksTimer){ clearInterval(_dashTasksTimer); _dashTasksTimer=null; } });
         });
 
-        // Dept head counts: fetch current user, then employees, filter by department
+        // Dept head counts: fetch current user, then employees and active attendance, filter by department
         async function updateDeptCounts(){
             try{
                 const uResp = await fetch('../api/current_user.php');
                 const user = await uResp.json();
                 if(!user || !user.logged_in){ console.warn('No logged in user'); return; }
                 const dept = (user.department || '').toString();
-                // fetch all employees and filter by department
-                const empResp = await fetch('../api/get_employees.php');
+                
+                // Fetch employees count and active attendance count for this department
+                const [empResp, activeResp] = await Promise.all([
+                    fetch('../api/get_employees.php'),
+                    fetch('../api/get_active_employees.php?department=' + encodeURIComponent(dept))
+                ]);
+                
                 const empJson = await empResp.json();
+                const activeJson = await activeResp.json();
+                
                 const employees = (empJson && empJson.employees) || [];
+                
                 // Filter employees to the same department, exclude pending accounts and exclude HR role
                 const filtered = employees.filter(e => {
                     const empDept = (e.department || '').toString();
@@ -935,24 +961,26 @@ if (!isset($_SESSION['user_id'])) {
                 // categories we track
                 const categories = ['Permanent','Casual','JO','OJT'];
                 const counts = { Permanent:0, Casual:0, JO:0, OJT:0 };
-                const active = { Permanent:0, Casual:0, JO:0, OJT:0 };
+                
                 filtered.forEach(e=>{
                     const pos = (e.position||'').toString();
                     if(categories.includes(pos)){
                         counts[pos] = (counts[pos]||0) + 1;
-                        if(((e.status||'').toString().toLowerCase()) === 'approved') active[pos] = (active[pos]||0) + 1;
                     }
                 });
+                
+                // Get active counts from attendance API
+                const activeCounts = activeJson.success ? activeJson.active : { Permanent:0, Casual:0, JO:0, OJT:0 };
 
                 // update DOM
                 document.getElementById('count-permanent').textContent = counts['Permanent'] || 0;
-                document.getElementById('active-permanent').textContent = `${active['Permanent'] || 0} Active`;
+                document.getElementById('active-permanent').textContent = `${activeCounts['Permanent'] || 0} Active`;
                 document.getElementById('count-casual').textContent = counts['Casual'] || 0;
-                document.getElementById('active-casual').textContent = `${active['Casual'] || 0} Active`;
+                document.getElementById('active-casual').textContent = `${activeCounts['Casual'] || 0} Active`;
                 document.getElementById('count-jo').textContent = counts['JO'] || 0;
-                document.getElementById('active-jo').textContent = `${active['JO'] || 0} Active`;
+                document.getElementById('active-jo').textContent = `${activeCounts['JO'] || 0} Active`;
                 document.getElementById('count-ojt').textContent = counts['OJT'] || 0;
-                document.getElementById('active-ojt').textContent = `${active['OJT'] || 0} Active`;
+                document.getElementById('active-ojt').textContent = `${activeCounts['OJT'] || 0} Active`;
             }catch(err){ console.error('updateDeptCounts error', err); }
         }
 

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>QR Attendance Scanner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+            overflow: hidden;
+        }
+        .container { 
+            display: flex; 
+            gap: 15px; 
+            max-width: 100%;
+            width: 100%;
+            height: calc(100vh - 20px);
+            margin: 0 auto;
+        }
+        .left { 
+            flex: 2; 
+            background: #fff; 
+            border-radius: 16px; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .right { 
+            flex: 1; 
+            background: #fff; 
+            border-radius: 16px; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow-y: auto;
+            max-height: calc(100vh - 20px);
+        }
+        h2 { 
+            color: #1f2937; 
+            margin-bottom: 12px; 
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+        #qr-reader {
+            width: 100%;
+            flex: 1;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            min-height: 300px;
+            max-height: calc(100vh - 200px);
+        }
+        #qr-reader video {
+            transform: scaleX(-1) !important;
+            -webkit-transform: scaleX(-1) !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+        }
+        #qr-reader__scan_region {
+            border: 3px solid #10b981 !important;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5) !important;
+        }
+        #qr-reader__dashboard_section {
+            padding: 10px !important;
+        }
+        .clock { 
+            font-size: 26px; 
+            font-weight: 700; 
+            color: #1e40af; 
+            margin-bottom: 16px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .info-card { 
+            width: 100%; 
+            text-align: center; 
+            padding: 20px; 
+            border-radius: 12px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+            animation: slideIn 0.5s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .info-pic { 
+            width: 100px; 
+            height: 100px; 
+            border-radius: 50%; 
+            object-fit: cover; 
+            margin: 0 auto 12px;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+        .emp-id { font-size: 14px; opacity: 0.9; margin-bottom: 4px; }
+        .dept { font-size: 13px; opacity: 0.8; margin-bottom: 12px; }
+        .time { 
+            font-size: 18px; 
+            font-weight: 600; 
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .status { 
+            font-size: 16px;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.3);
+        }
+        .idle { 
+            color: #6b7280; 
+            text-align: center;
+            margin-top: 30px;
+            font-size: 15px;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 12px auto 0;
+            display: block;
+            flex-shrink: 0;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        @media (max-width: 768px) {
+            body { padding: 5px; }
+            .container { 
+                flex-direction: column; 
+                height: auto; 
+                gap: 10px;
+            }
+            .left, .right {
+                padding: 15px;
+            }
+            h2 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left">
+            <h2><span class="status-indicator"></span>QR Attendance Scanner</h2>
+            <div id="qr-reader"></div>
+            <button class="btn" id="startBtn" onclick="startScan()">
+                <i class="fas fa-play-circle"></i> Start Scanner
+            </button>
+            <p style="font-size:12px;color:#6b7280;margin-top:8px;text-align:center;flex-shrink:0;">
+                📸 Camera is mirrored for selfie view. Point your QR code at the camera.
+            </p>
+        </div>
+        <div class="right">
+            <div class="clock" id="clock"></div>
+            <div id="scan-info" style="display:none">
+                <!-- Info will be populated here -->
+            </div>
+            <div class="idle" id="idle">
+                <i class="fas fa-qrcode" style="font-size:48px;margin-bottom:16px;color:#9ca3af"></i>
+                <p>Waiting for QR scan...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="html5-qrcode.min.js"></script>
+    <script>
+        // Clock
+        function updateClock(){
+            const d = new Date();
+            const opts = { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true 
+            };
+            const time = d.toLocaleTimeString('en-US', opts);
+            const date = d.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            document.getElementById('clock').innerHTML = time + '<br><span style="font-size:14px;font-weight:400;color:#6b7280">' + date + '</span>';
+        }
+        setInterval(updateClock, 1000); 
+        updateClock();
+
+        let scanner = null;
+        let scanning = false;
+        let busy = false;
+
+        // Wait for Html5Qrcode library to load
+        function waitForLibrary() {
+            return new Promise((resolve) => {
+                if (typeof Html5Qrcode !== 'undefined') {
+                    resolve();
+                } else {
+                    const checkInterval = setInterval(() => {
+                        if (typeof Html5Qrcode !== 'undefined') {
+                            clearInterval(checkInterval);
+                            resolve();
+                        }
+                    }, 100);
+                }
+            });
+        }
+
+        async function startScan(){
+            if (scanning) return;
+            
+            const btn = document.getElementById('startBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            
+            try {
+                // Wait for library to load
+                console.log('⏳ Waiting for Html5Qrcode library...');
+                await waitForLibrary();
+                console.log('✅ Html5Qrcode library loaded!');
+                
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting Camera...';
+                
+                console.log('🎥 Creating scanner...');
+                scanner = new Html5Qrcode("qr-reader");
+                
+                console.log('📸 Requesting camera...');
+                await scanner.start(
+                    { facingMode: "user" },  // Use front camera for mirrored selfie view
+                    {
+                        fps: 10,
+                        qrbox: function(viewfinderWidth, viewfinderHeight) {
+                            // Use 90% of camera area for scanning - works in any screen size
+                            let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                            let qrboxSize = Math.floor(minEdge * 0.85);
+                            return {
+                                width: qrboxSize,
+                                height: qrboxSize
+                            };
+                        }
+                        // Removed aspectRatio to allow flexible scanning in all screen sizes
+                    },
+                    onScanSuccess,
+                    onScanError
+                );
+                
+                scanning = true;
+                btn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop Scanner';
+                btn.disabled = false;
+                btn.onclick = stopScan;
+                
+                console.log('✅ Scanner started successfully!');
+                
+            } catch (err) {
+                console.error('❌ Error:', err);
+                alert('Failed to start camera: ' + err.message + '\n\nTip: Make sure to allow camera permission');
+                btn.innerHTML = '<i class="fas fa-play-circle"></i> Start Scanner';
+                btn.disabled = false;
+            }
+        }
+
+        async function stopScan(){
+            if (!scanning || !scanner) return;
+            
+            try {
+                await scanner.stop();
+                scanner.clear();
+                scanner = null;
+                scanning = false;
+                
+                const btn = document.getElementById('startBtn');
+                btn.innerHTML = '<i class="fas fa-play-circle"></i> Start Scanner';
+                btn.onclick = startScan;
+                
+                console.log('🛑 Scanner stopped');
+            } catch (err) {
+                console.error('Stop error:', err);
+            }
+        }
+
+        async function onScanSuccess(decodedText){
+            if (busy) return;
+            busy = true;
+            
+            console.log('📱 QR Code scanned:', decodedText);
+            
+            // Stop scanner temporarily
+            await stopScan();
+            
+            // Send to backend
+            fetch('scan_qr.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ employee_code: decodedText })
+            })
+            .then(r => r.json())
+            .then(res => {
+                console.log('Server response:', res);
+                
+                if (res.success){
+                    const emp = res.employee;
+                    const actionText = res.action === 'time_in' 
+                        ? '✓ TIME IN RECORDED' 
+                        : '✓ TIME OUT RECORDED';
+                    
+                    // Determine status text and color
+                    let statusText = 'Status: ' + (res.status || 'Present');
+                    let statusColor = '';
+                    
+                    if (res.action === 'time_in') {
+                        // Time In statuses: Present, Late, Absent
+                        if (res.status === 'Present') {
+                            statusColor = '#10b981'; // Green
+                        } else if (res.status === 'Late') {
+                            statusColor = '#f59e0b'; // Yellow/Orange
+                        } else {
+                            statusColor = '#ef4444'; // Red (Absent)
+                        }
+                    } else {
+                        // Time Out statuses: On-time, Undertime, Overtime, Absent
+                        if (res.status === 'On-time') {
+                            statusColor = '#10b981'; // Green
+                        } else if (res.status === 'Undertime') {
+                            statusColor = '#f59e0b'; // Yellow
+                        } else if (res.status === 'Overtime') {
+                            statusColor = '#3b82f6'; // Blue
+                        } else {
+                            statusColor = '#ef4444'; // Red (Absent)
+                        }
+                    }
+                    
+                    document.getElementById('scan-info').innerHTML = `
+                        <div class="info-card">
+                            <img class="info-pic" src="${emp.profile_pic || '../assets/logo.png'}" alt="Profile">
+                            <div class="name">${emp.name}</div>
+                            <div class="emp-id">${emp.employee_id}</div>
+                            <div class="dept">${emp.department}</div>
+                            <div class="time">${actionText}<br>${new Date(res.time).toLocaleTimeString()}</div>
+                            <div class="status" style="background: ${statusColor};">${statusText}</div>
+                            <div id="countdown" style="margin-top:16px;font-size:14px;opacity:0.8;">
+                                Ready to scan in <span id="timer">5</span>s
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('scan-info').style.display = 'block';
+                    document.getElementById('idle').style.display = 'none';
+
+                    // Countdown timer
+                    let seconds = 5;
+                    const timerElement = document.getElementById('timer');
+                    const countdownInterval = setInterval(() => {
+                        seconds--;
+                        if (timerElement) {
+                            timerElement.textContent = seconds;
+                        }
+                        if (seconds <= 0) {
+                            clearInterval(countdownInterval);
+                        }
+                    }, 1000);
+
+                    // Auto restart after 5 seconds
+                    setTimeout(() => {
+                        document.getElementById('scan-info').style.display = 'none';
+                        document.getElementById('idle').style.display = 'block';
+                        busy = false;
+                        startScan();
+                    }, 5000);
+                } else {
+                    // Employee not found or error
+                    document.getElementById('scan-info').innerHTML = `
+                        <div class="info-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                            <i class="fas fa-exclamation-triangle" style="font-size:64px;margin-bottom:16px;"></i>
+                            <div class="name">Not Found</div>
+                            <p style="font-size:16px;margin:16px 0;">${res.message || 'Employee not found in the system'}</p>
+                            <div id="countdown" style="margin-top:16px;font-size:14px;opacity:0.8;">
+                                Try again in <span id="timer">5</span>s
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('scan-info').style.display = 'block';
+                    document.getElementById('idle').style.display = 'none';
+
+                    // Countdown timer for error
+                    let seconds = 5;
+                    const timerElement = document.getElementById('timer');
+                    const countdownInterval = setInterval(() => {
+                        seconds--;
+                        if (timerElement) {
+                            timerElement.textContent = seconds;
+                        }
+                        if (seconds <= 0) {
+                            clearInterval(countdownInterval);
+                        }
+                    }, 1000);
+
+                    // Auto restart after 5 seconds
+                    setTimeout(() => {
+                        document.getElementById('scan-info').style.display = 'none';
+                        document.getElementById('idle').style.display = 'block';
+                        busy = false;
+                        startScan();
+                    }, 5000);
+                }
+            })
+            .catch(err => {
+                console.error('Fetch error:', err);
+                alert('Connection error. Please try again.');
+                busy = false;
+                startScan();
+            });
+        }
+
+        function onScanError(err){
+            // Silent - normal scanning errors happen constantly while scanning
+        }
+
+        console.log('✅ Page loaded');
+        console.log('🔒 Secure context:', window.isSecureContext);
+        console.log('📷 Camera API available:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+        
+        // Check if library loaded
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (typeof Html5Qrcode !== 'undefined') {
+                    console.log('✅ Html5Qrcode library ready!');
+                } else {
+                    console.error('❌ Html5Qrcode library NOT loaded!');
+                    alert('Error: QR scanner library failed to load. Please refresh the page.');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

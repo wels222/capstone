@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
 	email VARCHAR(100) NOT NULL UNIQUE,
 	password VARCHAR(255) NOT NULL,
 	profile_picture MEDIUMTEXT,
+	employee_id VARCHAR(100) DEFAULT NULL UNIQUE,
+	qr_code VARCHAR(255) DEFAULT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );
@@ -80,4 +82,18 @@ CREATE TABLE IF NOT EXISTS tasks (
 	ack_at DATETIME DEFAULT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Attendance records table for QR-based attendance
+CREATE TABLE IF NOT EXISTS attendance (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	employee_id VARCHAR(100) NOT NULL,
+	date DATE NOT NULL,
+	time_in DATETIME DEFAULT NULL,
+	time_out DATETIME DEFAULT NULL,
+	status VARCHAR(20),
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	INDEX idx_employee_id (employee_id),
+	INDEX idx_date (date),
+	UNIQUE KEY unique_attendance (employee_id, date)
 );
