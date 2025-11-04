@@ -1,7 +1,7 @@
 <?php
 // db.php - Database connection
 $host = 'localhost';
-$db   = 'capstone';
+$db   = 'capstone'; // <- ensure this is "capstone"
 $user = 'root';
 $pass = '';
 $charset = 'utf8mb4';

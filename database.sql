@@ -1,4 +1,8 @@
--- users table: includes role, contact number, and normalized status values
+-- Create and use a self-contained database named exactly "capstone"
+CREATE DATABASE IF NOT EXISTS `capstone` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `capstone`;
+
+-- users table: includes role, contact number, normalized status, employee_id and qr_code
 CREATE TABLE IF NOT EXISTS users (
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	lastname VARCHAR(100) NOT NULL,
@@ -84,16 +88,16 @@ CREATE TABLE IF NOT EXISTS tasks (
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Attendance records table for QR-based attendance
+-- Attendance table (standalone; users.employee_id already present above)
 CREATE TABLE IF NOT EXISTS attendance (
-	id INT AUTO_INCREMENT PRIMARY KEY,
-	employee_id VARCHAR(100) NOT NULL,
-	date DATE NOT NULL,
-	time_in DATETIME DEFAULT NULL,
-	time_out DATETIME DEFAULT NULL,
-	status VARCHAR(20),
-	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	INDEX idx_employee_id (employee_id),
-	INDEX idx_date (date),
-	UNIQUE KEY unique_attendance (employee_id, date)
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id VARCHAR(100) NOT NULL,
+    date DATE NOT NULL,
+    time_in DATETIME DEFAULT NULL,
+    time_out DATETIME DEFAULT NULL,
+    status VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_employee_id (employee_id),
+    INDEX idx_date (date),
+    UNIQUE KEY unique_attendance (employee_id, date)
 );
