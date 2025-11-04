@@ -1336,6 +1336,7 @@
                     <button class="bg-blue-500 text-white px-2 py-1 rounded view-button" onclick="viewForm('${
                       request.id
                     }')">View</button>
+                    <button class="ml-2 bg-yellow-500 text-white px-2 py-1 rounded edit-hr-button" onclick="openHRSectionModal('${request.id}')">Edit</button>
                   </td>
                   <td class="border border-gray-300 px-4 py-2 text-center">
                     <select class="action-dropdown px-2 py-1 rounded border border-gray-300" data-id="${
@@ -1422,42 +1423,70 @@
           window._declineRequestId = id;
           document.getElementById("decline-modal").classList.add("show");
         } else if (action === "approved") {
-          // HR Approve action: update backend with approved_by_hr = 1
-          fetch(`/capstone/api/update_leave_status.php`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id,
-              status: "approved",
-              approved_by_hr: true,
-            }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.success) {
-                // Send notification to employee
-                const request = window._leaveRequests.find((r) => r.id == id);
-                if (request && request.employee_email) {
-                  fetch("/capstone/api/add_notification.php", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      recipient_email: request.employee_email,
-                      message: `Your leave request has been approved by HR!`,
-                      type: "approved",
-                    }),
-                  });
+            // Before HR approves, ensure HR has filled/edited Section 7 (signatures or certifier name)
+            try {
+              const req = window._leaveRequests.find((r) => String(r.id) === String(id));
+              let edited = false;
+              if (req) {
+                // check details.hr.section7.certifier_name or details.hr.signatures (certifier/final)
+                if (req.details) {
+                  try {
+                    const d = (typeof req.details === 'string') ? JSON.parse(req.details) : req.details;
+                    if (d && d.hr) {
+                      const s7 = d.hr.section7 || {};
+                      const sigs = d.hr.signatures || {};
+                      if ((s7 && (s7.certifier_name || s7.final_official)) || (sigs && (sigs.certifier || sigs.final || sigs['certifier'] || sigs['final']))) edited = true;
+                    }
+                  } catch (e) { /* ignore parse errors */ }
                 }
-                alert("Leave request approved successfully!");
-                fetchLeaveRequests();
-              } else {
-                alert("Failed to approve leave request.");
               }
-            })
-            .catch((error) => {
-              console.error("Error approving leave request:", error);
-              alert("An error occurred while approving the leave request.");
-            });
+              if (!edited) {
+                alert('You must edit the form (HR Section 7 signatures) before approving. Please click "Edit" and upload the HR signatures.');
+                select.value = '';
+                return;
+              }
+
+              // HR Approve action: update backend with approved_by_hr = 1
+              fetch(`/capstone/api/update_leave_status.php`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id,
+                  status: "approved",
+                  approved_by_hr: true,
+                }),
+              })
+                .then((response) => response.json())
+                .then((data) => {
+                  if (data.success) {
+                    // Send notification to employee
+                    const request = window._leaveRequests.find((r) => r.id == id);
+                    if (request && request.employee_email) {
+                      fetch("/capstone/api/add_notification.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          recipient_email: request.employee_email,
+                          message: `Your leave request has been approved by HR!`,
+                          type: "approved",
+                        }),
+                      });
+                    }
+                    alert("Leave request approved successfully!");
+                    fetchLeaveRequests();
+                  } else {
+                    alert("Failed to approve leave request.");
+                  }
+                })
+                .catch((error) => {
+                  console.error("Error approving leave request:", error);
+                  alert("An error occurred while approving the leave request.");
+                });
+            } catch (e) {
+              console.error('HR approval check', e);
+              alert('Error checking HR Section 7 state. Cannot approve at this time.');
+              select.value = '';
+            }
         }
       }
 
@@ -1466,6 +1495,137 @@
 
       // Optionally, refresh the table every minute
       setInterval(fetchLeaveRequests, 60000);
+    </script>
+
+    <!-- HR Section 7 Modal -->
+    <div id="hr-section-modal" class="modal-overlay">
+      <div class="modal-content">
+        <button class="modal-close-btn" id="hr-modal-close">&times;</button>
+        <div class="modal-profile-header">
+          <h4 id="hr-modal-title">Edit HR Section 7 — Authorized Officer Signature</h4>
+          <div class="employee-details text-sm text-gray-500">Upload the e-signature that will be placed on the form; names are not required here.</div>
+        </div>
+
+        <div class="modal-leave-credits">
+          <div class="form-group mt-3">
+            <label class="font-semibold">Upload Authorized Officer E-Signature</label>
+            <p class="text-xs text-gray-500 mt-2">Choose two signatures as needed. The first is the HR certifier (will be placed opposite the Certification of Leave Credits). The second is the Authorized Official (bottom of the form) which will be saved with the hardcoded name.</p>
+            <div class="mt-2">
+              <label class="text-sm">1) HR Certifier (Certificate of Leave Credits)</label>
+              <input id="hr_sig_certifier" type="file" accept="image/*" class="mt-1" />
+            </div>
+            <div class="mt-3">
+              <label class="text-sm">2) Authorized Official (Mayor)</label>
+              <input id="hr_sig_final" type="file" accept="image/*" class="mt-1" />
+            </div>
+          </div>
+        </div>
+          <div class="form-buttons" style="margin-top:1rem;">
+            <button id="hr-save-btn" class="initiate-button" style="background-color:#10b981;">Save & Preview Form</button>
+            <button id="hr-cancel-btn" class="cancel-button" style="background-color:#6b7280; margin-left:0.5rem;">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // HR Section modal logic
+      function openHRSectionModal(id) {
+        window._editingHRRequestId = id;
+        const modal = document.getElementById('hr-section-modal');
+  // clear the HR Section 7 signature fields
+  ['hr_sig_certifier','hr_sig_final','hr_sig_authorized'].forEach(i => { const fi = document.getElementById(i); if (fi) fi.value = null; });
+        // try to prefill from loaded requests data (only authorized officer name)
+        try {
+          const req = window._leaveRequests.find(r => String(r.id) === String(id));
+          if (req && req.details) {
+            let d = req.details;
+            if (typeof d === 'string') {
+              try { d = JSON.parse(d); } catch(e) { d = null; }
+            }
+            // No name prefill required in inputs; we'll fetch current HR account name separately.
+          }
+        } catch(e) { console.error(e); }
+        // Attempt to fetch current HR account name and cache it for the save
+        window._hrCurrentName = '';
+        try {
+          fetch('/capstone/api/current_user.php').then(r => r.json()).then(js => {
+            // Support two response shapes: { success,user: {...} } OR current_user.php's top-level fields { logged_in:true, firstname, lastname, mi }
+            let u = null;
+            if (!js) return;
+            if (js.user) u = js.user;
+            else if (js.logged_in || js.firstname) u = js;
+            if (u) {
+              const name = [u.lastname || '', u.firstname || '', u.mi || ''].map(s => s.trim()).filter(Boolean).join(' ');
+              window._hrCurrentName = name || (u.name || '');
+              const hdr = document.querySelector('#hr-section-modal .employee-details');
+              if (hdr) hdr.textContent = 'Uploading as: ' + (window._hrCurrentName || 'HR');
+            }
+          }).catch(()=>{});
+        } catch(e) {}
+        modal.classList.add('show');
+      }
+
+      function closeHRSectionModal() {
+        const modal = document.getElementById('hr-section-modal');
+        modal.classList.remove('show');
+        window._editingHRRequestId = null;
+      }
+
+      document.getElementById('hr-modal-close').addEventListener('click', closeHRSectionModal);
+      document.getElementById('hr-cancel-btn').addEventListener('click', closeHRSectionModal);
+
+      // No name auto-fill since HR modal only captures signature now
+
+      document.getElementById('hr-save-btn').addEventListener('click', async function() {
+        const id = window._editingHRRequestId;
+        if (!id) return alert('No request selected');
+        // Build section7: include HR certifier name (fetched from current_user) and hardcoded final official
+        const section7 = {
+          certifier_name: window._hrCurrentName || '',
+          final_official: 'Mayor Noel Bitrics Luistro'
+        };
+
+        // Collect both signature files (certifier + final mayor signature)
+        const toDataURI = (file) => new Promise((res, rej) => {
+          const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(); r.readAsDataURL(file);
+        });
+        const sigs = [];
+        const fiCert = document.getElementById('hr_sig_certifier');
+        if (fiCert && fiCert.files && fiCert.files[0]) {
+          try {
+            const dataUri = await toDataURI(fiCert.files[0]);
+            sigs.push({ key: 'certifier', data_uri: dataUri });
+          } catch(e) { /* ignore */ }
+        }
+        const fiFinal = document.getElementById('hr_sig_final');
+        if (fiFinal && fiFinal.files && fiFinal.files[0]) {
+          try {
+            const dataUri = await toDataURI(fiFinal.files[0]);
+            sigs.push({ key: 'final', data_uri: dataUri });
+          } catch(e) { /* ignore */ }
+        }
+        const payload = { id, section7, signatures: sigs };
+        try {
+          const resp = await fetch('/capstone/api/update_hr_section7.php', {
+            method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+          });
+          const js = await resp.json();
+          if (js && js.success) {
+            // open preview of the civil form so user can confirm the signature placement
+            const previewUrl = `/capstone/dept_head/civil_form.php?id=${id}`;
+            window.open(previewUrl, '_blank');
+            alert('HR section saved. A preview of the form has been opened in a new tab. Please verify that the signature appears in the Authorized Officer area before finalizing.');
+            closeHRSectionModal();
+            fetchLeaveRequests();
+          } else {
+            alert('Failed to save HR section: ' + (js.error || 'unknown'));
+          }
+        } catch (e) {
+          console.error(e);
+          alert('Network error saving HR section');
+        }
+      });
     </script>
   </body>
 </html>

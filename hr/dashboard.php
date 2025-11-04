@@ -689,7 +689,7 @@ if (!isset($_SESSION['user_id'])) {
             <span class="header-text">HR</span>
         </div>
         <div class="header-profile">
-            <i class="fas fa-bell notification-icon"></i>
+            <i id="open-notif-btn" class="fas fa-bell notification-icon" title="Compose notification"></i>
             <img src="../assets/logo.png" alt="Profile" class="profile-image">
         </div>
     </header>
@@ -749,63 +749,29 @@ if (!isset($_SESSION['user_id'])) {
                         <div class="active-projects-box">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-xl font-bold text-gray-800">Active Projects</h3>
+                                <?php if (in_array(strtolower($_SESSION['role'] ?? ''), ['admin','super_admin'])): ?>
+                                <div class="flex items-center gap-2" id="admin-filters">
+                                    <label class="text-sm text-gray-500">View:</label>
+                                    <button id="filter-backlog" class="py-1 px-3 rounded text-sm bg-blue-50 text-blue-700 font-semibold">Most backlog</button>
+                                    <button id="filter-productive" class="py-1 px-3 rounded text-sm bg-white text-gray-700 border border-gray-200">Most productive</button>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full">
                                     <thead>
                                         <tr>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Name</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Lead</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Department</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Department Head</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Completed</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Backlog</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Total</th>
                                             <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Progress</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th class="py-3 px-4 whitespace-nowrap font-semibold text-sm text-gray-500 uppercase tracking-wider">Due Date</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Last Updated</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Bender project</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Johnson</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 63%; background-color: #55a2ea;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Batmon</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">William</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 24%; background-color: #ef4444;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge pending">Pending</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Candy</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Paul</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 86%; background-color: #22c55e;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge completed">Completed</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">30 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Throwing</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Elizabeth</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 51%; background-color: #6b7280;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">11 Jan 2025</td>
-                                        </tr>
+                                    <tbody id="dept-tbody">
+                                        <!-- Departments will be loaded here via AJAX -->
                                     </tbody>
                                 </table>
                             </div>
@@ -836,6 +802,125 @@ if (!isset($_SESSION['user_id'])) {
     </div>
 
     <script>
+                // Notification inbox handlers for HR dashboard
+                (function(){
+                    // create dropdown container
+                                        const tpl = `
+                                        <div id="notif-dropdown" style="position:fixed;top:60px;right:20px;width:380px;max-height:460px;overflow:hidden;background:#fff;border:1px solid #e6eefc;border-radius:10px;box-shadow:0 10px 40px rgba(15,23,42,0.12);display:none;z-index:1200;font-family:Inter, sans-serif">
+                                            <div style="padding:12px 14px;border-bottom:1px solid #f1f8ff;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(90deg,#fbfeff,#f7fbff);">
+                                                <div style="display:flex;flex-direction:column">
+                                                    <strong style="font-size:1rem;color:#0f172a">Notifications</strong>
+                                                    <span id="notif-sub" style="font-size:0.82rem;color:#64748b;margin-top:2px">Recent activity and alerts</span>
+                                                </div>
+                                                <div style="display:flex;gap:8px;align-items:center">
+                                                    <button id="notif-mark-all" style="background:#e6f0ff;border:1px solid #c7e0ff;color:#0b61d3;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.85rem">Mark all</button>
+                                                    <button id="notif-clear-read" style="background:#fff;border:1px solid #e5e7eb;color:#374151;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.85rem">Clear read</button>
+                                                </div>
+                                            </div>
+                                            <div id="notif-list" style="padding:8px;overflow:auto;height:360px;"> </div>
+                                            <div id="notif-empty" style="padding:16px;text-align:center;color:#6b7280;display:none">You're all caught up — no notifications</div>
+                                            <div style="padding:10px;border-top:1px solid #f1f8ff;background:#fbfdff;text-align:center;font-size:0.85rem;color:#64748b">Updated every 15s</div>
+                                        </div>`;
+                    document.body.insertAdjacentHTML('beforeend', tpl);
+
+                    const bell = document.getElementById('open-notif-btn');
+                    const dropdown = document.getElementById('notif-dropdown');
+                    const listEl = document.getElementById('notif-list');
+                    const emptyEl = document.getElementById('notif-empty');
+                    const markAllBtn = document.getElementById('notif-mark-all');
+                    let polling = null;
+
+                    async function fetchNotifications(){
+                        try{
+                            const res = await fetch('/capstone/api/notifications_list.php?limit=50', { credentials: 'include' });
+                            const data = await res.json();
+                            if(!data || !data.success){ renderEmpty(); return; }
+                            const notes = Array.isArray(data.notifications) ? data.notifications : [];
+                            renderList(notes);
+                            updateBadge((data.unread || 0));
+                        }catch(e){ console.error('notif fetch', e); renderEmpty(); }
+                    }
+
+                    function renderEmpty(){ listEl.innerHTML=''; emptyEl.style.display='block'; }
+
+                    function timeAgo(ts){ try{ const d = new Date(ts); return d.toLocaleString(); }catch(e){ return ts||''; } }
+
+                    function renderList(notes){
+                        emptyEl.style.display = notes.length ? 'none' : 'block';
+                        listEl.innerHTML = notes.map(n => {
+                            const unread = Number(n.is_read) ? '' : 'font-weight:700;color:#0b1220;';
+                            const msg = (n.message || '').replace(/</g,'&lt;');
+                            const typeBadge = n.type ? `<span style="background:#eef2ff;border:1px solid #d7ebff;color:#0b61d3;padding:3px 6px;border-radius:999px;font-size:0.72rem;margin-left:6px">${n.type}</span>` : '';
+                            return `<div data-id="${n.id}" class="notif-row" style="padding:10px;border-bottom:1px solid #f3f7fb;display:flex;gap:10px;align-items:flex-start">
+                                <div style="width:6px;height:36px;border-radius:4px;background:${Number(n.is_read)?'#e6eefc':'#0b61d3'};flex-shrink:0"></div>
+                                <div style="flex:1;min-width:0">
+                                  <div style="${unread}">${msg}${typeBadge}</div>
+                                  <div style="font-size:0.78rem;color:#64748b;margin-top:6px">${timeAgo(n.created_at)}</div>
+                                </div>
+                                <div style="margin-left:8px;white-space:nowrap;display:flex;flex-direction:column;gap:6px">
+                                  ${Number(n.is_read) ? '' : '<button class="notif-mark-read" style="background:#0b61d3;color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.82rem">Mark</button>'}
+                                </div>
+                            </div>`;
+                        }).join('');
+                        // attach handlers for mark buttons
+                        listEl.querySelectorAll('.notif-mark-read').forEach(btn => {
+                            btn.addEventListener('click', async (ev)=>{
+                                const row = ev.target.closest('[data-id]');
+                                const id = row?.getAttribute('data-id');
+                                if(!id) return;
+                                await markRead(id);
+                                await fetchNotifications();
+                            });
+                        });
+                    }
+
+                    function updateBadge(n){
+                        // small red dot/count on bell
+                        let badge = bell.querySelector('.notif-badge');
+                        if(!badge){ badge = document.createElement('span'); badge.className='notif-badge'; badge.style.cssText='background:#ef4444;color:#fff;padding:2px 6px;border-radius:999px;font-size:0.75rem;margin-left:6px'; bell.appendChild(badge); }
+                        badge.textContent = n>0?String(n):'';
+                        badge.style.display = n>0 ? '' : 'none';
+                    }
+
+                    async function markRead(id){
+                        try{ await fetch('/capstone/api/notifications_mark_read.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id}), credentials: 'include' }); }catch(e){ console.error(e); }
+                    }
+
+                    async function markAll(){
+                        try{ await fetch('/capstone/api/notifications_mark_read.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}), credentials: 'include' }); await fetchNotifications(); }catch(e){ console.error(e); }
+                    }
+
+                    async function clearRead(){
+                        if(!confirm('Clear all read notifications? This will permanently remove them for you.')) return;
+                        try{
+                            const res = await fetch('/capstone/api/notifications_clear.php', { method:'POST', credentials: 'include' });
+                            const data = await res.json();
+                            if(data && data.success){ await fetchNotifications(); }
+                        }catch(e){ console.error('clearRead', e); }
+                    }
+
+                    bell && bell.addEventListener('click', async ()=>{
+                        if(!dropdown) return;
+                        if(dropdown.style.display === 'none' || !dropdown.style.display){
+                            dropdown.style.display = 'block';
+                            await fetchNotifications();
+                            polling = setInterval(fetchNotifications, 15000);
+                        } else {
+                            dropdown.style.display = 'none';
+                            if(polling){ clearInterval(polling); polling = null; }
+                        }
+                    });
+
+                    markAllBtn && markAllBtn.addEventListener('click', async ()=>{ if(confirm('Mark all notifications as read?')){ await markAll(); } });
+                    const clearBtn = document.getElementById('notif-clear-read');
+                    clearBtn && clearBtn.addEventListener('click', async ()=>{ await clearRead(); });
+
+                    // close dropdown when clicking outside
+                    document.addEventListener('click', (ev)=>{ if(!ev.target.closest || (!ev.target.closest('#notif-dropdown') && !ev.target.closest('#open-notif-btn'))){ if(dropdown && dropdown.style.display==='block'){ dropdown.style.display='none'; if(polling){ clearInterval(polling); polling=null; } } } });
+
+                    // initial fetch for badge only
+                    fetchNotifications();
+                })();
         document.addEventListener('DOMContentLoaded', function() {
             // Real-time employee counts
             fetch('../api/get_employees.php')
@@ -859,6 +944,95 @@ if (!isset($_SESSION['user_id'])) {
                         document.getElementById('active-ojt').textContent = countOJT + ' Active';
                     }
                 });
+
+            // Current sort mode for department table: 'backlog' | 'productive'
+            window.deptSort = window.deptSort || 'backlog';
+
+            // Load department task summary and update table in realtime
+            async function loadDeptTasks() {
+                try {
+                    const res = await fetch('../api/tasks_by_department.php', { credentials: 'include' });
+                    const data = await res.json();
+                    if (!data || !data.success) return;
+                    const tbody = document.getElementById('dept-tbody');
+                    if (!tbody) return;
+                    // Client-side sort depending on selected filter
+                    let deps = Array.isArray(data.departments) ? data.departments.slice() : [];
+                    if (window.deptSort === 'productive') {
+                        deps.sort((a,b) => (b.completed - a.completed) || (b.total - a.total));
+                    } else {
+                        deps.sort((a,b) => (b.backlog - a.backlog) || (b.total - a.total));
+                    }
+                    tbody.innerHTML = '';
+                    deps.forEach(d => {
+                        const pct = Number(d.progress_percent) || 0;
+                        let color = '#55a2ea';
+                        if (pct >= 75) color = '#22c55e';
+                        else if (pct < 40) color = '#ef4444';
+                        const last = d.last_updated ? formatDate(d.last_updated) : '-';
+                        const head = d.department_head_name ? escapeHtml(d.department_head_name) : '-';
+                        const department = d.department ? escapeHtml(d.department) : 'Unknown';
+                        const row = `
+                            <tr>
+                                <td class="py-4 px-4 whitespace-nowrap">${department}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">${head}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">${d.completed}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">${d.backlog}</td>
+                                <td class="py-4 px-4 whitespace-nowrap">${d.total}</td>
+                                <td class="py-4 px-4">
+                                    <div class="progress-bar" title="${pct}%">
+                                        <div class="progress-fill" style="width: ${pct}%; background-color: ${color};"></div>
+                                    </div>
+                                    <span style="margin-left:8px;font-weight:600">${pct}%</span>
+                                </td>
+                                <td class="py-4 px-4 whitespace-nowrap">${last}</td>
+                            </tr>
+                        `;
+                        tbody.insertAdjacentHTML('beforeend', row);
+                    });
+                } catch (e) {
+                    console.error('Failed to load department tasks', e);
+                }
+            }
+
+            // Setup admin filter buttons (if present)
+            function setupDeptFilters(){
+                const bBacklog = document.getElementById('filter-backlog');
+                const bProd = document.getElementById('filter-productive');
+                if(!bBacklog || !bProd) return;
+                function setActive(mode){
+                    window.deptSort = mode;
+                    if(mode === 'productive'){
+                        bProd.classList.add('bg-blue-600','text-white');
+                        bProd.classList.remove('bg-white','text-gray-700');
+                        bBacklog.classList.remove('bg-blue-600','text-white');
+                        bBacklog.classList.add('bg-blue-50','text-blue-700');
+                    } else {
+                        bBacklog.classList.add('bg-blue-600','text-white');
+                        bBacklog.classList.remove('bg-blue-50','text-blue-700');
+                        bProd.classList.remove('bg-blue-600','text-white');
+                        bProd.classList.add('bg-white','text-gray-700');
+                    }
+                    loadDeptTasks();
+                }
+                bBacklog.addEventListener('click', ()=> setActive('backlog'));
+                bProd.addEventListener('click', ()=> setActive('productive'));
+                // initialize UI
+                setActive(window.deptSort || 'backlog');
+            }
+
+            function formatDate(ts) {
+                try { const d = new Date(ts); return d.toLocaleString(); } catch(e) { return ts || ''; }
+            }
+
+            function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+            // initialize admin filter UI (if present)
+            setupDeptFilters();
+
+            // initial load and poll every 10 seconds for near-realtime
+            loadDeptTasks();
+            setInterval(loadDeptTasks, 10000);
 
             // Chart and events (existing code)
             const chartData = {

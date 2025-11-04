@@ -17,7 +17,8 @@ try {
         // Ensure notifications table exists
         $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            recipient_email VARCHAR(150) NOT NULL,
+            recipient_email VARCHAR(150),
+            recipient_role VARCHAR(100),
             message TEXT NOT NULL,
             type VARCHAR(50) DEFAULT 'event',
             is_read TINYINT(1) DEFAULT 0,
@@ -29,9 +30,9 @@ try {
         $ustmt = $pdo->query('SELECT email FROM users WHERE email IS NOT NULL');
         $users = $ustmt->fetchAll(PDO::FETCH_COLUMN);
         if (!empty($users)) {
-            $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, message, type) VALUES (?, ?, ?)');
+            $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
             foreach ($users as $email) {
-                try { $ins->execute([$email, $noteMsg, 'event']); } catch (PDOException $e) { /* non-fatal */ }
+                try { $ins->execute([$email, null, $noteMsg, 'event']); } catch (PDOException $e) { /* non-fatal */ }
             }
         }
     } catch (PDOException $ne) {

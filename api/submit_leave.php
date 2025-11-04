@@ -166,6 +166,25 @@ try {
   $stmt = $pdo->prepare("INSERT INTO leave_requests (employee_email, dept_head_email, leave_type, dates, reason, signature_path, details, request_token, status, applied_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
   $stmt->execute([$employee_email, $dept_head_email, $leave_type, $dates, $reason, $signature_path, $details_json, $request_token, $status, $applied_at]);
   $insertId = $pdo->lastInsertId();
+  // Create a notification for the assigned department head so they know a new leave was applied
+  try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      recipient_email VARCHAR(150),
+      recipient_role VARCHAR(100),
+      message TEXT NOT NULL,
+      type VARCHAR(50) DEFAULT 'leave',
+      is_read TINYINT(1) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+    if (!empty($dept_head_email) && $dept_head_email !== $employee_email) {
+      $msg = sprintf('New leave request from %s: %s (%s)', $employee_email, $leave_type, $dates);
+      $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
+      $ins->execute([$dept_head_email, null, $msg, 'leave_application']);
+    }
+  } catch (PDOException $ne) {
+    // non-fatal
+  }
   echo json_encode(['success'=>true, 'id'=>$insertId, 'signature_path'=>$signature_path, 'applied_at'=>$applied_at]);
 } catch (PDOException $e) {
   // On duplicate request_token, fetch and return existing

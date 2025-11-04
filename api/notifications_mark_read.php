@@ -13,15 +13,25 @@ if (!$email) {
 $data = json_decode(file_get_contents('php://input'), true) ?? [];
 $id = isset($data['id']) ? (int)$data['id'] : 0;
 try {
+    // determine current user's role from users table
+    $role = null;
+    try {
+        $rstmt = $pdo->prepare('SELECT role FROM users WHERE email = ?');
+        $rstmt->execute([$email]);
+        $rrow = $rstmt->fetch(PDO::FETCH_ASSOC);
+        if ($rrow && isset($rrow['role'])) $role = $rrow['role'];
+    } catch (Exception $ee) { /* ignore */ }
+
     if ($id > 0) {
-        $stmt = $pdo->prepare('UPDATE notifications SET is_read = 1 WHERE id = ? AND recipient_email = ?');
-        $stmt->execute([$id, $email]);
+        // Only allow marking notification addressed to this email or this role
+        $stmt = $pdo->prepare('UPDATE notifications SET is_read = 1 WHERE id = ? AND (recipient_email = ? OR (recipient_role IS NOT NULL AND recipient_role = ?))');
+        $stmt->execute([$id, $email, $role]);
         echo json_encode(['success' => true]);
         exit;
     } else {
-        // mark all read
-        $stmt = $pdo->prepare('UPDATE notifications SET is_read = 1 WHERE recipient_email = ?');
-        $stmt->execute([$email]);
+        // mark all read for this user (by email or role)
+        $stmt = $pdo->prepare('UPDATE notifications SET is_read = 1 WHERE (recipient_email = ? OR (recipient_role IS NOT NULL AND recipient_role = ?))');
+        $stmt->execute([$email, $role]);
         echo json_encode(['success' => true]);
         exit;
     }

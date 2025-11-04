@@ -181,7 +181,7 @@ if (!empty($details['snapshot']['salary']['value'])) {
       <!-- 6. DETAILS OF APPLICATION -->
       <div class="text-xs form-box mt-3">
         <div class="text-center font-bold form-line p-1">
-          6. DETAILS OF APPLICATION
+          <span class="text-lg font-bold">6. DETAILS OF APPLICATION</span>
         </div>
 
         <div class="flex">
@@ -378,14 +378,13 @@ if (!empty($details['snapshot']['salary']['value'])) {
           </div>
         </div>
 
-        <div class="flex">
+          <div class="flex">
           <!-- 6.C NUMBER OF WORKING DAYS APPLIED FOR -->
           <div
             class="w-2/4 p-2 form-line border-t border-black border-r border-black"
           >
-            <div class="font-bold mb-1">
-              6.C NUMBER OF WORKING DAYS APPLIED FOR
-            </div>
+          <!-- (HR section moved to the dedicated Section 7 block below) -->
+            <div class="font-bold mb-1">6.C NUMBER OF WORKING DAYS APPLIED FOR</div>
             <!-- Line for number of days -->
             <input
               type="text"
@@ -536,13 +535,15 @@ if (!empty($details['snapshot']['salary']['value'])) {
               </div>
             </div>
 
+            <?php $hr = $details['hr'] ?? null; $s = $hr['section7'] ?? []; $hsigs = $hr['signatures'] ?? []; ?>
             <div class="mt-8 text-center text-xxs font-semibold pt-2">
-              <input
-                type="text"
-                class="form-underline w-3/4 text-center text-sm"
-                placeholder=""
-                value="<?= htmlspecialchars($leave['authorized_officer'] ?? '') ?>"
-              />
+              <?php $certSig = $hsigs['certifier'] ?? ($hsigs['7a'] ?? null); ?>
+                <div style="position:relative; min-height:56px;">
+                  <?php if (!empty($certSig)): ?>
+                    <img src="/capstone/<?= ltrim($certSig, '/') ?>" alt="Certifier sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+                  <?php endif; ?>
+                  <input type="text" class="form-underline w-3/4 text-center text-sm" style="padding-top:28px;" value="<?= htmlspecialchars($s['certifier_name'] ?? $s['authorized_officer'] ?? $s['authorized_officer_7a'] ?? $leave['authorized_officer'] ?? '') ?>" readonly />
+                </div>
               <p class="mt-0.5 font-normal">(Authorized Officer)</p>
             </div>
           </div>
@@ -592,12 +593,12 @@ if (!empty($details['snapshot']['salary']['value'])) {
             </div>
 
             <div class="mt-12 text-center text-xs font-semibold pt-2">
-              <input
-                type="text"
-                class="form-underline w-3/4 text-center text-sm"
-                placeholder=""
-                value="<?= htmlspecialchars($leave['authorized_officer_recommendation'] ?? '') ?>"
-              />
+              <div style="position:relative; min-height:56px;">
+                <?php if (!empty($hsigs['7b'])): ?>
+                  <img src="/capstone/<?= ltrim($hsigs['7b'], '/') ?>" alt="7B sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+                <?php endif; ?>
+                <input type="text" class="form-underline w-3/4 text-center text-sm" style="padding-top:28px;" value="<?= htmlspecialchars($s['authorized_officer_7b'] ?? $leave['authorized_officer_recommendation'] ?? '') ?>" readonly />
+              </div>
               <p class="mt-0.5 font-normal">(Authorized Officer)</p>
             </div>
           </div>
@@ -660,12 +661,13 @@ if (!empty($details['snapshot']['salary']['value'])) {
           </div>
         </div>
         <div class="mt-4 text-center text-xs font-semibold p-2">
-          <input
-            type="text"
-            class="form-underline w-1/4 text-center text-sm"
-            placeholder=""
-            value="<?= htmlspecialchars($leave['authorized_official'] ?? '') ?>"
-          />
+          <?php $finalSig = $hsigs['final'] ?? ($hsigs['authorized'] ?? null); ?>
+          <div style="position:relative; min-height:56px;">
+            <?php if (!empty($finalSig)): ?>
+              <img src="/capstone/<?= ltrim($finalSig, '/') ?>" alt="final sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+            <?php endif; ?>
+            <input type="text" class="form-underline w-1/4 text-center text-sm" style="padding-top:28px;" value="<?= htmlspecialchars($s['final_official'] ?? $leave['authorized_official'] ?? 'Mayor Noel Bitrics Luistro') ?>" readonly />
+          </div>
           <p class="mt-0.5 font-normal">(Authorized Official)</p>
         </div>
       </div>
@@ -678,7 +680,53 @@ if (!empty($details['snapshot']['salary']['value'])) {
   <!-- Print Button -->
   <div class="mt-4 text-center">
     <button onclick="window.print()" class="no-print bg-blue-500 text-white px-6 py-2 rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75">Print Form</button>
+    <?php if (isset($_GET['live']) && $_GET['live'] === '1'): ?>
+      <button onclick="doneAction()" class="no-print bg-gray-600 text-white px-4 py-2 rounded-lg shadow-md ml-3 hover:bg-gray-700">Done</button>
+    <?php endif; ?>
   </div>
 </div>
 </body>
+<script>
+  // Live-refresh when opened with ?live=1 — polls leave requests and reloads if details changed
+  const initialDetails = <?= json_encode($details) ?>;
+  const leaveId = <?= json_encode($leave_id) ?>;
+  (function(){
+    try{
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('live') === '1'){
+        setInterval(async ()=>{
+          try{
+            const res = await fetch('/capstone/api/get_leave_requests.php');
+            const js = await res.json();
+            if(js && js.success && Array.isArray(js.data)){
+              const row = js.data.find(r => String(r.id) === String(leaveId));
+              if(row){
+                let newDetails = row.details;
+                if (typeof newDetails === 'string'){
+                  try{ newDetails = JSON.parse(newDetails); }catch(e){}
+                }
+                if (JSON.stringify(newDetails) !== JSON.stringify(initialDetails)){
+                  location.reload();
+                }
+              }
+            }
+          }catch(e){}
+        }, 2500);
+      }
+    }catch(e){}
+  })();
+
+  function doneAction(){
+    try{
+      // If this window was opened from the leave-request page, close it and focus the opener
+      if (window.opener && !window.opener.closed){
+        try{ window.opener.focus(); }catch(e){}
+        window.close();
+        return;
+      }
+    }catch(e){}
+    // Otherwise navigate back to the dept head leave-request listing
+    window.location.href = '/capstone/dept_head/leave-request.html';
+  }
+</script>
 </html>

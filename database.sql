@@ -54,11 +54,13 @@ CREATE TABLE IF NOT EXISTS employee_signatures (
 );
 
 CREATE TABLE IF NOT EXISTS notifications (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    recipient_email VARCHAR(100) NOT NULL,
-    message TEXT NOT NULL,
-    type VARCHAR(50) DEFAULT 'recall',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	recipient_email VARCHAR(100),
+	recipient_role VARCHAR(100),
+	message TEXT NOT NULL,
+	type VARCHAR(50) DEFAULT 'recall',
+	is_read TINYINT(1) DEFAULT 0,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tasks assigned by department heads to employees

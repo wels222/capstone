@@ -7,17 +7,19 @@ if (!isset($_SESSION['user_id'])) {
 }
 require_once '../db.php';
 $user_id = $_SESSION['user_id'];
-$stmt = $pdo->prepare('SELECT firstname, lastname, mi, position, profile_picture FROM users WHERE id = ?');
+$stmt = $pdo->prepare('SELECT firstname, lastname, mi, position, profile_picture, email FROM users WHERE id = ?');
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 if ($user) {
     $fullName = $user['firstname'] . ' ' . ($user['mi'] ? $user['mi'] . '. ' : '') . $user['lastname'];
     $position = $user['position'];
     $profilePicture = $user['profile_picture'] ?? '';
+    $userEmail = $user['email'] ?? '';
 } else {
     $fullName = 'Employee';
     $position = '';
     $profilePicture = '';
+    $userEmail = '';
 }
 ?>
 <!DOCTYPE html>
@@ -161,125 +163,9 @@ if ($user) {
 
                 <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Leave Credits</h3>
-                    <!-- Scrollable grid: show roughly 3 columns x 2 rows on md+ and allow vertical scroll -->
-                    <div class="relative">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[28rem] md:max-h-[20rem] overflow-y-auto pr-2">
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Vacation Leave</span>
-                                    <span class="text-sm text-gray-500">15 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 15 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Mandatory / Forced Leave</span>
-                                    <span class="text-sm text-gray-500">5 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 5 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Sick Leave</span>
-                                    <span class="text-sm text-gray-500">15 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 15 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Maternity Leave</span>
-                                    <span class="text-sm text-gray-500">105 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 105 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Paternity Leave</span>
-                                    <span class="text-sm text-gray-500">7 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 7 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Special Privilege Leave</span>
-                                    <span class="text-sm text-gray-500">3 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 3 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Solo Parent Leave</span>
-                                    <span class="text-sm text-gray-500">7 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 7 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Study Leave</span>
-                                    <span class="text-sm text-gray-500">6 months</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 6 months</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">10-Day VAWC Leave</span>
-                                    <span class="text-sm text-gray-500">10 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 10 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Rehabilitation Leave</span>
-                                    <span class="text-sm text-gray-500">6 months</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 6 months</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Special Leave Benefits for Women</span>
-                                    <span class="text-sm text-gray-500">60 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 60 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Special Emergency (Calamity) Leave</span>
-                                    <span class="text-sm text-gray-500">5 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 5 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
-
-                            <div class="flex flex-col items-start p-4 bg-gray-50 rounded-lg">
-                                <div class="flex items-center justify-between w-full">
-                                    <span class="font-medium text-gray-700">Adoption Leave</span>
-                                    <span class="text-sm text-gray-500">60 days</span>
-                                </div>
-                                <p class="text-sm text-gray-500">Available - 60 days</p>
-                                <p class="text-sm text-gray-500">Used - 00</p>
-                            </div>
+                    <div id="leave-credits-container" class="relative">
+                        <div id="leave-credits-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 max-h-[28rem] md:max-h-[20rem] overflow-y-auto pr-2">
+                            <div class="text-center text-gray-500 p-6">Loading leave credits...</div>
                         </div>
                     </div>
                 </div>
@@ -605,6 +491,229 @@ if ($user) {
            }
 
            loadNotifications();
+                     // --- Real-time Leave Credits widget for current user ---
+                     const leaveGridHost = document.getElementById('leave-credits-grid');
+                     const _currentUserEmail = <?php echo json_encode($userEmail); ?>;
+                     async function fetchLeaveCreditsForCurrentUser(){
+                             if (!leaveGridHost) return;
+                             if (!_currentUserEmail) {
+                                     leaveGridHost.innerHTML = '<div class="text-gray-500 p-4">Not available (not signed in)</div>';
+                                     return;
+                             }
+                             try{
+                                     const r = await fetch('../api/employee_leave_credits.php?email=' + encodeURIComponent(_currentUserEmail));
+                                     if (!r.ok) throw new Error('network');
+                                     const js = await r.json();
+                                     if (!js || !js.success || !Array.isArray(js.data)) {
+                                             leaveGridHost.innerHTML = '<div class="text-center text-red-500 p-4">Failed to load leave credits.</div>';
+                                             return;
+                                     }
+                                     const items = js.data;
+                                     // Clear and render
+                                     leaveGridHost.innerHTML = '';
+                                     items.forEach(it => {
+                                               const div = document.createElement('div');
+                                               div.className = 'h-full min-h-[220px] box-border overflow-hidden flex flex-col items-start p-5 md:p-6 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow space-y-4';
+                                             const rawUsed = Number(it.used) || 0;
+                                             const total = Math.max(0, Number(it.total) || 0);
+                                             const used = Math.min(Math.max(0, rawUsed), total);
+                                             const avail = Math.max(0, total - used);
+                                             const usedPct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+                                             const availPct = Math.max(0, 100 - usedPct);
+                                             const nameLen = (it.type || '').length;
+                                             let titleSize = 'text-[15px]';
+                                             if (nameLen > 24) titleSize = 'text-[14px]';
+                                             if (nameLen > 30) titleSize = 'text-sm';
+                                             if (nameLen > 36) titleSize = 'text-[13px]';
+                                             if (nameLen > 44) titleSize = 'text-xs';
+                                             div.innerHTML = `
+                                                 <div class="flex items-start justify-between w-full">
+                                                     <span class="${titleSize} font-semibold text-gray-900 break-words leading-snug pr-4 min-w-0">${(it.type||'')}</span>
+                                                     <span class="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200 whitespace-nowrap shrink-0">${total} ${it.unit||'days'}</span>
+                                                 </div>
+                                                 <div class="w-full mt-1 flex items-center gap-4 md:gap-6 flex-wrap justify-between flex-1">
+                                                     <div class="relative w-24 h-24 shrink-0 mx-auto sm:mx-0 p-1">
+                                                         <canvas width="88" height="88"></canvas>
+                                                         <div class="absolute inset-0 flex items-center justify-center">
+                                                             <span class="text-sm font-semibold text-gray-800">${availPct}%</span>
+                                                         </div>
+                                                     </div>
+                                                     <div class="flex-1 min-w-[240px] px-1.5">
+                                                         <div class="flex items-center justify-between text-sm pr-4 md:pr-5">
+                                                             <span class="inline-flex items-center gap-2 text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>Used</span>
+                                                             <span class="font-semibold text-gray-800 shrink-0 mr-1 md:mr-2">${used} ${it.unit||'days'}</span>
+                                                         </div>
+                                                         <div class="mt-1 mx-4 progress-used"></div>
+                                                         <div class="flex items-center justify-between text-sm mt-3 pr-4 md:pr-5">
+                                                             <span class="inline-flex items-center gap-2 text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Available</span>
+                                                             <span class="font-semibold text-gray-800 shrink-0 mr-1 md:mr-2">${avail} ${it.unit||'days'}</span>
+                                                         </div>
+                                                         <div class="mt-1 mx-4 progress-avail"></div>
+                                                     </div>
+                                                 </div>
+                                             `;
+                                             leaveGridHost.appendChild(div);
+
+                                             // Helper to draw progress bars
+                                             const makeProgressSVG = (pct, fill, track) => {
+                                                     const w = Math.max(0, Math.min(100, Number(pct) || 0));
+                                                     const hasFill = w > 0;
+                                                     return `
+                                                         <svg viewBox="0 0 100 8" width="100%" height="8" preserveAspectRatio="none" style="display:block">
+                                                             <rect x="0" y="0" width="100" height="8" rx="4" fill="${track}"></rect>
+                                                             ${hasFill ? `<rect x="0" y="0" width="${w}" height="8" rx="4" fill="${fill}"></rect>` : ''}
+                                                         </svg>
+                                                     `;
+                                             };
+
+                                             const usedHost = div.querySelector('.progress-used');
+                                             const availHost = div.querySelector('.progress-avail');
+                                             if (usedHost) usedHost.innerHTML = makeProgressSVG(usedPct, '#6366F1', '#E0E7FF');
+                                             if (availHost) availHost.innerHTML = makeProgressSVG(availPct, '#10B981', '#D1FAE5');
+
+                                             // Draw donut chart for this leave type
+                                             const canvas = div.querySelector('canvas');
+                                             if (canvas && window.Chart) {
+                                                     try{
+                                                             const ctx = canvas.getContext('2d');
+                                                             new Chart(ctx, {
+                                                                     type: 'doughnut',
+                                                                     data: {
+                                                                             labels: ['Used','Available'],
+                                                                             datasets: [{ data: [used, avail], backgroundColor: ['#6366F1', '#10B981'], borderWidth: 0 }]
+                                                                     },
+                                                                     options: { responsive: false, cutout: '68%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+                                                             });
+                                                     }catch(e){ console.warn('leave chart error', e); }
+                                             }
+                                     });
+                             }catch(e){
+                                     console.error('Failed to fetch leave credits', e);
+                                     if (leaveGridHost) leaveGridHost.innerHTML = '<div class="text-center text-red-500 p-4">Failed to load leave credits.</div>';
+                             }
+                     }
+                                 // initial fetch + polling for updates (not continuous spinning)
+                                 fetchLeaveCreditsForCurrentUser();
+                                 const LEAVE_POLL_MS = 5000; // poll every 5s by default to reduce load
+                                 let leavePollId = setInterval(fetchLeaveCreditsForCurrentUser, LEAVE_POLL_MS);
+                                 let lastSummary = null; // used to avoid unnecessary re-renders when nothing changed
+                                 let failureCount = 0;
+                                 // Wrap the original function to check for summary changes and apply backoff on failures
+                                 const _origFetch = fetchLeaveCreditsForCurrentUser;
+                                 async function _polledFetch() {
+                                         try {
+                                                 const r = await fetch('../api/employee_leave_credits.php?email=' + encodeURIComponent(_currentUserEmail));
+                                                 if (!r.ok) throw new Error('network');
+                                                 const js = await r.json();
+                                                 failureCount = 0; // reset failures on success
+                                                 const summary = js && js.summary ? js.summary : null;
+                                                 // If summary unchanged, skip expensive DOM/chart updates
+                                                 if (lastSummary && JSON.stringify(lastSummary) === JSON.stringify(summary)) {
+                                                         // nothing changed; no-op
+                                                         return;
+                                                 }
+                                                 lastSummary = summary;
+                                                 // otherwise, delegate to original renderer by reusing parsed data
+                                                 // We'll recreate the DOM using the fetched items
+                                                 if (!js || !js.success || !Array.isArray(js.data)) {
+                                                         if (leaveGridHost) leaveGridHost.innerHTML = '<div class="text-center text-red-500 p-4">Failed to load leave credits.</div>';
+                                                         return;
+                                                 }
+                                                 const items = js.data;
+                                                 // Clear and render (reuse same rendering logic)
+                                                 leaveGridHost.innerHTML = '';
+                                                 items.forEach(it => {
+                                                         const div = document.createElement('div');
+                                                         div.className = 'h-full box-border overflow-hidden flex flex-col items-start p-5 md:p-6 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow space-y-4';
+                                                         const rawUsed = Number(it.used) || 0;
+                                                         const total = Math.max(0, Number(it.total) || 0);
+                                                         const used = Math.min(Math.max(0, rawUsed), total);
+                                                         const avail = Math.max(0, total - used);
+                                                         const usedPct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+                                                         const availPct = Math.max(0, 100 - usedPct);
+                                                         const nameLen = (it.type || '').length;
+                                                         let titleSize = 'text-[15px]';
+                                                         if (nameLen > 24) titleSize = 'text-[14px]';
+                                                         if (nameLen > 30) titleSize = 'text-sm';
+                                                         if (nameLen > 36) titleSize = 'text-[13px]';
+                                                         if (nameLen > 44) titleSize = 'text-xs';
+                                                         div.innerHTML = `
+                                                             <div class="flex items-start justify-between w-full">
+                                                                 <span class="${titleSize} font-semibold text-gray-900 break-words leading-snug pr-4 min-w-0">${(it.type||'')}</span>
+                                                                 <span class="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200 whitespace-nowrap shrink-0">${total} ${it.unit||'days'}</span>
+                                                             </div>
+                                                             <div class="w-full mt-1 flex items-center gap-4 md:gap-6 flex-wrap justify-between flex-1">
+                                                                 <div class="relative w-24 h-24 shrink-0 mx-auto sm:mx-0 p-1">
+                                                                     <canvas width="88" height="88"></canvas>
+                                                                     <div class="absolute inset-0 flex items-center justify-center">
+                                                                         <span class="text-sm font-semibold text-gray-800">${availPct}%</span>
+                                                                     </div>
+                                                                 </div>
+                                                                 <div class="flex-1 min-w-[240px] px-1.5">
+                                                                     <div class="flex items-center justify-between text-sm pr-4 md:pr-5">
+                                                                         <span class="inline-flex items-center gap-2 text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>Used</span>
+                                                                         <span class="font-semibold text-gray-800 shrink-0 mr-1 md:mr-2">${used} ${it.unit||'days'}</span>
+                                                                     </div>
+                                                                     <div class="mt-1 mx-4 progress-used"></div>
+                                                                     <div class="flex items-center justify-between text-sm mt-3 pr-4 md:pr-5">
+                                                                         <span class="inline-flex items-center gap-2 text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Available</span>
+                                                                         <span class="font-semibold text-gray-800 shrink-0 mr-1 md:mr-2">${avail} ${it.unit||'days'}</span>
+                                                                     </div>
+                                                                     <div class="mt-1 mx-4 progress-avail"></div>
+                                                                 </div>
+                                                             </div>
+                                                         `;
+                                                         leaveGridHost.appendChild(div);
+
+                                                         // Helper to draw progress bars
+                                                         const makeProgressSVG = (pct, fill, track) => {
+                                                                 const w = Math.max(0, Math.min(100, Number(pct) || 0));
+                                                                 const hasFill = w > 0;
+                                                                 return `
+                                                                     <svg viewBox="0 0 100 8" width="100%" height="8" preserveAspectRatio="none" style="display:block">
+                                                                         <rect x="0" y="0" width="100" height="8" rx="4" fill="${track}"></rect>
+                                                                         ${hasFill ? `<rect x="0" y="0" width="${w}" height="8" rx="4" fill="${fill}"></rect>` : ''}
+                                                                     </svg>
+                                                                 `;
+                                                         };
+
+                                                         const usedHost = div.querySelector('.progress-used');
+                                                         const availHost = div.querySelector('.progress-avail');
+                                                         if (usedHost) usedHost.innerHTML = makeProgressSVG(usedPct, '#6366F1', '#E0E7FF');
+                                                         if (availHost) availHost.innerHTML = makeProgressSVG(availPct, '#10B981', '#D1FAE5');
+
+                                                         // Draw donut chart for this leave type
+                                                         const canvas = div.querySelector('canvas');
+                                                         if (canvas && window.Chart) {
+                                                                 try{
+                                                                         const ctx = canvas.getContext('2d');
+                                                                         new Chart(ctx, {
+                                                                                 type: 'doughnut',
+                                                                                 data: {
+                                                                                         labels: ['Used','Available'],
+                                                                                         datasets: [{ data: [used, avail], backgroundColor: ['#6366F1', '#10B981'], borderWidth: 0 }]
+                                                                                 },
+                                                                                 options: { responsive: false, cutout: '68%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+                                                                         });
+                                                                 }catch(e){ console.warn('leave chart error', e); }
+                                                         }
+                                                 });
+                                         } catch (err) {
+                                                 failureCount++;
+                                                 console.error('leave credits poll failed', err);
+                                                 // on repeated failures, back off to save resources
+                                                 const backoff = Math.min(30000, LEAVE_POLL_MS * Math.pow(2, failureCount));
+                                                 if (leavePollId) { clearInterval(leavePollId); leavePollId = setInterval(_polledFetch, backoff); }
+                                         }
+                                 }
+
+                                 // replace polling target with our wrapped fetch to respect change detection and backoff
+                                 if (leavePollId) { clearInterval(leavePollId); }
+                                 leavePollId = setInterval(_polledFetch, LEAVE_POLL_MS);
+                                 document.addEventListener('visibilitychange', () => {
+                                         if (document.hidden) { if (leavePollId) { clearInterval(leavePollId); leavePollId = null; } }
+                                         else { if (!leavePollId) leavePollId = setInterval(_polledFetch, LEAVE_POLL_MS); _polledFetch(); }
+                                 });
            // Toggle dropdown on bell click
            bell.addEventListener('click', () => {
                dropdown.classList.toggle('hidden');

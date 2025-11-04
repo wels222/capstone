@@ -689,7 +689,7 @@ if (!isset($_SESSION['user_id'])) {
             <span class="header-text">Dept Head</span>
         </div>
         <div class="header-profile">
-            <i class="fas fa-bell notification-icon"></i>
+            <i id="open-notif-btn" class="fas fa-bell notification-icon" title="Compose notification"></i>
             <img src="../assets/logo.png" alt="Profile" class="profile-image">
         </div>
     </header>
@@ -960,6 +960,123 @@ if (!isset($_SESSION['user_id'])) {
         updateDeptCounts();
         setInterval(updateDeptCounts, 12000); // refresh every 12s
     </script>
+            <script>
+                    // Notification inbox handlers for Dept Head dashboard
+                    (function(){
+                            const tpl = `
+                            <div id="notif-dropdown" style="position:fixed;top:60px;right:20px;width:380px;max-height:460px;overflow:hidden;background:#fff;border:1px solid #e6eefc;border-radius:10px;box-shadow:0 10px 40px rgba(15,23,42,0.12);display:none;z-index:1200;font-family:Inter, sans-serif">
+                                <div style="padding:12px 14px;border-bottom:1px solid #f1f8ff;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(90deg,#fbfeff,#f7fbff);">
+                                    <div style="display:flex;flex-direction:column">
+                                      <strong style="font-size:1rem;color:#0f172a">Notifications</strong>
+                                      <span id="notif-sub" style="font-size:0.82rem;color:#64748b;margin-top:2px">Recent activity and alerts</span>
+                                    </div>
+                                    <div style="display:flex;gap:8px;align-items:center">
+                                      <button id="notif-mark-all" style="background:#e6f0ff;border:1px solid #c7e0ff;color:#0b61d3;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.85rem">Mark all</button>
+                                      <button id="notif-clear-read" style="background:#fff;border:1px solid #e5e7eb;color:#374151;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:0.85rem">Clear read</button>
+                                    </div>
+                                </div>
+                                <div id="notif-list" style="padding:8px;overflow:auto;height:360px;"></div>
+                                <div id="notif-empty" style="padding:16px;text-align:center;color:#6b7280;display:none">You're all caught up — no notifications</div>
+                                <div style="padding:10px;border-top:1px solid #f1f8ff;background:#fbfdff;text-align:center;font-size:0.85rem;color:#64748b">Updated every 15s</div>
+                            </div>`;
+                            document.body.insertAdjacentHTML('beforeend', tpl);
+
+                            const bell = document.getElementById('open-notif-btn');
+                            const dropdown = document.getElementById('notif-dropdown');
+                            const listEl = document.getElementById('notif-list');
+                            const emptyEl = document.getElementById('notif-empty');
+                            const markAllBtn = document.getElementById('notif-mark-all');
+                            let polling = null;
+
+                            async function fetchNotifications(){
+                                    try{
+                                            const res = await fetch('/capstone/api/notifications_list.php?limit=50', { credentials: 'include' });
+                                            const data = await res.json();
+                                            if(!data || !data.success){ renderEmpty(); return; }
+                                            const notes = Array.isArray(data.notifications) ? data.notifications : [];
+                                            renderList(notes);
+                                            updateBadge((data.unread || 0));
+                                    }catch(e){ console.error('notif fetch', e); renderEmpty(); }
+                            }
+
+                            function renderEmpty(){ listEl.innerHTML=''; emptyEl.style.display='block'; }
+
+                            function timeAgo(ts){ try{ const d = new Date(ts); return d.toLocaleString(); }catch(e){ return ts||''; } }
+
+                function renderList(notes){
+                    emptyEl.style.display = notes.length ? 'none' : 'block';
+                    listEl.innerHTML = notes.map(n => {
+                        const unread = Number(n.is_read) ? '' : 'font-weight:700;color:#0b1220;';
+                        const msg = (n.message || '').replace(/</g,'&lt;');
+                        const typeBadge = n.type ? `<span style="background:#eef2ff;border:1px solid #d7ebff;color:#0b61d3;padding:3px 6px;border-radius:999px;font-size:0.72rem;margin-left:6px">${n.type}</span>` : '';
+                        return `<div data-id="${n.id}" class="notif-row" style="padding:10px;border-bottom:1px solid #f3f7fb;display:flex;gap:10px;align-items:flex-start">
+                            <div style="width:6px;height:36px;border-radius:4px;background:${Number(n.is_read)?'#e6eefc':'#0b61d3'};flex-shrink:0"></div>
+                            <div style="flex:1;min-width:0">
+                            <div style="${unread}">${msg}${typeBadge}</div>
+                            <div style="font-size:0.78rem;color:#64748b;margin-top:6px">${timeAgo(n.created_at)}</div>
+                            </div>
+                            <div style="margin-left:8px;white-space:nowrap;display:flex;flex-direction:column;gap:6px">
+                            ${Number(n.is_read) ? '' : '<button class="notif-mark-read" style="background:#0b61d3;color:#fff;border:none;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.82rem">Mark</button>'}
+                            </div>
+                        </div>`;
+                    }).join('');
+                    listEl.querySelectorAll('.notif-mark-read').forEach(btn => {
+                        btn.addEventListener('click', async (ev)=>{
+                            const row = ev.target.closest('[data-id]');
+                            const id = row?.getAttribute('data-id');
+                            if(!id) return;
+                            await markRead(id);
+                            await fetchNotifications();
+                        });
+                    });
+                }
+
+                            function updateBadge(n){
+                                    let badge = bell.querySelector('.notif-badge');
+                                    if(!badge){ badge = document.createElement('span'); badge.className='notif-badge'; badge.style.cssText='background:#ef4444;color:#fff;padding:2px 6px;border-radius:999px;font-size:0.75rem;margin-left:6px'; bell.appendChild(badge); }
+                                    badge.textContent = n>0?String(n):'';
+                                    badge.style.display = n>0 ? '' : 'none';
+                            }
+
+                            async function markRead(id){
+                                    try{ await fetch('/capstone/api/notifications_mark_read.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id}), credentials: 'include' }); }catch(e){ console.error(e); }
+                            }
+
+                            async function markAll(){
+                                    try{ await fetch('/capstone/api/notifications_mark_read.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}), credentials: 'include' }); await fetchNotifications(); }catch(e){ console.error(e); }
+                            }
+
+                                async function clearRead(){
+                                    if(!confirm('Clear all read notifications? This will permanently remove them for you.')) return;
+                                    try{
+                                        const res = await fetch('/capstone/api/notifications_clear.php', { method:'POST', credentials: 'include' });
+                                        const data = await res.json();
+                                        if(data && data.success){ await fetchNotifications(); }
+                                    }catch(e){ console.error('clearRead', e); }
+                                }
+
+                            bell && bell.addEventListener('click', async ()=>{
+                                    if(!dropdown) return;
+                                    if(dropdown.style.display === 'none' || !dropdown.style.display){
+                                            dropdown.style.display = 'block';
+                                            await fetchNotifications();
+                                            polling = setInterval(fetchNotifications, 15000);
+                                    } else {
+                                            dropdown.style.display = 'none';
+                                            if(polling){ clearInterval(polling); polling = null; }
+                                    }
+                            });
+
+                            markAllBtn && markAllBtn.addEventListener('click', async ()=>{ if(confirm('Mark all notifications as read?')){ await markAll(); } });
+                                const clearBtn = document.getElementById('notif-clear-read');
+                                clearBtn && clearBtn.addEventListener('click', async ()=>{ await clearRead(); });
+
+                            document.addEventListener('click', (ev)=>{ if(!ev.target.closest || (!ev.target.closest('#notif-dropdown') && !ev.target.closest('#open-notif-btn'))){ if(dropdown && dropdown.style.display==='block'){ dropdown.style.display='none'; if(polling){ clearInterval(polling); polling=null; } } } });
+
+                            fetchNotifications();
+                    })();
+            </script>
+        </script>
 </body>
 </html>
 

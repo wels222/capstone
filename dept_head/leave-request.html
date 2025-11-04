@@ -1474,6 +1474,9 @@
                       <button class="bg-blue-500 text-white px-2 py-1 rounded view-button" onclick="viewForm('${
                         request.id
                       }')">View</button>
+                      <button class="bg-indigo-600 text-white px-2 py-1 rounded ml-2" onclick="openDept7BModal('${
+                        request.id
+                      }')">Edit </button>
                     </td>
                     <td class="border border-gray-300 px-4 py-2 text-center">
                       <select class="action-dropdown px-2 py-1 rounded border border-gray-300" data-id="${
@@ -1668,25 +1671,72 @@
           window._declineRequestId = id;
           document.getElementById("decline-modal").classList.add("show");
         } else {
-          // Approve action: update backend immediately
-          fetch(`/capstone/api/update_leave_status.php`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id, status: action }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.success) {
-                alert(`Leave request ${action}d successfully!`);
-                fetchLeaveRequests();
-              } else {
-                alert("Failed to update leave request.");
+          // Before approving, ensure the Dept Head edited the form (saved 7.B recommendation/signature)
+          try {
+            const req = window._leaveRequests.find(
+              (r) => String(r.id) === String(id)
+            );
+            let edited = false;
+            // Check direct recommendation field (legacy) or details.hr.section7.authorized_officer_7b
+            if (req) {
+              if (
+                req.recommendation &&
+                String(req.recommendation).toLowerCase().includes("approval")
+              )
+                edited = true;
+              if (!edited && req.authorized_officer_recommendation)
+                edited = true;
+              if (!edited && req.details) {
+                try {
+                  const d =
+                    typeof req.details === "string"
+                      ? JSON.parse(req.details)
+                      : req.details;
+                  if (
+                    d &&
+                    d.hr &&
+                    d.hr.section7 &&
+                    d.hr.section7.authorized_officer_7b
+                  )
+                    edited = true;
+                } catch (e) {
+                  /* ignore */
+                }
               }
+            }
+            if (!edited) {
+              alert(
+                'You must edit the form (7.B recommendation/signature) before approving. Please click "Edit" and add your recommendation and signature.'
+              );
+              // reset select
+              select.value = "";
+              return;
+            }
+
+            // Approve action: update backend immediately
+            fetch(`/capstone/api/update_leave_status.php`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id, status: action }),
             })
-            .catch((error) => {
-              console.error("Error updating leave request:", error);
-              alert("An error occurred while updating the leave request.");
-            });
+              .then((response) => response.json())
+              .then((data) => {
+                if (data.success) {
+                  alert(`Leave request ${action}d successfully!`);
+                  fetchLeaveRequests();
+                } else {
+                  alert("Failed to update leave request.");
+                }
+              })
+              .catch((error) => {
+                console.error("Error updating leave request:", error);
+                alert("An error occurred while updating the leave request.");
+              });
+          } catch (e) {
+            console.error("approval check", e);
+            alert("Error checking form state. Cannot approve at this time.");
+            select.value = "";
+          }
         }
       }
 
@@ -1748,6 +1798,133 @@
           };
         }
       });
+
+      /* Dept Head 7.B Modal - edit recommendation signature */
+      // inject modal HTML near the end of body
+      (function insertDept7BModal() {
+        const tpl = `
+        <div id="dept7b-modal" class="modal-overlay">
+          <div class="modal-content">
+            <button class="modal-close-btn" id="dept7b-modal-close">&times;</button>
+            <div class="modal-profile-header">
+              <h4 id="dept7b-modal-title">Edit 7.B — Recommendation (Dept Head)</h4>
+              <div class="employee-details text-sm text-gray-500" id="dept7b-current-name">Uploading as: </div>
+            </div>
+            <div class="modal-leave-credits">
+              <div class="form-group mt-3">
+                <div class="mt-1">
+                  <p class="text-sm text-gray-600">Upload your e-signature below. Your name will be auto-filled and saved with the signature so HR can verify it later.</p>
+                </div>
+                <div class="mt-3">
+                  <label class="text-sm">Signed by (auto-filled)</label>
+                  <input id="dept7b_name" type="text" class="form-underline w-full mt-1 p-1" readonly />
+                </div>
+                <div class="mt-3">
+                  <label class="text-sm">Upload Dept Head E-Signature</label>
+                  <input id="dept7b_sig" type="file" accept="image/*" class="mt-2" />
+                </div>
+              </div>
+            </div>
+            <div class="form-buttons" style="margin-top:1rem;">
+              <button id="dept7b-save-btn" class="initiate-button" style="background-color:#10b981;">Save</button>
+              <button id="dept7b-cancel-btn" class="cancel-button" style="background-color:#6b7280; margin-left:0.5rem;">Cancel</button>
+            </div>
+          </div>
+        </div>`;
+        document.body.insertAdjacentHTML("beforeend", tpl);
+        // wire close handlers
+        document
+          .getElementById("dept7b-modal-close")
+          .addEventListener("click", closeDept7BModal);
+        document
+          .getElementById("dept7b-cancel-btn")
+          .addEventListener("click", closeDept7BModal);
+        document
+          .getElementById("dept7b-save-btn")
+          .addEventListener("click", saveDept7B);
+      })();
+
+      function openDept7BModal(id) {
+        window._editingDept7BId = id;
+        const modal = document.getElementById("dept7b-modal");
+        // clear inputs
+        const fi = document.getElementById("dept7b_sig");
+        if (fi) fi.value = null;
+        // auto-fill name from current_user
+        fetch("/capstone/api/current_user.php")
+          .then((r) => r.json())
+          .then((js) => {
+            let u = null;
+            if (!js) return;
+            if (js.user) u = js.user;
+            else if (js.logged_in || js.firstname) u = js;
+            const name = u
+              ? [u.lastname || "", u.firstname || "", u.mi || ""]
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .join(" ")
+              : "";
+            document.getElementById("dept7b_name").value = name;
+            const hdr = document.getElementById("dept7b-current-name");
+            if (hdr) hdr.textContent = "Uploading as: " + (name || "");
+          })
+          .catch(() => {});
+        modal.classList.add("show");
+      }
+
+      function closeDept7BModal() {
+        const modal = document.getElementById("dept7b-modal");
+        if (modal) modal.classList.remove("show");
+        window._editingDept7BId = null;
+      }
+
+      async function saveDept7B() {
+        const id = window._editingDept7BId;
+        if (!id) return alert("No request selected");
+        const name = document.getElementById("dept7b_name").value || "";
+        // convert file to dataURI
+        const fi = document.getElementById("dept7b_sig");
+        const toDataURI = (file) =>
+          new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result);
+            r.onerror = () => rej();
+            r.readAsDataURL(file);
+          });
+        const sigs = [];
+        if (fi && fi.files && fi.files[0]) {
+          try {
+            const dataUri = await toDataURI(fi.files[0]);
+            sigs.push({ key: "7b", data_uri: dataUri });
+          } catch (e) {}
+        }
+        // build section7 object with authorized_officer_7b only (no recommendation control here)
+        const section7 = { authorized_officer_7b: name };
+        const payload = { id, section7, signatures: sigs };
+        try {
+          const resp = await fetch("/capstone/api/update_hr_section7.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const js = await resp.json();
+          if (js && js.success) {
+            // Open preview so the dept head can verify placement immediately
+            const previewUrl = `/capstone/dept_head/civil_form.php?id=${id}&live=1&from=dept7b`;
+            window.open(previewUrl, "_blank");
+            alert(
+              "Signature saved. A preview has been opened so you can verify the form."
+            );
+            closeDept7BModal();
+            fetchLeaveRequests();
+          } else {
+            alert("Failed to save: " + (js.error || "unknown"));
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Network error");
+        }
+      }
     </script>
   </body>
 </html>

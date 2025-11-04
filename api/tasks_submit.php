@@ -146,18 +146,19 @@ try {
         $deptHeadEmail = $row['assigned_by_email'] ?? null;
         if ($deptHeadEmail && $deptHeadEmail !== $email) {
             try {
-                // ensure notifications table exists (with is_read flag)
-                $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    recipient_email VARCHAR(150) NOT NULL,
-                    message TEXT NOT NULL,
-                    type VARCHAR(50) DEFAULT 'task',
-                    is_read TINYINT(1) DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )");
-                $msg = "Adjustment request for task #{$taskId}: {$note}";
-                $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, message, type) VALUES (?, ?, ?)');
-                $ins->execute([$deptHeadEmail, $msg, 'task_adjust']);
+                    // ensure notifications table exists (with role support and is_read flag)
+                    $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        recipient_email VARCHAR(150),
+                        recipient_role VARCHAR(100),
+                        message TEXT NOT NULL,
+                        type VARCHAR(50) DEFAULT 'task',
+                        is_read TINYINT(1) DEFAULT 0,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )");
+                    $msg = "Adjustment request for task #{$taskId}: {$note}";
+                    $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
+                    $ins->execute([$deptHeadEmail, null, $msg, 'task_adjust']);
             } catch (PDOException $e) { /* ignore notification errors */ }
         }
 
@@ -173,6 +174,26 @@ try {
         }
         $stmt = $pdo->prepare('UPDATE tasks SET status = "completed", submission_file_path = ?, submission_note = ?, completed_at = NOW() WHERE id = ? AND assigned_to_email = ?');
         $stmt->execute([$submission_path, $note, $taskId, $email]);
+
+        // Notify the assigning department head that the task was completed
+        try {
+            $deptHeadEmail = $row['assigned_by_email'] ?? null;
+            if ($deptHeadEmail && $deptHeadEmail !== $email) {
+                $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    recipient_email VARCHAR(150),
+                    recipient_role VARCHAR(100),
+                    message TEXT NOT NULL,
+                    type VARCHAR(50) DEFAULT 'task',
+                    is_read TINYINT(1) DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )");
+                $msg = "Task #{$taskId} submitted/completed by {$email}";
+                $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
+                $ins->execute([$deptHeadEmail, null, $msg, 'task_completed']);
+            }
+        } catch (PDOException $e) { /* ignore */ }
+
         echo json_encode(['success' => true, 'file' => $submission_path]);
         exit;
     }

@@ -79,6 +79,31 @@ try {
     if ($description !== null) { $fields[] = 'description = ?'; $params[] = $description; }
     if ($assigned_to_email !== null) { $fields[] = 'assigned_to_email = ?'; $params[] = $assigned_to_email; }
 
+    // If changing assignee, ensure the new assignee is in the same department as the updater
+    if ($assigned_to_email !== null) {
+        try {
+            $deptStmt = $pdo->prepare('SELECT department FROM users WHERE email = ?');
+            $deptStmt->execute([$byEmail]);
+            $creator = $deptStmt->fetch(PDO::FETCH_ASSOC);
+            $creatorDept = $creator['department'] ?? null;
+            if ($creatorDept) {
+                $aStmt = $pdo->prepare('SELECT department FROM users WHERE email = ?');
+                $aStmt->execute([$assigned_to_email]);
+                $assignee = $aStmt->fetch(PDO::FETCH_ASSOC);
+                $assigneeDept = $assignee['department'] ?? null;
+                if (!$assigneeDept || $assigneeDept !== $creatorDept) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Assignee must be in your department']);
+                    exit;
+                }
+            }
+        } catch (PDOException $__e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Failed to validate assignee department']);
+            exit;
+        }
+    }
+
     if ($attachment_path) { $fields[] = 'attachment_path = ?'; $params[] = $attachment_path; }
 
     if ($statusToSet) { $fields[] = 'status = ?'; $params[] = $statusToSet; }

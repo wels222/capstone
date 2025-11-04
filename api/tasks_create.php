@@ -62,6 +62,30 @@ if (!$title || !$assigned_to_email) {
 	exit;
 }
 
+// Security: ensure the assignee is in the same department as the creator (session user)
+try {
+	$deptStmt = $pdo->prepare('SELECT department FROM users WHERE email = ?');
+	$deptStmt->execute([$byEmail]);
+	$creator = $deptStmt->fetch(PDO::FETCH_ASSOC);
+	$creatorDept = $creator['department'] ?? null;
+	if ($creatorDept) {
+		$aStmt = $pdo->prepare('SELECT department FROM users WHERE email = ?');
+		$aStmt->execute([$assigned_to_email]);
+		$assignee = $aStmt->fetch(PDO::FETCH_ASSOC);
+		$assigneeDept = $assignee['department'] ?? null;
+		if (!$assigneeDept || $assigneeDept !== $creatorDept) {
+			http_response_code(403);
+			echo json_encode(['success' => false, 'error' => 'Assignee must be in your department']);
+			exit;
+		}
+	}
+} catch (PDOException $__e) {
+	// If DB check fails for some reason, block the create as a precaution
+	http_response_code(500);
+	echo json_encode(['success' => false, 'error' => 'Failed to validate assignee department']);
+	exit;
+}
+
 // Handle optional file upload. We will not create directories automatically.
 $attachment_path = null;
 if (!empty($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
@@ -99,19 +123,20 @@ try {
 
 	// Create an in-app notification for the assignee
 	try {
-		// Ensure notifications table exists (best-effort)
-		$pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
-			id INT AUTO_INCREMENT PRIMARY KEY,
-			recipient_email VARCHAR(150) NOT NULL,
-			message TEXT NOT NULL,
-			type VARCHAR(50) DEFAULT 'task',
-			is_read TINYINT(1) DEFAULT 0,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		)");
+			// Ensure notifications table exists (best-effort)
+			$pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				recipient_email VARCHAR(150),
+				recipient_role VARCHAR(100),
+				message TEXT NOT NULL,
+				type VARCHAR(50) DEFAULT 'task',
+				is_read TINYINT(1) DEFAULT 0,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			)");
 
-		$noteMsg = 'You have been assigned a new task: ' . ($title ?: 'Untitled');
-		$noteStmt = $pdo->prepare("INSERT INTO notifications (recipient_email, message, type) VALUES (?, ?, ?)");
-		$noteStmt->execute([$assigned_to_email, $noteMsg, 'task']);
+			$noteMsg = 'You have been assigned a new task: ' . ($title ?: 'Untitled');
+			$noteStmt = $pdo->prepare("INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)");
+			$noteStmt->execute([$assigned_to_email, null, $noteMsg, 'task']);
 	} catch (PDOException $ne) {
 		// Non-fatal: allow task creation to succeed even if notification insert fails
 	}

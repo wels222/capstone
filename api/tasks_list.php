@@ -70,13 +70,50 @@ try {
 			$pdo->exec("ALTER TABLE tasks MODIFY COLUMN status ENUM('pending','in_progress','completed','missed') NOT NULL DEFAULT 'pending'");
 		} catch (PDOException $__e) { /* ignore */ }
 
-	// Return all tasks regardless of who is logged in. Keep status filter if provided.
-	if ($status) {
-		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks WHERE status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
-		$stmt->execute([$status]);
+	// If a logged-in user exists and has a department, limit tasks to that department
+	$userDept = null;
+	if ($byEmail) {
+		try {
+			$dstmt = $pdo->prepare('SELECT department FROM users WHERE email = ?');
+			$dstmt->execute([$byEmail]);
+			$row = $dstmt->fetch(PDO::FETCH_ASSOC);
+			$userDept = $row['department'] ?? null;
+		} catch (PDOException $__e) { /* ignore */ }
+	}
+
+	// Build queries: if userDept is set, return tasks where either the assignee or the assigner
+	// belongs to the same department. Otherwise fall back to the previous behavior.
+	if ($userDept) {
+		if ($status) {
+			$sql = "SELECT t.id, t.title, t.description, t.due_date, t.status, t.assigned_to_email, t.assigned_by_email, t.attachment_path, t.submission_file_path, t.submission_note, t.adjustment_note, t.completed_at, t.created_at
+				FROM tasks t
+				WHERE t.status = ? AND (
+					EXISTS (SELECT 1 FROM users u WHERE u.email = t.assigned_to_email AND u.department = ?)
+					OR EXISTS (SELECT 1 FROM users u2 WHERE u2.email = t.assigned_by_email AND u2.department = ?)
+				)
+				ORDER BY due_date IS NULL, due_date ASC, t.id DESC";
+			$stmt = $pdo->prepare($sql);
+			$stmt->execute([$status, $userDept, $userDept]);
+		} else {
+			$sql = "SELECT t.id, t.title, t.description, t.due_date, t.status, t.assigned_to_email, t.assigned_by_email, t.attachment_path, t.submission_file_path, t.submission_note, t.adjustment_note, t.completed_at, t.created_at
+				FROM tasks t
+				WHERE (
+					EXISTS (SELECT 1 FROM users u WHERE u.email = t.assigned_to_email AND u.department = ?)
+					OR EXISTS (SELECT 1 FROM users u2 WHERE u2.email = t.assigned_by_email AND u2.department = ?)
+				)
+				ORDER BY due_date IS NULL, due_date ASC, t.id DESC";
+			$stmt = $pdo->prepare($sql);
+			$stmt->execute([$userDept, $userDept]);
+		}
 	} else {
-		$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks ORDER BY due_date IS NULL, due_date ASC, id DESC');
-		$stmt->execute();
+		// Return all tasks regardless of who is logged in. Keep status filter if provided.
+		if ($status) {
+			$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks WHERE status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
+			$stmt->execute([$status]);
+		} else {
+			$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks ORDER BY due_date IS NULL, due_date ASC, id DESC');
+			$stmt->execute();
+		}
 	}
 	$tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 	echo json_encode(['success' => true, 'tasks' => $tasks]);
