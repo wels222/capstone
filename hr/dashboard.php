@@ -156,12 +156,26 @@ if (!isset($_SESSION['user_id'])) {
             text-align: center;
             border-top: 4px solid;
             width: 100%; /* Ensures it fills its grid cell */
+            position: relative; /* For absolute positioning of indicator */
         }
 
         .header-box:nth-child(1) { border-color: #3b82f6; }
         .header-box:nth-child(2) { border-color: #93c5fd; }
         .header-box:nth-child(3) { border-color: #22d3ee; }
         .header-box:nth-child(4) { border-color: #60a5fa; }
+        
+        .live-indicator-dot {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 10px;
+            height: 10px;
+            background-color: #10b981;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+            animation: pulse 2s infinite;
+        }
 
         .header-box .category {
             font-size: 0.9rem;
@@ -181,22 +195,9 @@ if (!isset($_SESSION['user_id'])) {
             font-size: 0.8rem;
             color: #9ca3af;
             font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
         }
         
-        .header-box .active-count::before {
-            content: '';
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background-color: #10b981; /* Green color for active */
-            border-radius: 50%;
-            animation: pulse-dot 2s infinite;
-        }
-        
-        @keyframes pulse-dot {
+        @keyframes pulse {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.1); }
         }
@@ -743,24 +744,28 @@ if (!isset($_SESSION['user_id'])) {
                 <section id="dashboard-content" class="content-section active">
                     <div class="header-container">
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">Permanent</span>
-                            <div class="count" id="count-permanent">0</div>
-                            <span class="active-count" id="active-permanent">0 Active</span>
+                            <div class="count" id="permanent-total">-</div>
+                            <span class="active-count"><span id="permanent-active">-</span> Active</span>
                         </div>
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">Casual</span>
-                            <div class="count" id="count-casual">0</div>
-                            <span class="active-count" id="active-casual">0 Active</span>
+                            <div class="count" id="casual-total">-</div>
+                            <span class="active-count"><span id="casual-active">-</span> Active</span>
                         </div>
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">JO</span>
-                            <div class="count" id="count-jo">0</div>
-                            <span class="active-count" id="active-jo">0 Active</span>
+                            <div class="count" id="jo-total">-</div>
+                            <span class="active-count"><span id="jo-active">-</span> Active</span>
                         </div>
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">OJT</span>
-                            <div class="count" id="count-ojt">0</div>
-                            <span class="active-count" id="active-ojt">0 Active</span>
+                            <div class="count" id="ojt-total">-</div>
+                            <span class="active-count"><span id="ojt-active">-</span> Active</span>
                         </div>
                     </div>
                     <div class="projects-events-container">
@@ -1116,6 +1121,35 @@ if (!isset($_SESSION['user_id'])) {
                 .catch(err => {
                     document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
                 });
+            
+            // Real-time dashboard updates (all accounts, no filtering)
+            function updateDashboardStats() {
+                fetch('../api/hr_dashboard.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update category counts
+                            document.getElementById('permanent-total').textContent = data.categories.Permanent.total;
+                            document.getElementById('permanent-active').textContent = data.categories.Permanent.active;
+                            
+                            document.getElementById('casual-total').textContent = data.categories.Casual.total;
+                            document.getElementById('casual-active').textContent = data.categories.Casual.active;
+                            
+                            document.getElementById('jo-total').textContent = data.categories.JO.total;
+                            document.getElementById('jo-active').textContent = data.categories.JO.active;
+                            
+                            document.getElementById('ojt-total').textContent = data.categories.OJT.total;
+                            document.getElementById('ojt-active').textContent = data.categories.OJT.active;
+                        }
+                    })
+                    .catch(err => console.error('Failed to update dashboard stats:', err));
+            }
+            
+            // Initial load
+            updateDashboardStats();
+            
+            // Auto-refresh every 5 seconds
+            setInterval(updateDashboardStats, 5000);
         });
     </script>
 </body>

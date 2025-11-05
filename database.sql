@@ -95,9 +95,15 @@ CREATE TABLE IF NOT EXISTS attendance (
     date DATE NOT NULL,
     time_in DATETIME DEFAULT NULL,
     time_out DATETIME DEFAULT NULL,
-    status VARCHAR(20),
+    time_in_status ENUM('Present','Late','Absent') DEFAULT NULL COMMENT 'Time In Status: Present (5:30 AM - 7:00 AM), Late (7:01 AM - 12:00 PM), Absent (12:01 PM onwards)',
+    time_out_status ENUM('On-time','Undertime','Overtime') DEFAULT NULL COMMENT 'Time Out Status: Undertime (7:30 AM - 4:59 PM), On-time (5:00 PM - 5:05 PM), Overtime (5:06 PM onwards)',
+    status VARCHAR(20) DEFAULT NULL COMMENT 'Overall daily status: Present, Absent, etc.',
+    notes TEXT DEFAULT NULL COMMENT 'Additional notes or remarks',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_employee_id (employee_id),
     INDEX idx_date (date),
+    INDEX idx_status (status),
     UNIQUE KEY unique_attendance (employee_id, date)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

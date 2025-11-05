@@ -51,7 +51,7 @@ session_start();
         select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -162,13 +162,18 @@ session_start();
             <div class="card-value" id="total">-</div>
         </div>
         <div class="card">
+            <div class="card-icon" style="background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: #fff;"><i class="fas fa-user-check"></i></div>
+            <div class="card-title">Active Today</div>
+            <div class="card-value" id="active">-</div>
+        </div>
+        <div class="card">
             <div class="card-icon present"><i class="fas fa-check-circle"></i></div>
-            <div class="card-title">Present Today</div>
+            <div class="card-title">Present (On-time)</div>
             <div class="card-value" id="present">-</div>
         </div>
         <div class="card">
             <div class="card-icon late"><i class="fas fa-clock"></i></div>
-            <div class="card-title">Late Today</div>
+            <div class="card-title">Late</div>
             <div class="card-value" id="late">-</div>
         </div>
         <div class="card">
@@ -263,6 +268,7 @@ session_start();
                 
                 if(data.success){
                     document.getElementById('total').textContent = data.total_employees;
+                    document.getElementById('active').textContent = data.active || (data.present + data.late);
                     document.getElementById('present').textContent = data.present;
                     document.getElementById('late').textContent = data.late;
                     document.getElementById('absent').textContent = data.absent;

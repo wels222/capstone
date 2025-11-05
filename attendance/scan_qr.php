@@ -34,14 +34,22 @@ $att = $stmt->fetch();
 if (!$att) {
     // First scan = Time In
     $time_in = $now;
-    $cutoff = strtotime($today . ' 07:30:00'); // 7:30 AM cutoff for absent
     
-    if (strtotime($time_in) <= strtotime($today . ' 07:00:00')) {
-        $time_in_status = 'Present'; // On time or early
-    } elseif (strtotime($time_in) <= $cutoff) {
-        $time_in_status = 'Late'; // Between 7:01 AM and 7:30 AM
+    // Time In Status Rules:
+    // 5:30 AM - 7:00 AM = Present
+    // 7:01 AM - 12:00 PM = Late  
+    // 12:01 PM onwards = Absent
+    $timeInTimestamp = strtotime($time_in);
+    $present_start = strtotime($today . ' 05:30:00'); // 5:30 AM
+    $present_end = strtotime($today . ' 07:00:00');   // 7:00 AM
+    $late_end = strtotime($today . ' 12:00:00');      // 12:00 PM (noon)
+    
+    if ($timeInTimestamp >= $present_start && $timeInTimestamp <= $present_end) {
+        $time_in_status = 'Present'; // 5:30 AM - 7:00 AM
+    } elseif ($timeInTimestamp > $present_end && $timeInTimestamp <= $late_end) {
+        $time_in_status = 'Late'; // 7:01 AM - 12:00 PM
     } else {
-        $time_in_status = 'Absent'; // After 7:30 AM = considered absent
+        $time_in_status = 'Absent'; // 12:01 PM onwards
     }
 
     $ins = $pdo->prepare('INSERT INTO attendance (employee_id, date, time_in, time_in_status) VALUES (?, ?, ?, ?)');
@@ -69,24 +77,25 @@ if (!$att) {
     // Second scan = Time Out
     $time_out = $now;
     
-    // Calculate time_out status
+    // Time Out Status Rules:
+    // 7:30 AM - 4:59 PM = Undertime
+    // 5:00 PM - 5:05 PM = On-time
+    // 5:06 PM - 5:30 PM onwards = Overtime
     $time_out_timestamp = strtotime($time_out);
-    $before_5pm = strtotime($today . ' 17:00:00'); // 5:00 PM
-    $ontime_end = strtotime($today . ' 17:05:00'); // 5:05 PM
-    $overtime_start = strtotime($today . ' 17:30:00'); // 5:30 PM
+    $undertime_start = strtotime($today . ' 07:30:00'); // 7:30 AM
+    $undertime_end = strtotime($today . ' 16:59:59');   // 4:59:59 PM
+    $ontime_start = strtotime($today . ' 17:00:00');    // 5:00 PM
+    $ontime_end = strtotime($today . ' 17:05:00');      // 5:05 PM
+    $overtime_start = strtotime($today . ' 17:06:00');  // 5:06 PM
     
-    if ($time_out_timestamp < $before_5pm) {
-        // Before 5:00 PM = Undertime
-        $time_out_status = 'Undertime';
-    } elseif ($time_out_timestamp >= $before_5pm && $time_out_timestamp <= $ontime_end) {
-        // Between 5:00 PM and 5:05 PM = On-time
-        $time_out_status = 'On-time';
+    if ($time_out_timestamp >= $undertime_start && $time_out_timestamp <= $undertime_end) {
+        $time_out_status = 'Undertime'; // 7:30 AM - 4:59 PM
+    } elseif ($time_out_timestamp >= $ontime_start && $time_out_timestamp <= $ontime_end) {
+        $time_out_status = 'On-time'; // 5:00 PM - 5:05 PM
     } elseif ($time_out_timestamp >= $overtime_start) {
-        // 5:30 PM or later = Overtime
-        $time_out_status = 'Overtime';
+        $time_out_status = 'Overtime'; // 5:06 PM onwards
     } else {
-        // Between 5:06 PM and 5:29 PM = On-time (grace period)
-        $time_out_status = 'On-time';
+        $time_out_status = 'On-time'; // Default fallback
     }
     
     // Update time_out and time_out_status (keep time_in_status unchanged)

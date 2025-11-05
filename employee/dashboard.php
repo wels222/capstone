@@ -150,7 +150,7 @@ if ($user) {
                             </div>
                             <span class="text-sm text-gray-600">My QR Code</span>
                         </a>
-                        <a href="view_attendance.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                        <a href="attendance.php" class="flex flex-col items-center space-y-2 cursor-pointer">
                             <div class="bg-yellow-100 p-4 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -226,22 +226,6 @@ if ($user) {
                     </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-md p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-gray-800">Performance</h3>
-                        <div class="text-sm text-gray-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2z" />
-                            </svg>
-                        </div>
-                    </div>
-                    <canvas id="performanceChart"></canvas>
-                    <div class="flex justify-between text-sm mt-4">
-                        <span>Low performance in April</span>
-                        <span class="text-blue-600">Details</span>
-                    </div>
-                </div>
-
                 <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold text-gray-800">Attendance Comparison Chart</h3>
@@ -278,12 +262,12 @@ if ($user) {
                 </div>
 
                 <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center justify-center">
-                    <div class="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center font-bold text-green-600 text-lg">
-                        <span>90%</span>
+                    <div id="miniPerfBadge" class="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center font-bold text-green-600 text-lg">
+                        <span id="miniPerformancePct">--%</span>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mt-4">Excellent</h3>
-                    <p class="text-sm text-gray-500 mt-1 text-center">Score better than last month</p>
-                    <div class="bg-blue-600 rounded-full px-4 py-1 text-white text-xs mt-4">Details</div>
+                    <h3 id="miniPerformanceLabel" class="text-2xl font-bold text-gray-800 mt-4">--</h3>
+                    <p id="miniPerformanceDesc" class="text-sm text-gray-500 mt-1 text-center">Score compared to last month</p>
+                    <button id="miniPerformanceDetailsBtn" class="bg-blue-600 rounded-full px-4 py-1 text-white text-xs mt-4">Details</button>
                 </div>
             </div>
         </div>
@@ -311,7 +295,34 @@ if ($user) {
         </div>
 
     </main>
-        <script>
+
+    <!-- Performance Details Modal -->
+    <div id="perfInfoModal" class="fixed inset-0 hidden items-center justify-center modal-bg z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="perfModalTitle" class="text-lg font-semibold text-gray-800">Performance Details</h3>
+                <button id="perfModalClose" class="text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            <div id="perfModalBody" class="text-sm text-gray-700 space-y-3">
+                <div class="flex items-center gap-4">
+                    <div id="perfModalPercent" class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center font-bold text-green-600">--%</div>
+                    <div>
+                        <div id="perfModalSummary" class="font-semibold text-gray-800">--</div>
+                        <div id="perfModalDesc" class="text-gray-500 text-sm">--</div>
+                    </div>
+                </div>
+                <div id="perfModalCounts" class="grid grid-cols-2 gap-2">
+                    <div class="p-2 bg-gray-50 rounded"><div class="text-xs text-gray-500">Present</div><div id="perfPresent" class="font-semibold">0</div></div>
+                    <div class="p-2 bg-gray-50 rounded"><div class="text-xs text-gray-500">Late</div><div id="perfLate" class="font-semibold">0</div></div>
+                    <div class="p-2 bg-gray-50 rounded"><div class="text-xs text-gray-500">Undertime</div><div id="perfUndertime" class="font-semibold">0</div></div>
+                    <div class="p-2 bg-gray-50 rounded"><div class="text-xs text-gray-500">Overtime</div><div id="perfOvertime" class="font-semibold">0</div></div>
+                </div>
+                <div id="perfModalRecommendation" class="text-sm text-gray-700"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
         // Realtime To-dos: professional UI + analytics (counts + donut) polling tasks assigned to the logged-in user
         (function(){
             const listEl = document.getElementById('todos-list');
@@ -778,65 +789,204 @@ if ($user) {
                     profileModal.classList.remove('flex');
                 }
             });
-            // Performance Chart
-            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
-            new Chart(performanceCtx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{
-                        label: 'Performance',
-                        data: [65, 59, 80, 81, 56, 55],
-                        borderColor: '#6366f1',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
+            // Employee performance & attendance charts (real-time)
+            const perfCanvas = document.getElementById('performanceChart');
+            const attCanvas = document.getElementById('attendanceChart');
 
-            // Attendance Chart
-            const attendanceCtx = document.getElementById('attendanceChart').getContext('2d');
-            new Chart(attendanceCtx, {
-                type: 'line',
-                data: {
-                    labels: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'],
-                    datasets: [{
-                        label: 'Attendance',
-                        data: [80, 90, 85, 95, 88, 92, 90, 93, 89, 91, 94, 95],
-                        borderColor: '#3b82f6',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
+            let perfChart = null;
+            let attChart = null;
+            const periodRadios = document.querySelectorAll('input[name="chart-period"]');
+            let currentPeriod = 'daily';
+
+            function createPerfChart(ctx) {
+                return new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: [], datasets: [{ label: 'Performance %', data: [], borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.08)', tension: 0.4 }] },
+                    options: { responsive: true, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }, plugins: { legend: { display: false } } }
+                });
+            }
+
+            function createAttendanceChart(ctx) {
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: [], datasets: [
+                        { label: 'Present', data: [], backgroundColor: '#10B981', stack: 's1' },
+                        { label: 'Late', data: [], backgroundColor: '#F59E0B', stack: 's1' },
+                        { label: 'Undertime', data: [], backgroundColor: '#FB923C', stack: 's1' },
+                        { label: 'Overtime', data: [], backgroundColor: '#3B82F6', stack: 's1' },
+                    ] },
+                    options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }
+                });
+            }
+
+            if (perfCanvas) perfChart = createPerfChart(perfCanvas.getContext('2d'));
+            if (attCanvas) attChart = createAttendanceChart(attCanvas.getContext('2d'));
+
+            async function fetchEmployeeTrend(range = 'daily') {
+                try {
+                    const res = await fetch(`../api/employee_attendance_trend.php?range=${range}`);
+                    const json = await res.json();
+                    if (!json.success) return null;
+                    return json.trend || [];
+                } catch (e) {
+                    console.error('Failed to fetch employee trend', e);
+                    return null;
                 }
-            });
+            }
+
+            async function updateEmployeeCharts(range = 'daily') {
+                const trend = await fetchEmployeeTrend(range);
+                if (!trend) return;
+                const labels = trend.map(t => t.label);
+                const present = trend.map(t => t.present);
+                const late = trend.map(t => t.late);
+                const undertime = trend.map(t => t.undertime);
+                const overtime = trend.map(t => t.overtime);
+
+                // compute overall percent = (sum(present+late) / number_of_points) * 100
+                const totalPoints = trend.length || 1;
+                const sumActive = trend.reduce((s, t) => s + (Number(t.present) + Number(t.late)), 0);
+                const overallPct = Math.round((sumActive / totalPoints) * 100);
+
+                if (attChart) {
+                    attChart.data.labels = labels;
+                    attChart.data.datasets[0].data = present;
+                    attChart.data.datasets[1].data = late;
+                    attChart.data.datasets[2].data = undertime;
+                    attChart.data.datasets[3].data = overtime;
+                    attChart.update();
+                }
+
+                if (perfChart) {
+                    perfChart.data.labels = labels;
+                    // performance over time: cumulative active percent upto that point
+                    let cumulative = 0;
+                    const pctSeries = trend.map((t, idx) => {
+                        cumulative += (Number(t.present) + Number(t.late));
+                        return Math.round((cumulative / (idx + 1)) * 100);
+                    });
+                    perfChart.data.datasets[0].data = pctSeries;
+                    perfChart.update();
+                }
+
+                // update summary and details dataset
+                const summaryEl = document.getElementById('performanceSummary');
+                if (summaryEl) summaryEl.textContent = `${overallPct}% attendance over selected period`;
+                const detailsBtn = document.getElementById('performanceDetailsBtn');
+                const detailsPayload = { overallPct, sumActive, totalPoints, present: present.reduce((a,b)=>a+Number(b),0), late: late.reduce((a,b)=>a+Number(b),0), undertime: undertime.reduce((a,b)=>a+Number(b),0), overtime: overtime.reduce((a,b)=>a+Number(b),0) };
+                if (detailsBtn) detailsBtn.dataset.details = JSON.stringify(detailsPayload);
+
+                // Update mini performance card
+                const miniPctEl = document.getElementById('miniPerformancePct');
+                const miniLabelEl = document.getElementById('miniPerformanceLabel');
+                const miniDescEl = document.getElementById('miniPerformanceDesc');
+                const miniDetailsBtn = document.getElementById('miniPerformanceDetailsBtn');
+                if (miniPctEl) miniPctEl.textContent = overallPct + '%';
+                // label logic
+                let label = 'Poor';
+                if (overallPct >= 85) label = 'Excellent';
+                else if (overallPct >= 70) label = 'Good';
+                else if (overallPct >= 50) label = 'Moderate';
+                if (miniLabelEl) miniLabelEl.textContent = label;
+                if (miniDescEl) miniDescEl.textContent = `Attendance vs selected period (${currentPeriod})`;
+                if (miniDetailsBtn) miniDetailsBtn.dataset.details = JSON.stringify(detailsPayload);
+                // color badge based on label
+                const miniBadge = document.getElementById('miniPerfBadge');
+                if (miniBadge) {
+                    miniBadge.className = 'w-24 h-24 rounded-full flex items-center justify-center font-bold text-lg';
+                    if (label === 'Excellent') { miniBadge.classList.add('bg-green-100','text-green-600'); }
+                    else if (label === 'Good') { miniBadge.classList.add('bg-blue-100','text-blue-700'); }
+                    else if (label === 'Moderate') { miniBadge.classList.add('bg-yellow-100','text-yellow-600'); }
+                    else { miniBadge.classList.add('bg-red-100','text-red-600'); }
+                }
+            }
+
+            // wire radio buttons
+            periodRadios.forEach(r => r.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    currentPeriod = e.target.value;
+                    updateEmployeeCharts(currentPeriod);
+                }
+            }));
+
+            // initial load
+            updateEmployeeCharts(currentPeriod);
+            // auto-refresh every 5s
+            setInterval(() => updateEmployeeCharts(currentPeriod), 5000);
+
+            // Details buttons
+            const perfDetailsBtn = document.getElementById('performanceDetailsBtn');
+            if (perfDetailsBtn) {
+                perfDetailsBtn.addEventListener('click', () => {
+                    const dstr = perfDetailsBtn.dataset.details;
+                    if (!dstr) return alert('No details available yet.');
+                    const d = JSON.parse(dstr);
+                    showPerformanceInfo(d);
+                });
+            }
+
+            const miniPerfBtn = document.getElementById('miniPerformanceDetailsBtn');
+            if (miniPerfBtn) {
+                miniPerfBtn.addEventListener('click', () => {
+                    const dstr = miniPerfBtn.dataset.details;
+                    if (!dstr) return alert('No details available yet.');
+                    const d = JSON.parse(dstr);
+                    showPerformanceInfo(d);
+                });
+            }
+
+            function showPerformanceInfo(d) {
+                // Populate modal fields
+                const modal = document.getElementById('perfInfoModal');
+                const percentEl = document.getElementById('perfModalPercent');
+                const summaryEl = document.getElementById('perfModalSummary');
+                const descEl = document.getElementById('perfModalDesc');
+                const presentEl = document.getElementById('perfPresent');
+                const lateEl = document.getElementById('perfLate');
+                const undertimeEl = document.getElementById('perfUndertime');
+                const overtimeEl = document.getElementById('perfOvertime');
+                const recEl = document.getElementById('perfModalRecommendation');
+
+                const pct = d.overallPct || 0;
+                percentEl.textContent = pct + '%';
+                presentEl.textContent = d.present || 0;
+                lateEl.textContent = d.late || 0;
+                undertimeEl.textContent = d.undertime || 0;
+                overtimeEl.textContent = d.overtime || 0;
+
+                // Summary label and description
+                let label = 'Poor';
+                let desc = 'Needs improvement';
+                if (pct >= 85) { label = 'Excellent'; desc = 'Score better than previous period'; }
+                else if (pct >= 70) { label = 'Good'; desc = 'Satisfactory performance'; }
+                else if (pct >= 50) { label = 'Moderate'; desc = 'Average performance'; }
+
+                summaryEl.textContent = `${label} (${pct}%)`;
+                descEl.textContent = desc;
+
+                // Recommendation
+                let recommendation = '';
+                if (pct < 60) recommendation = 'Recommendation: Low attendance. Follow up with your supervisor and HR. Review reasons for absence and consider targeted reminders.';
+                else if (pct < 85) recommendation = 'Recommendation: Moderate. Address tardiness and undertime to improve overall presence.';
+                else recommendation = 'Recommendation: Good. Maintain current practices and optionally acknowledge high performance.';
+                recEl.textContent = recommendation;
+
+                // Color the percent badge based on label
+                percentEl.className = 'w-20 h-20 rounded-full flex items-center justify-center font-bold text-lg';
+                if (label === 'Excellent') { percentEl.classList.add('bg-green-100','text-green-600'); }
+                else if (label === 'Good') { percentEl.classList.add('bg-blue-100','text-blue-700'); }
+                else if (label === 'Moderate') { percentEl.classList.add('bg-yellow-100','text-yellow-600'); }
+                else { percentEl.classList.add('bg-red-100','text-red-600'); }
+
+                // Show modal
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+
+                // Wire close
+                const closeBtn = document.getElementById('perfModalClose');
+                closeBtn.onclick = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
+                modal.onclick = (e) => { if (e.target === modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); } };
+            }
 
             // Edit Profile Modal functionality
             const editProfileModal = document.getElementById('editProfileModal');
