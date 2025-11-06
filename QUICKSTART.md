@@ -22,7 +22,7 @@ Created complete attendance monitoring system:
 - **get_dashboard.php** - Dashboard API
 - **records.php** - Attendance records with CSV/Excel export
 - **get_attendance.php** - Records API
-- **my_qr.php** - Personal QR code viewer
+ 
 - **migration.sql** - Easy database setup
 - **README.md** - Complete documentation
 
@@ -60,10 +60,9 @@ Created complete attendance monitoring system:
 2. Search/filter attendance
 3. Export to CSV or Excel
 
-#### E. View Your QR Code
-1. Login to your account
-2. Go to: `http://localhost/capstone/attendance/my_qr.php`
-3. Download or print your QR code
+ #### E. View Your QR Code
+ 1. Login to your account
+ 2. Download or print your QR code via the administration panel or the rotating QR station (the personal QR page has been removed)
 
 ## 📱 Access Links
 
@@ -74,7 +73,7 @@ Created complete attendance monitoring system:
 | **QR Scanner** | `http://localhost/capstone/attendance/` |
 | **Dashboard** | `http://localhost/capstone/attendance/dashboard.php` |
 | **Records** | `http://localhost/capstone/attendance/records.php` |
-| **My QR Code** | `http://localhost/capstone/attendance/my_qr.php` |
+| **My QR Code** | (removed — personal QR page retired; use rotating station) |
 
 ## 🎯 Key Features
 
@@ -148,7 +147,7 @@ Show QR to camera → Camera reads Employee ID → Check database:
 - [ ] Database imported successfully
 - [ ] Can register new user and see Employee ID
 - [ ] Super admin can approve user
-- [ ] Can view QR code at my_qr.php
+ - [ ] Can view QR code at my_qr.php (note: personal QR page removed)
 - [ ] Scanner page auto-opens camera
 - [ ] Camera is mirrored (selfie view)
 - [ ] Can scan QR and record Time In

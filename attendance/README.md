@@ -8,7 +8,7 @@ attendance/
 ├── dashboard.php       - Centralized dashboard with stats and records table
 ├── get_dashboard.php   - API for dashboard data
 ├── get_attendance.php  - API for attendance records
-├── my_qr.php          - View and download personal QR code
+ 
 ├── menu.php           - Navigation menu
 ├── migration.sql      - Database setup script
 └── README.md          - This file
@@ -53,10 +53,8 @@ The system uses **ONLY the `users` table** - no separate employees table needed.
 - CSV and Excel export
 - Auto-refresh every 10 seconds
 
-### 4. **My QR Code (my_qr.php)**
-- View personal QR code
-- Download QR as image
-- Print-ready format
+### 4. **My QR Code (retired)**
+The personal `my_qr.php` page has been removed from this project. Use the rotating QR station (`attendance/scan.html`) or administrative tools to generate or obtain QR images when needed.
 
 ## 🔧 Setup Instructions
 
@@ -92,7 +90,7 @@ When users register via `register.php`, they automatically get:
 - Scanner: `http://localhost/capstone/attendance/`
 - Dashboard: `http://localhost/capstone/attendance/dashboard.php`
 - Records: `http://localhost/capstone/attendance/records.php`
-- My QR: `http://localhost/capstone/attendance/my_qr.php`
+-- My QR: (personal QR page removed; use rotating station or admin tools)
 
 ## 📋 How It Works
 
