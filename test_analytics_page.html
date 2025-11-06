@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test Analytics</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .success {
+        color: green;
+      }
+      .error {
+        color: red;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 10px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Analytics API Test</h1>
+    <div id="status">Loading...</div>
+    <h2>Response:</h2>
+    <pre id="response"></pre>
+
+    <script>
+      async function testAPI() {
+        const statusEl = document.getElementById("status");
+        const responseEl = document.getElementById("response");
+
+        try {
+          const month = new Date().getMonth() + 1;
+          const year = new Date().getFullYear();
+          const url = `../api/leave_analytics.php?month=${month}&year=${year}`;
+
+          statusEl.innerHTML = `Fetching from: ${url}`;
+
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (data.success) {
+            statusEl.innerHTML =
+              '<span class="success">✓ API working! Data loaded successfully.</span>';
+            statusEl.innerHTML += `<br>Total requests: ${data.analytics.total_requests}`;
+            statusEl.innerHTML += `<br>Decision Support Alerts: ${data.analytics.decision_support.length}`;
+          } else {
+            statusEl.innerHTML =
+              '<span class="error">✗ API returned error</span>';
+          }
+
+          responseEl.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          statusEl.innerHTML = `<span class="error">✗ Error: ${error.message}</span>`;
+          responseEl.textContent = error.stack;
+        }
+      }
+
+      testAPI();
+    </script>
+  </body>
+</html>

@@ -911,37 +911,151 @@
                 </div>
               </div>
 
-              <!-- Charts + Peak days -->
-              <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <!-- Enhanced Analytics Section -->
+              <div class="mt-4 space-y-4">
+                <!-- Loading Indicator -->
+                <div id="analytics-loading" class="text-center py-8">
+                  <div
+                    class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"
+                  ></div>
+                  <p class="mt-2 text-gray-600">Loading analytics...</p>
+                </div>
+
+                <!-- Decision Support System Alerts -->
+                <div id="dss-alerts" class="hidden">
+                  <h4
+                    class="font-semibold text-gray-800 mb-3 flex items-center gap-2"
+                  >
+                    <i class="fas fa-brain text-blue-600"></i>
+                    Decision Support System
+                  </h4>
+                  <div
+                    id="dss-container"
+                    class="grid grid-cols-1 lg:grid-cols-2 gap-3"
+                  ></div>
+                </div>
+
+                <!-- Analytics Charts with Interpretations -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <!-- Status Chart -->
+                  <div class="bg-white rounded-xl shadow p-4">
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-semibold text-gray-800">
+                        Leave Status Distribution
+                      </h4>
+                      <span
+                        id="label-month"
+                        class="text-xs text-gray-500"
+                      ></span>
+                    </div>
+                    <div class="h-64">
+                      <canvas
+                        id="chart-status"
+                        aria-label="Leave by status"
+                      ></canvas>
+                    </div>
+                    <div
+                      class="mt-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500"
+                    >
+                      <p class="text-xs text-gray-700" id="interpret-status">
+                        Loading interpretation...
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Type Chart -->
+                  <div class="bg-white rounded-xl shadow p-4">
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-semibold text-gray-800">
+                        Leave Types Analysis
+                      </h4>
+                      <span class="text-xs text-gray-500">Top categories</span>
+                    </div>
+                    <div style="height: 300px">
+                      <canvas
+                        id="chart-type"
+                        aria-label="Leave by type"
+                      ></canvas>
+                    </div>
+                    <div
+                      class="mt-3 p-3 bg-purple-50 rounded-lg border-l-4 border-purple-500"
+                    >
+                      <p class="text-xs text-gray-700" id="interpret-type">
+                        Loading interpretation...
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Daily Leave Trend -->
+                  <div class="bg-white rounded-xl shadow p-4">
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-semibold text-gray-800">
+                        Daily Leave Trend
+                      </h4>
+                      <span class="text-xs text-gray-500"
+                        >Leave volume over time</span
+                      >
+                    </div>
+                    <div style="height: 280px">
+                      <canvas
+                        id="chart-daily-trend"
+                        aria-label="Daily leave trend"
+                      ></canvas>
+                    </div>
+                    <div
+                      class="mt-3 p-3 bg-amber-50 rounded-lg border-l-4 border-amber-500"
+                    >
+                      <p class="text-xs text-gray-700" id="interpret-peak">
+                        Loading interpretation...
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Trends Chart -->
+                  <div class="bg-white rounded-xl shadow p-4">
+                    <div class="flex items-center justify-between mb-2">
+                      <h4 class="font-semibold text-gray-800">Leave Trends</h4>
+                      <span class="text-xs text-gray-500"
+                        >Month-over-month comparison</span
+                      >
+                    </div>
+                    <div class="h-64">
+                      <canvas
+                        id="chart-trends"
+                        aria-label="Leave trends"
+                      ></canvas>
+                    </div>
+                    <div
+                      class="mt-3 p-3 bg-green-50 rounded-lg border-l-4 border-green-500"
+                    >
+                      <p class="text-xs text-gray-700" id="interpret-trend">
+                        Loading interpretation...
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Department Analysis -->
                 <div class="bg-white rounded-xl shadow p-4">
                   <div class="flex items-center justify-between mb-2">
-                    <h4 class="font-semibold text-gray-800">By status</h4>
-                    <span id="label-month" class="text-xs text-gray-500"></span>
+                    <h4 class="font-semibold text-gray-800">
+                      Department Leave Distribution
+                    </h4>
+                    <span class="text-xs text-gray-500">By department</span>
                   </div>
-                  <div class="h-56">
+                  <div class="h-80">
                     <canvas
-                      id="chart-status"
-                      aria-label="Leave by status"
+                      id="chart-department"
+                      aria-label="Leave by department"
                     ></canvas>
                   </div>
-                </div>
-                <div class="bg-white rounded-xl shadow p-4">
-                  <div class="flex items-center justify-between mb-2">
-                    <h4 class="font-semibold text-gray-800">By leave type</h4>
-                    <span class="text-xs text-gray-500">Top types</span>
+                  <div
+                    class="mt-3 p-3 bg-indigo-50 rounded-lg border-l-4 border-indigo-500"
+                  >
+                    <p class="text-xs text-gray-700" id="interpret-department">
+                      Loading interpretation...
+                    </p>
                   </div>
-                  <div class="h-56">
-                    <canvas id="chart-type" aria-label="Leave by type"></canvas>
-                  </div>
-                </div>
-                <div class="bg-white rounded-xl shadow p-4">
-                  <div class="flex items-center justify-between mb-2">
-                    <h4 class="font-semibold text-gray-800">Peak days</h4>
-                    <span class="text-xs text-gray-500"
-                      >Most leaves in month</span
-                    >
-                  </div>
-                  <ul id="peak-days" class="space-y-2"></ul>
                 </div>
               </div>
             </section>
@@ -1246,9 +1360,13 @@
           }
         }
 
-        // Compute and render analytics
+        // Enhanced analytics with new API
         let statusChart = null;
         let typeChart = null;
+        let trendsChart = null;
+        let departmentChart = null;
+        let dailyTrendChart = null;
+        let analyticsData = null;
 
         // Helper: whether a leave row is HR-approved
         function hrApproved(l) {
@@ -1259,50 +1377,90 @@
           );
         }
 
-        function updateKPIs(scope) {
-          // If scope is 'approved', count only HR-approved rows; otherwise use all analytics rows
-          const leaves =
-            scope === "approved"
-              ? analyticsLeaves.filter(hrApproved)
-              : analyticsLeaves;
-          const total = leaves.length;
-          const approved = leaves.filter(
-            (l) => String(l.status) === "approved"
-          ).length;
-          const pending = leaves.filter(
-            (l) => String(l.status) === "pending"
-          ).length;
-          const declined = leaves.filter(
-            (l) => String(l.status) === "declined"
-          ).length;
-          document.getElementById("kpi-total").textContent = String(total);
-          document.getElementById("kpi-approved").textContent =
-            String(approved);
-          document.getElementById("kpi-pending").textContent = String(pending);
-          document.getElementById("kpi-declined").textContent =
-            String(declined);
+        // Fetch enhanced analytics from new API
+        async function fetchEnhancedAnalytics(date) {
+          const y = date.getFullYear();
+          const m = date.getMonth() + 1;
+          try {
+            console.log(`Fetching analytics for ${y}-${m}...`);
+            const res = await fetch(
+              `../api/leave_analytics.php?month=${m}&year=${y}`
+            );
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            const json = await res.json();
+            console.log("Analytics response:", json);
+            if (json && json.success) {
+              analyticsData = json.analytics;
+              console.log("Analytics data loaded:", analyticsData);
+              return analyticsData;
+            } else {
+              console.error("Analytics API returned success=false", json);
+            }
+          } catch (e) {
+            console.error("Failed to load analytics", e);
+            // Show user-friendly error
+            const dssContainer = document.getElementById("dss-container");
+            if (dssContainer) {
+              dssContainer.innerHTML = `
+                <div class="col-span-2 p-4 rounded-lg border-l-4 bg-red-50 border-red-500 text-red-800">
+                  <div class="flex items-start gap-3">
+                    <i class="fas fa-exclamation-triangle text-lg mt-1"></i>
+                    <div>
+                      <h5 class="font-semibold">Analytics Error</h5>
+                      <p class="text-sm">Failed to load analytics data. ${e.message}</p>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }
+          }
+          return null;
         }
 
-        function updateStatusChart(scope) {
+        function updateKPIs(scope) {
+          if (!analyticsData) {
+            console.warn("Cannot update KPIs: analyticsData is null");
+            return;
+          }
+          const { by_status, total_requests } = analyticsData;
+
+          const kpiTotal = document.getElementById("kpi-total");
+          const kpiApproved = document.getElementById("kpi-approved");
+          const kpiPending = document.getElementById("kpi-pending");
+          const kpiDeclined = document.getElementById("kpi-declined");
+
+          if (kpiTotal) kpiTotal.textContent = String(total_requests || 0);
+          if (kpiApproved)
+            kpiApproved.textContent = String(by_status?.approved || 0);
+          if (kpiPending)
+            kpiPending.textContent = String(by_status?.pending || 0);
+          if (kpiDeclined)
+            kpiDeclined.textContent = String(by_status?.declined || 0);
+        }
+
+        function updateStatusChart() {
+          if (!analyticsData) {
+            console.warn("Cannot update status chart: analyticsData is null");
+            return;
+          }
           const ctx = document.getElementById("chart-status");
-          if (!ctx) return;
-          const leaves =
-            scope === "approved"
-              ? analyticsLeaves.filter(hrApproved)
-              : analyticsLeaves;
-          const counts = {
-            approved: leaves.filter((l) => String(l.status) === "approved")
-              .length,
-            pending: leaves.filter((l) => String(l.status) === "pending")
-              .length,
-            declined: leaves.filter((l) => String(l.status) === "declined")
-              .length,
-          };
+          if (!ctx) {
+            console.warn("Cannot find chart-status canvas element");
+            return;
+          }
+
+          const { by_status, interpretations } = analyticsData;
           const data = {
             labels: ["Approved", "Pending", "Declined"],
             datasets: [
               {
-                data: [counts.approved, counts.pending, counts.declined],
+                data: [
+                  by_status.approved,
+                  by_status.pending,
+                  by_status.declined,
+                ],
                 backgroundColor: ["#10b981", "#fbbf24", "#f43f5e"],
                 borderWidth: 0,
               },
@@ -1311,31 +1469,63 @@
           const options = {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: "bottom" } },
+            plugins: {
+              legend: { position: "bottom" },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    const total = context.dataset.data.reduce(
+                      (a, b) => a + b,
+                      0
+                    );
+                    const pct =
+                      total > 0
+                        ? ((context.parsed / total) * 100).toFixed(1)
+                        : 0;
+                    return `${context.label}: ${context.parsed} (${pct}%)`;
+                  },
+                },
+              },
+            },
           };
+
           if (statusChart) {
             statusChart.data = data;
             statusChart.update();
           } else {
             statusChart = new Chart(ctx, { type: "doughnut", data, options });
           }
+
+          // Update interpretation
+          const interpretEl = document.getElementById("interpret-status");
+          if (interpretEl && interpretations) {
+            interpretEl.textContent = interpretations.status;
+          }
         }
 
-        function updateTypeChart(scope) {
+        function updateTypeChart() {
+          if (!analyticsData) {
+            console.warn("Cannot update type chart: analyticsData is null");
+            return;
+          }
           const ctx = document.getElementById("chart-type");
-          if (!ctx) return;
-          const leaves =
-            scope === "approved"
-              ? analyticsLeaves.filter(hrApproved)
-              : analyticsLeaves;
-          const byType = new Map();
-          leaves.forEach((l) => {
-            const t = (l.leave_type || "Unknown").trim();
-            byType.set(t, (byType.get(t) || 0) + 1);
-          });
-          const sorted = Array.from(byType.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 8);
+          if (!ctx) {
+            console.warn("Cannot find chart-type canvas element");
+            return;
+          }
+
+          const { by_type, interpretations } = analyticsData;
+          const sorted = by_type
+            ? Object.entries(by_type)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8)
+            : [];
+
+          // Handle empty data
+          if (sorted.length === 0) {
+            sorted.push(["No data", 0]);
+          }
+
           const labels = sorted.map(([k]) => k);
           const values = sorted.map(([, v]) => v);
           const palette = [
@@ -1348,10 +1538,20 @@
             "#f59e0b",
             "#8b5cf6",
           ];
+
+          // Truncate long labels for display
+          const displayLabels = labels.map((label) => {
+            if (label.length > 30) {
+              return label.substring(0, 27) + "...";
+            }
+            return label;
+          });
+
           const data = {
-            labels,
+            labels: displayLabels,
             datasets: [
               {
+                label: "Requests",
                 data: values,
                 backgroundColor: palette.slice(0, values.length),
                 borderWidth: 0,
@@ -1361,80 +1561,484 @@
           const options = {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            indexAxis: "y", // Make it horizontal for better label display
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: function (context) {
+                    // Show full label in tooltip
+                    return labels[context[0].dataIndex];
+                  },
+                  label: function (context) {
+                    return `${context.parsed.x} request${
+                      context.parsed.x !== 1 ? "s" : ""
+                    }`;
+                  },
+                },
+              },
+            },
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: { precision: 0 },
+                title: {
+                  display: true,
+                  text: "Number of Requests",
+                },
+              },
+              y: {
+                ticks: {
+                  autoSkip: false,
+                  font: { size: 11 },
+                },
+              },
+            },
           };
+
           if (typeChart) {
             typeChart.data = data;
             typeChart.update();
           } else {
             typeChart = new Chart(ctx, { type: "bar", data, options });
           }
+
+          // Update interpretation
+          const interpretEl = document.getElementById("interpret-type");
+          if (interpretEl && interpretations) {
+            interpretEl.textContent = interpretations.type;
+          }
         }
 
-        function updatePeakDays(scope) {
-          const ul = document.getElementById("peak-days");
-          if (!ul) return;
-          // Use byDayGlobal which is for approved leaves only; if scope==='all', estimate from analyticsLeaves by parsing date ranges
-          let countsByDate = new Map();
-          if (scope === "approved") {
-            countsByDate = new Map(byDayGlobal);
-          } else {
-            // recompute for all statuses using date ranges
-            const month = currentDate.getMonth();
-            const year = currentDate.getFullYear();
-            analyticsLeaves.forEach((l) => {
-              const range = parseStartEnd(l.dates);
-              if (!range) return;
-              datesInRange(range.start, range.end, (d) => {
-                if (d.getMonth() !== month || d.getFullYear() !== year) return;
-                const key = formatYMD(d);
-                countsByDate.set(key, (countsByDate.get(key) || 0) + 1);
-              });
-            });
-          }
-          const entries = Array.from(countsByDate.entries()).map(([k, v]) => ({
-            date: k,
-            count: Array.isArray(v) ? v.length : v,
-          }));
-          entries.sort(
-            (a, b) => b.count - a.count || a.date.localeCompare(b.date)
-          );
-          const top = entries.slice(0, 5);
-          ul.innerHTML = "";
-          if (top.length === 0) {
-            ul.innerHTML =
-              '<li class="text-sm text-gray-500">No data for this month.</li>';
+        function updateTrendsChart() {
+          if (!analyticsData) {
+            console.warn("Cannot update trends chart: analyticsData is null");
             return;
           }
-          const max = Math.max(...top.map((t) => t.count));
-          top.forEach((item) => {
-            const pct = max ? Math.round((item.count / max) * 100) : 0;
-            const li = document.createElement("li");
-            li.innerHTML = `
-              <div class="flex items-center justify-between text-sm text-gray-700">
-                <span>${item.date}</span>
-                <span class="font-semibold">${item.count}</span>
+          const ctx = document.getElementById("chart-trends");
+          if (!ctx) {
+            console.warn("Cannot find chart-trends canvas element");
+            return;
+          }
+
+          const { trends, interpretations } = analyticsData;
+          const data = {
+            labels: ["Previous Month", "Current Month"],
+            datasets: [
+              {
+                label: "Leave Requests",
+                data: [trends.previous_month, trends.current_month],
+                backgroundColor: ["#93c5fd", "#3b82f6"],
+                borderWidth: 0,
+              },
+            ],
+          };
+
+          const changeIcon =
+            trends.direction === "increase"
+              ? "↑"
+              : trends.direction === "decrease"
+              ? "↓"
+              : "→";
+
+          const options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  afterLabel: function (context) {
+                    if (context.dataIndex === 1) {
+                      return `${changeIcon} ${Math.abs(
+                        trends.change_percentage
+                      )}% ${trends.direction}`;
+                    }
+                    return "";
+                  },
+                },
+              },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0 } },
+            },
+          };
+
+          if (trendsChart) {
+            trendsChart.data = data;
+            trendsChart.update();
+          } else {
+            trendsChart = new Chart(ctx, { type: "bar", data, options });
+          }
+
+          // Update interpretation
+          const interpretEl = document.getElementById("interpret-trend");
+          if (interpretEl && interpretations) {
+            interpretEl.textContent = interpretations.trend;
+          }
+        }
+
+        function updateDepartmentChart() {
+          if (!analyticsData) {
+            console.warn(
+              "Cannot update department chart: analyticsData is null"
+            );
+            return;
+          }
+          const ctx = document.getElementById("chart-department");
+          if (!ctx) {
+            console.warn("Cannot find chart-department canvas element");
+            return;
+          }
+
+          const { by_department, interpretations } = analyticsData;
+          const depts = by_department ? Object.keys(by_department) : [];
+
+          // Handle empty data
+          if (depts.length === 0) {
+            depts.push("No data");
+            by_department["No data"] = { approved: 0, pending: 0, declined: 0 };
+          }
+
+          const approved = depts.map((d) => by_department[d].approved || 0);
+          const pending = depts.map((d) => by_department[d].pending || 0);
+          const declined = depts.map((d) => by_department[d].declined || 0);
+
+          const data = {
+            labels: depts,
+            datasets: [
+              {
+                label: "Approved",
+                data: approved,
+                backgroundColor: "#10b981",
+              },
+              {
+                label: "Pending",
+                data: pending,
+                backgroundColor: "#fbbf24",
+              },
+              {
+                label: "Declined",
+                data: declined,
+                backgroundColor: "#f43f5e",
+              },
+            ],
+          };
+
+          const options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "top" },
+            },
+            scales: {
+              x: { stacked: true },
+              y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
+            },
+          };
+
+          if (departmentChart) {
+            departmentChart.data = data;
+            departmentChart.update();
+          } else {
+            departmentChart = new Chart(ctx, { type: "bar", data, options });
+          }
+
+          // Update interpretation
+          const interpretEl = document.getElementById("interpret-department");
+          if (interpretEl && interpretations) {
+            interpretEl.textContent = interpretations.department;
+          }
+        }
+
+        function updateDailyTrendChart() {
+          if (!analyticsData) {
+            console.warn("Cannot update daily trend: analyticsData is null");
+            return;
+          }
+          const ctx = document.getElementById("chart-daily-trend");
+          if (!ctx) {
+            console.warn("Cannot find chart-daily-trend canvas element");
+            return;
+          }
+
+          const { peak_days, total_requests } = analyticsData;
+
+          // Convert peak_days object to sorted array
+          const entries = peak_days
+            ? Object.entries(peak_days).sort((a, b) => a[0].localeCompare(b[0]))
+            : [];
+
+          if (entries.length === 0) {
+            entries.push([new Date().toISOString().split("T")[0], 0]);
+          }
+
+          const dates = entries.map(([date]) => {
+            const d = new Date(date + "T00:00:00");
+            return d.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            });
+          });
+          const counts = entries.map(([, count]) => count);
+
+          // Calculate statistics
+          const maxCount = Math.max(...counts);
+          const minCount = Math.min(...counts);
+          const avgCount = counts.reduce((a, b) => a + b, 0) / counts.length;
+          const totalDays = entries.length;
+
+          // Create gradient
+          const gradient = ctx
+            .getContext("2d")
+            .createLinearGradient(0, 0, 0, 280);
+          gradient.addColorStop(0, "rgba(59, 130, 246, 0.4)");
+          gradient.addColorStop(0.5, "rgba(99, 102, 241, 0.2)");
+          gradient.addColorStop(1, "rgba(139, 92, 246, 0.05)");
+
+          const data = {
+            labels: dates,
+            datasets: [
+              {
+                label: "Employees on Leave",
+                data: counts,
+                borderColor: "#3b82f6",
+                backgroundColor: gradient,
+                tension: 0.4,
+                fill: true,
+                pointRadius: 5,
+                pointHoverRadius: 8,
+                pointBackgroundColor: "#3b82f6",
+                pointBorderColor: "#fff",
+                pointBorderWidth: 3,
+                pointHoverBackgroundColor: "#1d4ed8",
+                pointHoverBorderWidth: 3,
+                borderWidth: 3,
+              },
+            ],
+          };
+
+          const options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: "nearest",
+              intersect: false,
+            },
+            plugins: {
+              legend: {
+                display: false,
+              },
+              tooltip: {
+                backgroundColor: "rgba(0, 0, 0, 0.8)",
+                padding: 12,
+                titleFont: { size: 14, weight: "bold" },
+                bodyFont: { size: 13 },
+                callbacks: {
+                  title: function (context) {
+                    return context[0].label;
+                  },
+                  label: function (context) {
+                    const count = context.parsed.y;
+                    const diffFromAvg = count - avgCount;
+                    const diffText =
+                      diffFromAvg > 0
+                        ? `+${diffFromAvg.toFixed(1)} above average`
+                        : diffFromAvg < 0
+                        ? `${diffFromAvg.toFixed(1)} below average`
+                        : "at average";
+                    return [
+                      `${count} employee${count !== 1 ? "s" : ""} on leave`,
+                      `${diffText}`,
+                    ];
+                  },
+                  afterBody: function (context) {
+                    const count = context[0].parsed.y;
+                    if (count >= avgCount * 1.5) {
+                      return "\n⚠️ High staffing impact";
+                    } else if (count >= avgCount) {
+                      return "\n📊 Above average";
+                    } else if (count < avgCount && count > 0) {
+                      return "\n✓ Normal levels";
+                    }
+                    return "";
+                  },
+                },
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: {
+                  color: "rgba(0, 0, 0, 0.05)",
+                  drawBorder: false,
+                },
+                ticks: {
+                  precision: 0,
+                  font: { size: 11 },
+                  color: "#6b7280",
+                  padding: 8,
+                },
+                title: {
+                  display: true,
+                  text: "Employees on Leave",
+                  font: { size: 12, weight: "600" },
+                  color: "#374151",
+                  padding: { top: 0, bottom: 10 },
+                },
+                suggestedMax: maxCount > 0 ? Math.ceil(maxCount * 1.2) : 5,
+              },
+              x: {
+                grid: {
+                  display: false,
+                  drawBorder: false,
+                },
+                ticks: {
+                  maxRotation: 0,
+                  minRotation: 0,
+                  autoSkip: true,
+                  maxTicksLimit: 10,
+                  font: { size: 11 },
+                  color: "#6b7280",
+                },
+              },
+            },
+          };
+
+          if (dailyTrendChart) {
+            dailyTrendChart.data = data;
+            dailyTrendChart.options = options;
+            dailyTrendChart.update();
+          } else {
+            dailyTrendChart = new Chart(ctx, { type: "line", data, options });
+          }
+
+          // Generate better interpretation
+          const interpretEl = document.getElementById("interpret-peak");
+          if (interpretEl) {
+            let interpretation = "";
+
+            if (totalDays === 0 || maxCount === 0) {
+              interpretation =
+                "No leave activity recorded for this period. All staff are available.";
+            } else if (maxCount === minCount) {
+              interpretation = `Consistent leave pattern with ${maxCount} employee${
+                maxCount !== 1 ? "s" : ""
+              } on leave daily across ${totalDays} days. Stable staffing levels maintained.`;
+            } else {
+              const variance = maxCount - minCount;
+              const highDays = counts.filter((c) => c >= avgCount * 1.3).length;
+
+              interpretation = `Leave volume ranges from ${minCount} to ${maxCount} employees over ${totalDays} days (avg: ${avgCount.toFixed(
+                1
+              )}). `;
+
+              if (highDays > totalDays * 0.3) {
+                interpretation += `${highDays} high-volume days detected - ensure adequate staffing coverage during peak periods.`;
+              } else if (variance > avgCount) {
+                interpretation += `Significant fluctuation in leave patterns - consider implementing leave scheduling coordination.`;
+              } else {
+                interpretation += `Moderate variation in daily leave volume - staffing levels are manageable.`;
+              }
+            }
+
+            interpretEl.textContent = interpretation;
+          }
+        }
+
+        function updateDSS() {
+          if (!analyticsData) {
+            console.warn("Cannot update DSS: analyticsData is null");
+            return;
+          }
+
+          const dssContainer = document.getElementById("dss-container");
+          const dssAlerts = document.getElementById("dss-alerts");
+
+          if (!dssContainer || !dssAlerts) {
+            console.warn("Cannot find DSS elements");
+            return;
+          }
+
+          const alerts = analyticsData.decision_support || [];
+
+          if (alerts.length === 0) {
+            dssAlerts.classList.add("hidden");
+            return;
+          }
+
+          dssAlerts.classList.remove("hidden");
+          dssContainer.innerHTML = "";
+
+          const iconMap = {
+            warning: "fa-exclamation-triangle",
+            info: "fa-info-circle",
+            success: "fa-check-circle",
+          };
+
+          const colorMap = {
+            warning: "bg-amber-50 border-amber-500 text-amber-800",
+            info: "bg-blue-50 border-blue-500 text-blue-800",
+            success: "bg-green-50 border-green-500 text-green-800",
+          };
+
+          const priorityBadgeMap = {
+            high: "bg-red-100 text-red-800",
+            medium: "bg-yellow-100 text-yellow-800",
+            low: "bg-gray-100 text-gray-800",
+          };
+
+          alerts.forEach((alert) => {
+            const card = document.createElement("div");
+            card.className = `p-4 rounded-lg border-l-4 ${
+              colorMap[alert.type] || colorMap.info
+            }`;
+            card.innerHTML = `
+              <div class="flex items-start gap-3">
+                <i class="fas ${
+                  iconMap[alert.type] || iconMap.info
+                } text-lg mt-1"></i>
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <h5 class="font-semibold">${alert.title}</h5>
+                    <span class="text-xs px-2 py-0.5 rounded-full ${
+                      priorityBadgeMap[alert.priority]
+                    }">${alert.priority.toUpperCase()}</span>
+                  </div>
+                  <p class="text-sm mb-2">${alert.message}</p>
+                  <p class="text-xs italic">💡 ${alert.recommendation}</p>
+                </div>
               </div>
-              <div class="w-full h-2 bg-gray-100 rounded mt-1">
-                <div class="h-2 bg-blue-500 rounded" style="width: ${pct}%"></div>
-              </div>`;
-            ul.appendChild(li);
+            `;
+            dssContainer.appendChild(card);
           });
         }
 
         function updateAnalyticsUI() {
+          // Hide loading indicator
+          const loadingEl = document.getElementById("analytics-loading");
+          if (loadingEl) loadingEl.style.display = "none";
+
           const label = document.getElementById("label-month");
           if (label)
             label.textContent = currentDate.toLocaleDateString("en-US", {
               month: "long",
               year: "numeric",
             });
-          const scopeSel = document.getElementById("analytics-scope");
-          const scope = scopeSel ? scopeSel.value : "approved";
-          updateKPIs(scope);
-          updateStatusChart(scope);
-          updateTypeChart(scope);
-          updatePeakDays(scope);
+
+          if (!analyticsData) {
+            console.error("Cannot update analytics UI: data not loaded");
+            return;
+          }
+
+          console.log("Updating analytics UI with data:", analyticsData);
+          updateKPIs();
+          updateStatusChart();
+          updateTypeChart();
+          updateTrendsChart();
+          updateDepartmentChart();
+          updateDailyTrendChart();
+          updateDSS();
         }
 
         // Optional: periodic refresh to reflect new approvals
@@ -1452,7 +2056,7 @@
             currentDate.setMonth(currentDate.getMonth() - 1);
             await Promise.all([
               fetchLeavesForMonth(currentDate),
-              fetchAnalyticsForMonth(currentDate),
+              fetchEnhancedAnalytics(currentDate),
             ]);
             renderCalendar(currentDate);
             updateAnalyticsUI();
@@ -1461,7 +2065,7 @@
             currentDate.setMonth(currentDate.getMonth() + 1);
             await Promise.all([
               fetchLeavesForMonth(currentDate),
-              fetchAnalyticsForMonth(currentDate),
+              fetchEnhancedAnalytics(currentDate),
             ]);
             renderCalendar(currentDate);
             updateAnalyticsUI();
@@ -1472,7 +2076,7 @@
         (async function init() {
           await Promise.all([
             fetchLeavesForMonth(currentDate),
-            fetchAnalyticsForMonth(currentDate),
+            fetchEnhancedAnalytics(currentDate),
           ]);
           renderCalendar(currentDate);
           updateAnalyticsUI();
@@ -1480,7 +2084,7 @@
           setInterval(async () => {
             await Promise.all([
               fetchLeavesForMonth(currentDate),
-              fetchAnalyticsForMonth(currentDate),
+              fetchEnhancedAnalytics(currentDate),
             ]);
             renderCalendar(currentDate);
             updateAnalyticsUI();

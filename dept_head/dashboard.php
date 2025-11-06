@@ -714,27 +714,38 @@ if (!isset($_SESSION['user_id'])) {
     </header>
 
     <div class="container">
-        <aside class="sidebar">
-            <nav class="nav-menu">
-                <ul>
-                    <li class="nav-item active">
-                        <a href="#"><i class="fas fa-th-large"></i> Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="task-status.html"><i class="fas fa-users"></i> Task Status</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="leave-status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="leave-request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>
-                    </li>
-                </ul>
-            </nav>
-            <div class="sign-out">
-                <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
-            </div>
-        </aside>
+      <aside class="sidebar">
+        <nav class="nav-menu">
+          <ul>
+            <li class="nav-item active">
+              <a href="dashboard.php"
+                ><i class="fas fa-th-large"></i> Dashboard</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="employees.html"><i class="fas fa-users"></i> Employees</a>
+            </li>
+            <li class="nav-item">
+              <a href="leave-status.html"
+                ><i class="fas fa-calendar-alt"></i> Leave Status</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="task-status.html"
+                ><i class="fas fa-tasks"></i> Task Status</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="leave-request.html"
+                ><i class="fas fa-calendar-plus"></i> Leave Request</a
+              >
+            </li>
+          </ul>
+        </nav>
+        <div class="sign-out">
+          <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
+        </div>
+      </aside>
 
         <main class="main-content">
             <div class="main-content-area">
@@ -783,63 +794,22 @@ if (!isset($_SESSION['user_id'])) {
                     <div class="projects-events-container">
                         <div class="active-projects-box">
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold text-gray-800">Active Projects</h3>
+                                <h3 class="text-xl font-bold text-gray-800">Tasks</h3>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full">
                                     <thead>
                                         <tr>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Name</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Lead</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Task Name</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Employee</th>
                                             <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Progress</th>
                                             <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Status</th>
                                             <th class="py-3 px-4 whitespace-nowrap font-semibold text-sm text-gray-500 uppercase tracking-wider">Due Date</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Bender project</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Johnson</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 63%; background-color: #55a2ea;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Batmon</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">William</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 24%; background-color: #ef4444;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge pending">Pending</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Candy</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Paul</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 86%; background-color: #22c55e;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge completed">Completed</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">30 Jan 2025</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="py-4 px-4 whitespace-nowrap">Throwing</td>
-                                            <td class="py-4 px-4 whitespace-nowrap">Elizabeth</td>
-                                            <td class="py-4 px-4">
-                                                <div class="progress-bar">
-                                                    <div class="progress-fill" style="width: 51%; background-color: #6b7280;"></div>
-                                                </div>
-                                            </td>
-                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
-                                            <td class="py-4 px-4 whitespace-nowrap">11 Jan 2025</td>
+                                    <tbody id="tasks-table-body">
+                                        <tr id="tasks-empty-row">
+                                            <td class="py-4 px-4 text-gray-500" colspan="5">Loading tasks...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -954,6 +924,101 @@ if (!isset($_SESSION['user_id'])) {
             if(projectChart) {
                 new Chart(projectChart, config);
             }
+
+            // Tasks: fetch and render tasks for this dept head (only dept tasks are returned by the API)
+            let usersMap = {};
+
+            async function loadUsersMap() {
+                try {
+                    const res = await fetch('../api/get_users.php');
+                    const json = await res.json();
+                    if (json && json.success && Array.isArray(json.data)) {
+                        usersMap = {};
+                        json.data.forEach(u => {
+                            if (u.email) usersMap[u.email] = `${u.firstname || ''} ${u.lastname || ''}`.trim();
+                        });
+                    }
+                } catch (e) {
+                    console.error('Failed to load users map', e);
+                }
+            }
+
+            function statusToPercent(status) {
+                switch ((status || '').toLowerCase()) {
+                    case 'completed': return 100;
+                    case 'in_progress': return 55;
+                    case 'inprogress': return 55;
+                    case 'pending': return 10;
+                    case 'missed': return 0;
+                    default: return 0;
+                }
+            }
+
+            function statusBadgeLabel(status) {
+                if(!status) return '';
+                if (status === 'in_progress' || status === 'inprogress') return 'In Progress';
+                return status.charAt(0).toUpperCase() + status.slice(1);
+            }
+
+            function formatDateString(dt) {
+                if (!dt) return '-';
+                try {
+                    const d = new Date(dt);
+                    if (isNaN(d.getTime())) return dt;
+                    return d.toLocaleDateString();
+                } catch (e) { return dt; }
+            }
+
+            async function fetchAndRenderTasks() {
+                try {
+                    const res = await fetch('../api/tasks_list.php');
+                    const json = await res.json();
+                    const tbody = document.getElementById('tasks-table-body');
+                    if (!tbody) return;
+                    tbody.innerHTML = '';
+                    const tasks = Array.isArray(json.tasks) ? json.tasks : [];
+                    if (tasks.length === 0) {
+                        tbody.innerHTML = '<tr><td class="py-4 px-4 text-gray-500" colspan="5">No tasks found for your department.</td></tr>';
+                        return;
+                    }
+
+                    tasks.forEach(task => {
+                        const assignee = usersMap[task.assigned_to_email] || task.assigned_to_email || 'Unassigned';
+                        const pct = statusToPercent(task.status);
+                        let color = '#55a2ea';
+                        if (pct >= 100) color = '#22c55e';
+                        else if ((task.status||'').toLowerCase().includes('pending')) color = '#f59e0b';
+                        else if ((task.status||'').toLowerCase().includes('missed')) color = '#6b7280';
+
+                        const statusClass = (task.status === 'completed') ? 'completed' : (task.status === 'pending' ? 'pending' : 'inprogress');
+
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="py-4 px-4 whitespace-nowrap">${(task.title || '').replace(/</g,'&lt;')}</td>
+                            <td class="py-4 px-4 whitespace-nowrap">${assignee.replace(/</g,'&lt;')}</td>
+                            <td class="py-4 px-4">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${pct}%; background-color: ${color};"></div>
+                                </div>
+                            </td>
+                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge ${statusClass}">${statusBadgeLabel(task.status)}</span></td>
+                            <td class="py-4 px-4 whitespace-nowrap">${formatDateString(task.due_date)}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } catch (e) {
+                    console.error('Failed to load tasks', e);
+                    const tbody = document.getElementById('tasks-table-body');
+                    if (tbody) tbody.innerHTML = '<tr><td class="py-4 px-4 text-red-500" colspan="5">Failed to load tasks.</td></tr>';
+                }
+            }
+
+            // Initial load: first load users map then tasks. Poll every 5s for realtime updates.
+            (async function(){
+                await loadUsersMap();
+                await fetchAndRenderTasks();
+                setInterval(fetchAndRenderTasks, 5000);
+            })();
 
             // Fetch and display events from database
             fetch('../api/get_events.php')

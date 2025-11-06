@@ -323,7 +323,22 @@ if ($user) {
                             </label>
                         </div>
                     </div>
-                    <canvas id="attendanceChart"></canvas>
+                    <canvas id="attendanceChart" class="mb-4"></canvas>
+                    <div id="attendance-interpretation" class="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-sm text-gray-700 rounded">
+                        <p class="text-xs text-gray-500 mb-1"><i class="fas fa-chart-line mr-1"></i> Chart Interpretation</p>
+                        <p id="attendance-interpret-text">Loading interpretation...</p>
+                    </div>
+                </div>
+
+                <!-- Decision Support System Section -->
+                <div id="dss-section" class="bg-white rounded-xl shadow-md p-6 lg:col-span-2" style="display: none;">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i class="fas fa-brain text-blue-600 text-xl"></i>
+                        <h3 class="text-lg font-semibold text-gray-800">Smart Insights & Recommendations</h3>
+                    </div>
+                    <div id="dss-container" class="space-y-3">
+                        <!-- DSS alerts will be populated here -->
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
@@ -346,6 +361,9 @@ if ($user) {
                     </div>
                     <h3 id="miniPerformanceLabel" class="text-2xl font-bold text-gray-800 mt-4">--</h3>
                     <p id="miniPerformanceDesc" class="text-sm text-gray-500 mt-1 text-center">Score compared to last month</p>
+                    <div id="mini-performance-interpretation" class="mt-3 text-xs text-gray-600 text-center px-2">
+                        <p id="mini-performance-interpret-text">--</p>
+                    </div>
                     <button id="miniPerformanceDetailsBtn" class="bg-blue-600 rounded-full px-4 py-1 text-white text-xs mt-4">Details</button>
                 </div>
             </div>
@@ -901,31 +919,125 @@ if ($user) {
             if (perfCanvas) perfChart = createPerfChart(perfCanvas.getContext('2d'));
             if (attCanvas) attChart = createAttendanceChart(attCanvas.getContext('2d'));
 
-            async function fetchEmployeeTrend(range = 'daily') {
+            let analyticsData = null;
+
+            async function fetchEmployeeAnalytics(range = 'daily') {
                 try {
-                    const res = await fetch(`../api/employee_attendance_trend.php?range=${range}`);
+                    const res = await fetch(`../api/employee_attendance_analytics.php?range=${range}`);
                     const json = await res.json();
-                    if (!json.success) return null;
-                    return json.trend || [];
+                    if (!json.success) {
+                        console.error('Analytics fetch failed:', json.error);
+                        return null;
+                    }
+                    return json.analytics || null;
                 } catch (e) {
-                    console.error('Failed to fetch employee trend', e);
+                    console.error('Failed to fetch employee analytics', e);
                     return null;
                 }
             }
 
+            function updateInterpretations(analytics) {
+                if (!analytics || !analytics.interpretations) return;
+                
+                const interpretEl = document.getElementById('attendance-interpret-text');
+                if (interpretEl && analytics.interpretations.attendance) {
+                    interpretEl.textContent = analytics.interpretations.attendance;
+                }
+
+                const miniInterpretEl = document.getElementById('mini-performance-interpret-text');
+                if (miniInterpretEl && analytics.summary) {
+                    const summary = analytics.summary;
+                    let miniText = '';
+                    if (summary.performance_label === 'Excellent') {
+                        miniText = '🌟 Outstanding! Keep up the great work!';
+                    } else if (summary.performance_label === 'Good') {
+                        miniText = '👍 Solid performance with room to excel';
+                    } else if (summary.performance_label === 'Moderate') {
+                        miniText = '📈 Improvement needed for better results';
+                    } else {
+                        miniText = '⚠️ Immediate attention required';
+                    }
+                    miniInterpretEl.textContent = miniText;
+                }
+            }
+
+            function updateDSS(analytics) {
+                if (!analytics || !analytics.decision_support) return;
+                
+                const dssSection = document.getElementById('dss-section');
+                const dssContainer = document.getElementById('dss-container');
+                
+                if (!dssSection || !dssContainer) return;
+                
+                const alerts = analytics.decision_support;
+                
+                if (alerts.length === 0) {
+                    dssSection.style.display = 'none';
+                    return;
+                }
+                
+                dssSection.style.display = 'block';
+                dssContainer.innerHTML = '';
+                
+                const iconMap = {
+                    error: 'fa-exclamation-circle',
+                    warning: 'fa-exclamation-triangle',
+                    info: 'fa-info-circle',
+                    success: 'fa-check-circle'
+                };
+                
+                const colorMap = {
+                    error: 'bg-red-50 border-red-500 text-red-800',
+                    warning: 'bg-amber-50 border-amber-500 text-amber-800',
+                    info: 'bg-blue-50 border-blue-500 text-blue-800',
+                    success: 'bg-green-50 border-green-500 text-green-800'
+                };
+                
+                const priorityBadgeMap = {
+                    high: 'bg-red-100 text-red-800',
+                    medium: 'bg-yellow-100 text-yellow-800',
+                    low: 'bg-gray-100 text-gray-800'
+                };
+                
+                alerts.forEach(alert => {
+                    const card = document.createElement('div');
+                    card.className = `p-4 rounded-lg border-l-4 ${colorMap[alert.type] || colorMap.info}`;
+                    card.innerHTML = `
+                        <div class="flex items-start gap-3">
+                            <i class="fas ${iconMap[alert.type] || iconMap.info} text-lg mt-1"></i>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h5 class="font-semibold text-sm">${alert.title}</h5>
+                                    <span class="text-xs px-2 py-0.5 rounded-full ${priorityBadgeMap[alert.priority] || priorityBadgeMap.low}">${alert.priority.toUpperCase()}</span>
+                                </div>
+                                <p class="text-sm mb-2">${alert.message}</p>
+                                <p class="text-xs italic">💡 ${alert.recommendation}</p>
+                            </div>
+                        </div>
+                    `;
+                    dssContainer.appendChild(card);
+                });
+            }
+
             async function updateEmployeeCharts(range = 'daily') {
-                const trend = await fetchEmployeeTrend(range);
-                if (!trend) return;
+                analyticsData = await fetchEmployeeAnalytics(range);
+                if (!analyticsData) {
+                    console.error('No analytics data received');
+                    return;
+                }
+                
+                const { trend, summary, interpretations, decision_support } = analyticsData;
+                console.log('Analytics Summary:', summary); // Debug: Check attendance_rate value
+                
                 const labels = trend.map(t => t.label);
                 const present = trend.map(t => t.present);
                 const late = trend.map(t => t.late);
                 const undertime = trend.map(t => t.undertime);
                 const overtime = trend.map(t => t.overtime);
 
-                // compute overall percent = (sum(present+late) / number_of_points) * 100
-                const totalPoints = trend.length || 1;
-                const sumActive = trend.reduce((s, t) => s + (Number(t.present) + Number(t.late)), 0);
-                const overallPct = Math.round((sumActive / totalPoints) * 100);
+                // Use attendance_rate for display (actual attendance percentage)
+                const attendancePct = summary.attendance_rate || 0;
+                const overallPct = summary.overall_score || 0;
 
                 if (attChart) {
                     attChart.data.labels = labels;
@@ -938,7 +1050,6 @@ if ($user) {
 
                 if (perfChart) {
                     perfChart.data.labels = labels;
-                    // performance over time: cumulative active percent upto that point
                     let cumulative = 0;
                     const pctSeries = trend.map((t, idx) => {
                         cumulative += (Number(t.present) + Number(t.late));
@@ -948,11 +1059,28 @@ if ($user) {
                     perfChart.update();
                 }
 
+                // Update interpretations and DSS
+                updateInterpretations(analyticsData);
+                updateDSS(analyticsData);
+
                 // update summary and details dataset
                 const summaryEl = document.getElementById('performanceSummary');
-                if (summaryEl) summaryEl.textContent = `${overallPct}% attendance over selected period`;
+                if (summaryEl) summaryEl.textContent = `${Math.round(attendancePct)}% attendance over selected period`;
+                
+                const detailsPayload = { 
+                    overallPct: Math.round(attendancePct), // Use attendance_rate for percentage display
+                    summary: summary,
+                    interpretations: interpretations,
+                    present: summary.total_present,
+                    late: summary.total_late,
+                    undertime: summary.total_undertime,
+                    overtime: summary.total_overtime,
+                    absent: summary.total_absent,
+                    attendance_rate: summary.attendance_rate,
+                    punctuality_rate: summary.punctuality_rate
+                };
+                
                 const detailsBtn = document.getElementById('performanceDetailsBtn');
-                const detailsPayload = { overallPct, sumActive, totalPoints, present: present.reduce((a,b)=>a+Number(b),0), late: late.reduce((a,b)=>a+Number(b),0), undertime: undertime.reduce((a,b)=>a+Number(b),0), overtime: overtime.reduce((a,b)=>a+Number(b),0) };
                 if (detailsBtn) detailsBtn.dataset.details = JSON.stringify(detailsPayload);
 
                 // Update mini performance card
@@ -960,15 +1088,14 @@ if ($user) {
                 const miniLabelEl = document.getElementById('miniPerformanceLabel');
                 const miniDescEl = document.getElementById('miniPerformanceDesc');
                 const miniDetailsBtn = document.getElementById('miniPerformanceDetailsBtn');
-                if (miniPctEl) miniPctEl.textContent = overallPct + '%';
-                // label logic
-                let label = 'Poor';
-                if (overallPct >= 85) label = 'Excellent';
-                else if (overallPct >= 70) label = 'Good';
-                else if (overallPct >= 50) label = 'Moderate';
+                
+                if (miniPctEl) miniPctEl.textContent = Math.round(attendancePct) + '%';
+                
+                const label = summary.performance_label || 'Poor';
                 if (miniLabelEl) miniLabelEl.textContent = label;
-                if (miniDescEl) miniDescEl.textContent = `Attendance vs selected period (${currentPeriod})`;
+                if (miniDescEl) miniDescEl.textContent = `${summary.period_label} (${summary.total_working_days} working days)`;
                 if (miniDetailsBtn) miniDetailsBtn.dataset.details = JSON.stringify(detailsPayload);
+                
                 // color badge based on label
                 const miniBadge = document.getElementById('miniPerfBadge');
                 if (miniBadge) {
@@ -1033,22 +1160,45 @@ if ($user) {
                 undertimeEl.textContent = d.undertime || 0;
                 overtimeEl.textContent = d.overtime || 0;
 
-                // Summary label and description
+                // Use summary data if available
+                const summary = d.summary;
+                const interpretations = d.interpretations;
+                
                 let label = 'Poor';
                 let desc = 'Needs improvement';
-                if (pct >= 85) { label = 'Excellent'; desc = 'Score better than previous period'; }
-                else if (pct >= 70) { label = 'Good'; desc = 'Satisfactory performance'; }
-                else if (pct >= 50) { label = 'Moderate'; desc = 'Average performance'; }
+                
+                if (summary) {
+                    label = summary.performance_label || label;
+                    desc = `Attendance: ${summary.attendance_rate}% | Punctuality: ${summary.punctuality_rate}%`;
+                } else {
+                    if (pct >= 85) { label = 'Excellent'; desc = 'Score better than previous period'; }
+                    else if (pct >= 70) { label = 'Good'; desc = 'Satisfactory performance'; }
+                    else if (pct >= 50) { label = 'Moderate'; desc = 'Average performance'; }
+                }
 
                 summaryEl.textContent = `${label} (${pct}%)`;
                 descEl.textContent = desc;
 
-                // Recommendation
+                // Use interpretation as recommendation
                 let recommendation = '';
-                if (pct < 60) recommendation = 'Recommendation: Low attendance. Follow up with your supervisor and HR. Review reasons for absence and consider targeted reminders.';
-                else if (pct < 85) recommendation = 'Recommendation: Moderate. Address tardiness and undertime to improve overall presence.';
-                else recommendation = 'Recommendation: Good. Maintain current practices and optionally acknowledge high performance.';
-                recEl.textContent = recommendation;
+                if (interpretations) {
+                    recommendation = '<div class="space-y-2">';
+                    if (interpretations.attendance) {
+                        recommendation += `<div><strong>📊 Attendance:</strong> ${interpretations.attendance}</div>`;
+                    }
+                    if (interpretations.punctuality) {
+                        recommendation += `<div><strong>⏰ Punctuality:</strong> ${interpretations.punctuality}</div>`;
+                    }
+                    if (interpretations.work_hours) {
+                        recommendation += `<div><strong>🕒 Work Hours:</strong> ${interpretations.work_hours}</div>`;
+                    }
+                    recommendation += '</div>';
+                } else {
+                    if (pct < 60) recommendation = '⚠️ Low attendance. Follow up with your supervisor and HR. Review reasons for absence and consider targeted reminders.';
+                    else if (pct < 85) recommendation = '📈 Address tardiness and undertime to improve overall presence.';
+                    else recommendation = '✅ Maintain current practices and optionally acknowledge high performance.';
+                }
+                recEl.innerHTML = recommendation;
 
                 // Color the percent badge based on label
                 percentEl.className = 'w-20 h-20 rounded-full flex items-center justify-center font-bold text-lg';
