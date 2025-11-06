@@ -156,12 +156,26 @@ if (!isset($_SESSION['user_id'])) {
             text-align: center;
             border-top: 4px solid;
             width: 100%; /* Ensures it fills its grid cell */
+            position: relative; /* For absolute positioning of indicator */
         }
 
         .header-box:nth-child(1) { border-color: #3b82f6; }
         .header-box:nth-child(2) { border-color: #93c5fd; }
         .header-box:nth-child(3) { border-color: #22d3ee; }
         .header-box:nth-child(4) { border-color: #60a5fa; }
+        
+        .live-indicator-dot {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 10px;
+            height: 10px;
+            background-color: #10b981;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+            animation: pulse 2s infinite;
+        }
 
         .header-box .category {
             font-size: 0.9rem;
@@ -181,6 +195,11 @@ if (!isset($_SESSION['user_id'])) {
             font-size: 0.8rem;
             color: #9ca3af;
             font-weight: 500;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
         }
 
         .projects-events-container {
@@ -725,24 +744,28 @@ if (!isset($_SESSION['user_id'])) {
                 <section id="dashboard-content" class="content-section active">
                     <div class="header-container">
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">Permanent</span>
-                            <div class="count" id="count-permanent">0</div>
-                            <span class="active-count" id="active-permanent">0 Active</span>
+                            <div class="count" id="permanent-total">-</div>
+                            <span class="active-count"><span id="permanent-active">-</span> Active</span>
                         </div>
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">Casual</span>
-                            <div class="count" id="count-casual">0</div>
-                            <span class="active-count" id="active-casual">0 Active</span>
+                            <div class="count" id="casual-total">-</div>
+                            <span class="active-count"><span id="casual-active">-</span> Active</span>
                         </div>
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">JO</span>
-                            <div class="count" id="count-jo">0</div>
-                            <span class="active-count" id="active-jo">0 Active</span>
+                            <div class="count" id="jo-total">-</div>
+                            <span class="active-count"><span id="jo-active">-</span> Active</span>
                         </div>
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">OJT</span>
-                            <div class="count" id="count-ojt">0</div>
-                            <span class="active-count" id="active-ojt">0 Active</span>
+                            <div class="count" id="ojt-total">-</div>
+                            <span class="active-count"><span id="ojt-active">-</span> Active</span>
                         </div>
                     </div>
                     <div class="projects-events-container">
@@ -922,28 +945,37 @@ if (!isset($_SESSION['user_id'])) {
                     fetchNotifications();
                 })();
         document.addEventListener('DOMContentLoaded', function() {
-            // Real-time employee counts
-            fetch('../api/get_employees.php')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        const employees = data.employees;
-                        // employment category is stored in e.position now
-                        const countPermanent = employees.filter(e => e.position === 'Permanent').length;
-                        const countCasual = employees.filter(e => e.position === 'Casual').length;
-                        const countJO = employees.filter(e => e.position === 'JO').length;
-                        const countOJT = employees.filter(e => e.position === 'OJT').length;
-                        document.getElementById('count-permanent').textContent = countPermanent;
-                        document.getElementById('count-casual').textContent = countCasual;
-                        document.getElementById('count-jo').textContent = countJO;
-                        document.getElementById('count-ojt').textContent = countOJT;
-                        // If you want to show only active, filter by another field (e.g., e.active === 1)
-                        document.getElementById('active-permanent').textContent = countPermanent + ' Active';
-                        document.getElementById('active-casual').textContent = countCasual + ' Active';
-                        document.getElementById('active-jo').textContent = countJO + ' Active';
-                        document.getElementById('active-ojt').textContent = countOJT + ' Active';
-                    }
-                });
+            // Real-time employee counts with active status based on attendance
+            Promise.all([
+                fetch('../api/get_employees.php').then(res => res.json()),
+                fetch('../api/get_active_employees.php').then(res => res.json())
+            ])
+            .then(([employeesData, activeData]) => {
+                if (employeesData.success && activeData.success) {
+                    const employees = employeesData.employees;
+                    
+                    // Total counts by position
+                    const countPermanent = employees.filter(e => e.position === 'Permanent').length;
+                    const countCasual = employees.filter(e => e.position === 'Casual').length;
+                    const countJO = employees.filter(e => e.position === 'JO').length;
+                    const countOJT = employees.filter(e => e.position === 'OJT').length;
+                    
+                    document.getElementById('count-permanent').textContent = countPermanent;
+                    document.getElementById('count-casual').textContent = countCasual;
+                    document.getElementById('count-jo').textContent = countJO;
+                    document.getElementById('count-ojt').textContent = countOJT;
+                    
+                    // Active counts based on today's attendance (who have time_in today)
+                    const activeCounts = activeData.active;
+                    document.getElementById('active-permanent').textContent = activeCounts.Permanent + ' Active';
+                    document.getElementById('active-casual').textContent = activeCounts.Casual + ' Active';
+                    document.getElementById('active-jo').textContent = activeCounts.JO + ' Active';
+                    document.getElementById('active-ojt').textContent = activeCounts.OJT + ' Active';
+                }
+            })
+            .catch(err => {
+                console.error('Error loading employee data:', err);
+            });
 
             // Current sort mode for department table: 'backlog' | 'productive'
             window.deptSort = window.deptSort || 'backlog';
@@ -1089,6 +1121,35 @@ if (!isset($_SESSION['user_id'])) {
                 .catch(err => {
                     document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
                 });
+            
+            // Real-time dashboard updates (all accounts, no filtering)
+            function updateDashboardStats() {
+                fetch('../api/hr_dashboard.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update category counts
+                            document.getElementById('permanent-total').textContent = data.categories.Permanent.total;
+                            document.getElementById('permanent-active').textContent = data.categories.Permanent.active;
+                            
+                            document.getElementById('casual-total').textContent = data.categories.Casual.total;
+                            document.getElementById('casual-active').textContent = data.categories.Casual.active;
+                            
+                            document.getElementById('jo-total').textContent = data.categories.JO.total;
+                            document.getElementById('jo-active').textContent = data.categories.JO.active;
+                            
+                            document.getElementById('ojt-total').textContent = data.categories.OJT.total;
+                            document.getElementById('ojt-active').textContent = data.categories.OJT.active;
+                        }
+                    })
+                    .catch(err => console.error('Failed to update dashboard stats:', err));
+            }
+            
+            // Initial load
+            updateDashboardStats();
+            
+            // Auto-refresh every 5 seconds
+            setInterval(updateDashboardStats, 5000);
         });
     </script>
 </body>

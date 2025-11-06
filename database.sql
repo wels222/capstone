@@ -1,4 +1,8 @@
--- users table: includes role, contact number, and normalized status values
+-- Create and use a self-contained database named exactly "capstone"
+CREATE DATABASE IF NOT EXISTS `capstone` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `capstone`;
+
+-- users table: includes role, contact number, normalized status, and employee_id
 CREATE TABLE IF NOT EXISTS users (
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	lastname VARCHAR(100) NOT NULL,
@@ -12,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
 	email VARCHAR(100) NOT NULL UNIQUE,
 	password VARCHAR(255) NOT NULL,
 	profile_picture MEDIUMTEXT,
+	employee_id VARCHAR(100) DEFAULT NULL UNIQUE,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );
@@ -81,3 +86,23 @@ CREATE TABLE IF NOT EXISTS tasks (
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );
+
+-- Attendance table (standalone; users.employee_id already present above)
+CREATE TABLE IF NOT EXISTS attendance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id VARCHAR(100) NOT NULL,
+    date DATE NOT NULL,
+    time_in DATETIME DEFAULT NULL,
+    time_out DATETIME DEFAULT NULL,
+    time_in_status ENUM('Present','Late','Absent') DEFAULT NULL COMMENT 'Time In Status: Present (5:30 AM - 7:00 AM), Late (7:01 AM - 12:00 PM), Absent (12:01 PM onwards)',
+    time_out_status ENUM('On-time','Undertime','Overtime') DEFAULT NULL COMMENT 'Time Out Status: Undertime (7:30 AM - 4:59 PM), On-time (5:00 PM - 5:05 PM), Overtime (5:06 PM onwards)',
+    status VARCHAR(20) DEFAULT NULL COMMENT 'Overall daily status: Present, Absent, etc.',
+    notes TEXT DEFAULT NULL COMMENT 'Additional notes or remarks',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_employee_id (employee_id),
+    INDEX idx_date (date),
+    INDEX idx_status (status),
+    UNIQUE KEY unique_attendance (employee_id, date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

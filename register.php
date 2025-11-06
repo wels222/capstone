@@ -34,9 +34,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 // All new accounts require super admin approval: set status to 'pending'
                 $pendingStatus = 'pending';
-                $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position, role, contact_no, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position, $role, $contact_no, $pendingStatus])) {
-                    $success = 'Registration submitted! Awaiting super admin approval.';
+                
+                // Generate unique employee_id (format: EMP2025-0001)
+                $year = date('Y');
+                $stmt = $pdo->query("SELECT employee_id FROM users WHERE employee_id LIKE 'EMP{$year}-%' ORDER BY employee_id DESC LIMIT 1");
+                $lastEmp = $stmt->fetchColumn();
+                if ($lastEmp && preg_match('/EMP\d{4}-(\d+)/', $lastEmp, $m)) {
+                    $seq = intval($m[1]) + 1;
+                } else {
+                    $seq = 1;
+                }
+                $employee_id = sprintf('EMP%s-%04d', $year, $seq);
+
+                // Note: per-user QR codes are retired. We still generate an employee_id here.
+                $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position, role, contact_no, status, employee_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position, $role, $contact_no, $pendingStatus, $employee_id])) {
+                    $success = 'Registration submitted! Your Employee ID: <strong>' . $employee_id . '</strong>. Awaiting super admin approval.';
                 } else {
                     $error = 'Registration failed. Please try again.';
                 }

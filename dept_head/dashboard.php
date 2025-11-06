@@ -1,4 +1,4 @@
-<?php
+git<?php
 // dashboard.php
 session_start();
 if (!isset($_SESSION['user_id'])) {
@@ -156,12 +156,26 @@ if (!isset($_SESSION['user_id'])) {
             text-align: center;
             border-top: 4px solid;
             width: 100%; /* Ensures it fills its grid cell */
+            position: relative; /* For absolute positioning of indicator */
         }
 
         .header-box:nth-child(1) { border-color: #3b82f6; }
         .header-box:nth-child(2) { border-color: #93c5fd; }
         .header-box:nth-child(3) { border-color: #22d3ee; }
         .header-box:nth-child(4) { border-color: #60a5fa; }
+        
+        .live-indicator-dot {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 10px;
+            height: 10px;
+            background-color: #10b981;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+            animation: pulse 2s infinite;
+        }
 
         .header-box .category {
             font-size: 0.9rem;
@@ -621,6 +635,11 @@ if (!isset($_SESSION['user_id'])) {
             color: #1d4ed8;
         }
         
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        
         @media (max-width: 1024px) {
             .header-container {
                 grid-template-columns: 1fr 1fr;
@@ -702,13 +721,10 @@ if (!isset($_SESSION['user_id'])) {
                         <a href="#"><i class="fas fa-th-large"></i> Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a href="employees.html"><i class="fas fa-users"></i> Employees</a>
+                        <a href="task-status.html"><i class="fas fa-users"></i> Task Status</a>
                     </li>
                     <li class="nav-item">
                         <a href="leave-status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="task-status.html"><i class="fas fa-tasks"></i> Task Status</a>
                     </li>
                     <li class="nav-item">
                         <a href="leave-request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>
@@ -723,46 +739,107 @@ if (!isset($_SESSION['user_id'])) {
         <main class="main-content">
             <div class="main-content-area">
                 <section id="dashboard-content" class="content-section active">
+                    <!-- Hidden real-time update indicator (still functioning) -->
+                    <div style="display: none;" id="live-indicator">
+                        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #fff; padding: 0.75rem 1.5rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <span style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; animation: pulse 2s infinite;"></span>
+                                <span style="font-weight: 600; font-size: 0.95rem;">Live Dashboard</span>
+                                <span style="font-size: 0.85rem; opacity: 0.9;" id="dept-name">Loading...</span>
+                            </div>
+                            <div style="font-size: 0.85rem; opacity: 0.9;">
+                                <i class="fas fa-sync-alt" style="margin-right: 0.5rem;"></i>
+                                Auto-updates every 5s | Last update: <strong id="last-update-time">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="header-container">
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">Permanent</span>
-                            <div class="count" id="count-permanent">0</div>
-                            <span class="active-count" id="active-permanent">0 Active</span>
+                            <div class="count" id="permanent-total">-</div>
+                            <span class="active-count"><span id="permanent-active">-</span> Active</span>
                         </div>
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">Casual</span>
-                            <div class="count" id="count-casual">0</div>
-                            <span class="active-count" id="active-casual">0 Active</span>
+                            <div class="count" id="casual-total">-</div>
+                            <span class="active-count"><span id="casual-active">-</span> Active</span>
                         </div>
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">JO</span>
-                            <div class="count" id="count-jo">0</div>
-                            <span class="active-count" id="active-jo">0 Active</span>
+                            <div class="count" id="jo-total">-</div>
+                            <span class="active-count"><span id="jo-active">-</span> Active</span>
                         </div>
                         <div class="header-box">
+                            <span class="live-indicator-dot"></span>
                             <span class="category">OJT</span>
-                            <div class="count" id="count-ojt">0</div>
-                            <span class="active-count" id="active-ojt">0 Active</span>
+                            <div class="count" id="ojt-total">-</div>
+                            <span class="active-count"><span id="ojt-active">-</span> Active</span>
                         </div>
                     </div>
                     <div class="projects-events-container">
                         <div class="active-projects-box">
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold text-gray-800">My Tasks</h3>
+                                <h3 class="text-xl font-bold text-gray-800">Active Projects</h3>
                             </div>
-                            <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                            <div class="overflow-x-auto">
                                 <table class="min-w-full">
                                     <thead>
-                                        <tr class="text-gray-600 text-sm uppercase">
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Task Name</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Assigned To</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Due Date</th>
+                                        <tr>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Name</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Project Lead</th>
+                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Progress</th>
                                             <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th class="py-3 px-4 whitespace-nowrap font-semibold text-sm text-gray-500 uppercase tracking-wider">Due Date</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="dashboardTasksTbody">
+                                    <tbody>
                                         <tr>
-                                            <td class="py-4 px-4 text-gray-500" colspan="4">Loading tasks...</td>
+                                            <td class="py-4 px-4 whitespace-nowrap">Bender project</td>
+                                            <td class="py-4 px-4 whitespace-nowrap">Johnson</td>
+                                            <td class="py-4 px-4">
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill" style="width: 63%; background-color: #55a2ea;"></div>
+                                                </div>
+                                            </td>
+                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
+                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="py-4 px-4 whitespace-nowrap">Batmon</td>
+                                            <td class="py-4 px-4 whitespace-nowrap">William</td>
+                                            <td class="py-4 px-4">
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill" style="width: 24%; background-color: #ef4444;"></div>
+                                                </div>
+                                            </td>
+                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge pending">Pending</span></td>
+                                            <td class="py-4 px-4 whitespace-nowrap">06 Jan 2025</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="py-4 px-4 whitespace-nowrap">Candy</td>
+                                            <td class="py-4 px-4 whitespace-nowrap">Paul</td>
+                                            <td class="py-4 px-4">
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill" style="width: 86%; background-color: #22c55e;"></div>
+                                                </div>
+                                            </td>
+                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge completed">Completed</span></td>
+                                            <td class="py-4 px-4 whitespace-nowrap">30 Jan 2025</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="py-4 px-4 whitespace-nowrap">Throwing</td>
+                                            <td class="py-4 px-4 whitespace-nowrap">Elizabeth</td>
+                                            <td class="py-4 px-4">
+                                                <div class="progress-bar">
+                                                    <div class="progress-fill" style="width: 51%; background-color: #6b7280;"></div>
+                                                </div>
+                                            </td>
+                                            <td class="py-4 px-4 whitespace-nowrap"><span class="status-badge inprogress">Inprogress</span></td>
+                                            <td class="py-4 px-4 whitespace-nowrap">11 Jan 2025</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -795,6 +872,55 @@ if (!isset($_SESSION['user_id'])) {
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Function to fetch and update dashboard stats
+            async function updateDashboardStats() {
+                try {
+                    const response = await fetch('../api/dept_head_dashboard.php');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Update department name
+                        document.getElementById('dept-name').textContent = `Department: ${data.department}`;
+                        
+                        // Update last update time
+                        const now = new Date();
+                        document.getElementById('last-update-time').textContent = now.toLocaleTimeString();
+                        
+                        // Update category counts
+                        if (data.categories.Permanent) {
+                            document.getElementById('permanent-total').textContent = data.categories.Permanent.total;
+                            document.getElementById('permanent-active').textContent = data.categories.Permanent.active;
+                        }
+                        if (data.categories.Casual) {
+                            document.getElementById('casual-total').textContent = data.categories.Casual.total;
+                            document.getElementById('casual-active').textContent = data.categories.Casual.active;
+                        }
+                        if (data.categories.JO) {
+                            document.getElementById('jo-total').textContent = data.categories.JO.total;
+                            document.getElementById('jo-active').textContent = data.categories.JO.active;
+                        }
+                        if (data.categories.OJT) {
+                            document.getElementById('ojt-total').textContent = data.categories.OJT.total;
+                            document.getElementById('ojt-active').textContent = data.categories.OJT.active;
+                        }
+                        
+                        console.log('Dashboard stats updated:', data);
+                    } else {
+                        console.error('Failed to fetch dashboard stats:', data.error);
+                        document.getElementById('dept-name').textContent = 'Error loading data';
+                    }
+                } catch (error) {
+                    console.error('Error fetching dashboard stats:', error);
+                    document.getElementById('dept-name').textContent = 'Connection error';
+                }
+            }
+            
+            // Initial load
+            updateDashboardStats();
+            
+            // Auto-refresh every 5 seconds
+            setInterval(updateDashboardStats, 5000);
+            
             const chartData = {
                 labels: ['Complete', 'Pending', 'Not Start'],
                 datasets: [{
@@ -823,13 +949,13 @@ if (!isset($_SESSION['user_id'])) {
                     }
                 }
             };
-
+            
             const projectChart = document.getElementById('projectChart');
             if(projectChart) {
                 new Chart(projectChart, config);
             }
 
-                // Fetch and display events from database
+            // Fetch and display events from database
             fetch('../api/get_events.php')
                 .then(response => response.json())
                 .then(data => {
@@ -852,113 +978,7 @@ if (!isset($_SESSION['user_id'])) {
                 .catch(err => {
                     document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
                 });
-            // --- Tasks: load for dashboard Active Projects box replacement ---
-            const dashboardTasksTbody = document.getElementById('dashboardTasksTbody');
-            const employeeMap = new Map();
-            function fmtDate(d){ try { return d ? new Date(d).toISOString().slice(0,10) : ''; } catch(e){ return d||''; } }
-            function escapeHtml(s){
-                return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
-            }
-            function truncate(s,n){ if(!s) return ''; return s.length>n ? s.slice(0,n-1)+'…' : s; }
-
-            async function loadEmployeesMap(){
-                try{
-                    const res = await fetch('../api/get_employees.php');
-                    const data = await res.json();
-                    const emps = Array.isArray(data.employees) ? data.employees : [];
-                    emps.forEach(e=>{
-                        const name = `${e.firstname} ${e.mi ? e.mi + '. ' : ''}${e.lastname}`;
-                        employeeMap.set(e.email, { name, department: e.department });
-                    });
-                }catch(err){ /* ignore map errors */ }
-            }
-
-            async function loadDashboardTasks(){
-                try{
-                    const res = await fetch('../api/tasks_list.php', { credentials:'include' });
-                    const data = await res.json();
-                    if(!data.success){
-                        dashboardTasksTbody.innerHTML = `<tr><td colspan="4" class="py-4 px-4 text-red-600">${escapeHtml(data.error||'Failed to load tasks')}</td></tr>`;
-                        return;
-                    }
-                    const rows = data.tasks.map(t => {
-                        const assignee = employeeMap.get(t.assigned_to_email)?.name || t.assigned_to_email;
-                        const statusClass = t.status === 'completed' ? 'completed' : (t.status === 'in_progress' ? 'inprogress' : 'pending');
-                        return `<tr class="border-b border-gray-200 hover:bg-gray-50">
-                            <td class="py-3 px-4 font-medium text-gray-800">${escapeHtml(t.title)}</td>
-                            <td class="py-3 px-4 text-gray-600">${escapeHtml(assignee)}</td>
-                            <td class="py-3 px-4 text-gray-600">${fmtDate(t.due_date)}</td>
-                            <td class="py-3 px-4"><span class="status-badge ${statusClass}">${t.status.replace('_',' ')}</span></td>
-                        </tr>`;
-                    }).join('');
-                    dashboardTasksTbody.innerHTML = rows || '<tr><td class="py-4 px-4 text-gray-500" colspan="4">No tasks yet.</td></tr>';
-                }catch(err){
-                    dashboardTasksTbody.innerHTML = '<tr><td colspan="4" class="py-4 px-4 text-red-600">Error loading tasks</td></tr>';
-                }
-            }
-
-            // load name map first, then tasks
-            loadEmployeesMap().then(loadDashboardTasks);
-
-            // Auto-refresh tasks on dashboard every 10s, pause when hidden
-            const DASHBOARD_TASKS_INTERVAL = 10000;
-            let _dashTasksTimer = setInterval(() => { if(!document.hidden) loadDashboardTasks(); }, DASHBOARD_TASKS_INTERVAL);
-            document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) loadDashboardTasks(); });
-            window.addEventListener('beforeunload', ()=>{ if(_dashTasksTimer){ clearInterval(_dashTasksTimer); _dashTasksTimer=null; } });
         });
-
-        // Dept head counts: fetch current user, then employees, filter by department
-        async function updateDeptCounts(){
-            try{
-                const uResp = await fetch('../api/current_user.php');
-                const user = await uResp.json();
-                if(!user || !user.logged_in){ console.warn('No logged in user'); return; }
-                const dept = (user.department || '').toString();
-                // fetch all employees and filter by department
-                const empResp = await fetch('../api/get_employees.php');
-                const empJson = await empResp.json();
-                const employees = (empJson && empJson.employees) || [];
-                // Filter employees to the same department, exclude pending accounts and exclude HR role
-                const filtered = employees.filter(e => {
-                    const empDept = (e.department || '').toString();
-                    const role = (e.role || '').toString().toLowerCase();
-                    const status = (e.status || '').toString().toLowerCase();
-                    // must be same department
-                    if (empDept !== dept) return false;
-                    // exclude HR users from all counts
-                    if (role === 'hr') return false;
-                    // exclude accounts that are still pending
-                    if (status === 'pending') return false;
-                    return true;
-                });
-
-                // categories we track
-                const categories = ['Permanent','Casual','JO','OJT'];
-                const counts = { Permanent:0, Casual:0, JO:0, OJT:0 };
-                const active = { Permanent:0, Casual:0, JO:0, OJT:0 };
-                filtered.forEach(e=>{
-                    const pos = (e.position||'').toString();
-                    if(categories.includes(pos)){
-                        counts[pos] = (counts[pos]||0) + 1;
-                        if(((e.status||'').toString().toLowerCase()) === 'approved') active[pos] = (active[pos]||0) + 1;
-                    }
-                });
-
-                // update DOM
-                document.getElementById('count-permanent').textContent = counts['Permanent'] || 0;
-                document.getElementById('active-permanent').textContent = `${active['Permanent'] || 0} Active`;
-                document.getElementById('count-casual').textContent = counts['Casual'] || 0;
-                document.getElementById('active-casual').textContent = `${active['Casual'] || 0} Active`;
-                document.getElementById('count-jo').textContent = counts['JO'] || 0;
-                document.getElementById('active-jo').textContent = `${active['JO'] || 0} Active`;
-                document.getElementById('count-ojt').textContent = counts['OJT'] || 0;
-                document.getElementById('active-ojt').textContent = `${active['OJT'] || 0} Active`;
-            }catch(err){ console.error('updateDeptCounts error', err); }
-        }
-
-        // initialize and poll periodically
-        updateDeptCounts();
-        setInterval(updateDeptCounts, 12000); // refresh every 12s
     </script>
             <script>
                     // Notification inbox handlers for Dept Head dashboard
