@@ -6,6 +6,20 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 require_once '../db.php';
+$attendanceFlash = null;
+// Map ?att= flags (set by QR login flow) to human messages
+if (!empty($_GET['att'])) {
+    $att = $_GET['att'];
+    if ($att === 'timein_ok') {
+        $attendanceFlash = ['text' => '✓ Time In recorded', 'type' => 'success'];
+    } elseif ($att === 'timeout_ok' || $att === 'time_out_ok') {
+        $attendanceFlash = ['text' => '✓ Time Out recorded', 'type' => 'success'];
+    } elseif ($att === 'already_timedout') {
+        $attendanceFlash = ['text' => 'ℹ️ Time Out was already recorded for today', 'type' => 'info'];
+    } elseif ($att === 'failed') {
+        $attendanceFlash = ['text' => '⚠️ Attendance recording failed. Please try again.', 'type' => 'error'];
+    }
+}
 $user_id = $_SESSION['user_id'];
 $stmt = $pdo->prepare('SELECT firstname, lastname, mi, position, profile_picture, email FROM users WHERE id = ?');
 $stmt->execute([$user_id]);
@@ -100,6 +114,78 @@ if ($user) {
 
     <main class="flex-grow p-4 overflow-y-auto mt-6">
         <div id="dashboard-page" class="container">
+            <?php if (!empty($attendanceFlash)): ?>
+                <?php
+                    // Prepare formatted time for display
+                    $attTimeRaw = $_GET['att_time'] ?? null;
+                    if ($attTimeRaw) {
+                        try {
+                            $dt = new DateTime($attTimeRaw, new DateTimeZone('Asia/Manila'));
+                            $attTime = $dt->format('g:i A');
+                        } catch (Exception $e) {
+                            $attTime = htmlspecialchars($attTimeRaw);
+                        }
+                    } else {
+                        $attTime = '';
+                    }
+
+                    // Attendance status (e.g. Present, Late, Undertime, Overtime)
+                    $attStatusRaw = $_GET['att_status'] ?? '';
+                    $attStatus = $attStatusRaw ? htmlspecialchars($attStatusRaw) : '';
+                    // choose a subtle color for the badge based on status
+                    $statusColor = '#6b7280'; // default gray
+                    $s = strtolower($attStatusRaw);
+                    if (strpos($s, 'present') !== false) $statusColor = '#10b981';
+                    elseif (strpos($s, 'late') !== false) $statusColor = '#f59e0b';
+                    elseif (strpos($s, 'undertime') !== false) $statusColor = '#fb923c';
+                    elseif (strpos($s, 'on-time') !== false || strpos($s, 'ontime') !== false) $statusColor = '#3b82f6';
+                    elseif (strpos($s, 'overtime') !== false) $statusColor = '#6366f1';
+                ?>
+
+                <!-- Small top-right attendance popup (auto-hide after 3s) -->
+                <div id="attendanceToast" style="position:fixed;right:20px;top:20px;z-index:1050;display:none;">
+                    <div style="display:flex;align-items:center;gap:12px;background:#fff;padding:12px 14px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.15);min-width:260px;">
+                        <img src="<?php echo $profilePicture ? htmlspecialchars($profilePicture) : 'https://placehold.co/48x48/FFD700/000000?text=W+P'; ?>" alt="Profile" style="width:48px;height:48px;border-radius:8px;object-fit:cover;"/>
+                        <div style="flex:1;">
+                            <div style="font-weight:700;color:#111827;"><?php echo htmlspecialchars($fullName); ?></div>
+                            <div style="font-size:13px;color:#374151;margin-top:4px;">
+                                <?php echo htmlspecialchars($attendanceFlash['text']); ?>
+                                <?php if ($attStatus): ?>
+                                    <div style="margin-top:6px;">
+                                        <span style="display:inline-block;padding:4px 8px;border-radius:999px;color:#ffffff;background:<?php echo $statusColor; ?>;font-size:12px;font-weight:600;"><?php echo $attStatus; ?></span>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($attTime): ?>
+                                    <div style="font-size:12px;color:#6b7280;margin-top:6px;">Recorded at <strong><?php echo htmlspecialchars($attTime); ?></strong></div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <button id="attendanceDismiss" aria-label="Close" style="background:transparent;border:none;color:#6b7280;font-size:18px;cursor:pointer;">&times;</button>
+                    </div>
+                </div>
+
+                <script>
+                    (function(){
+                        const toast = document.getElementById('attendanceToast');
+                        const dismiss = document.getElementById('attendanceDismiss');
+                        function show() {
+                            toast.style.display = 'block';
+                            toast.style.opacity = '0';
+                            toast.style.transition = 'opacity 0.2s ease';
+                            requestAnimationFrame(() => { toast.style.opacity = '1'; });
+                            // auto-hide after 3 seconds
+                            setTimeout(hide, 3000);
+                        }
+                        function hide() {
+                            toast.style.opacity = '0';
+                            setTimeout(() => { toast.style.display = 'none'; }, 250);
+                        }
+                        dismiss.addEventListener('click', hide);
+                        // click outside dismiss not needed — small toast has dismiss button
+                        show();
+                    })();
+                </script>
+            <?php endif; ?>
             <div class="bg-blue-600 w-full rounded-xl shadow-lg p-6 flex flex-col items-start text-white relative overflow-hidden mb-6">
                 <div class="absolute inset-0 bg-blue-700 bg-opacity-20 backdrop-blur-sm z-10"></div>
                 <div class="relative z-20 flex items-center space-x-6">

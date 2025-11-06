@@ -41,6 +41,7 @@
             display: flex; 
             flex-direction: column; 
             align-items: center;
+            position: relative;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             overflow-y: auto;
             max-height: calc(100vh - 20px);
@@ -178,32 +179,48 @@
 </head>
 <body>
     <div class="container">
-        <div class="left">
-            <h2><span class="status-indicator"></span>QR Attendance Scanner</h2>
-            <div id="qr-reader"></div>
-            <button class="btn" id="startBtn" onclick="startScan()">
-                <i class="fas fa-play-circle"></i> Start Scanner
-            </button>
-            <p style="font-size:12px;color:#6b7280;margin-top:8px;text-align:center;flex-shrink:0;">
-                📸 Camera is mirrored for selfie view. Point your QR code at the camera.
-            </p>
-        </div>
-        <div class="right">
-            <div class="clock" id="clock"></div>
-            <div id="scan-info" style="display:none">
-                <!-- Info will be populated here -->
-            </div>
-            <div class="idle" id="idle">
-                <i class="fas fa-qrcode" style="font-size:48px;margin-bottom:16px;color:#9ca3af"></i>
-                <p>Waiting for QR scan...</p>
-            </div>
-        </div>
-    </div>
+            <div class="left">
+                <h2><span class="status-indicator"></span>QR Attendance</h2>
+                <div class="qr-panel" aria-live="polite">
+                    <div class="qr-card" style="display:flex;flex-direction:column;align-items:center;gap:12px;">
+                        <div class="qr-wrap" style="background:#fff;padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.15);">
+                            <img id="rotating-qr-img" src="" alt="Rotating QR code for attendance" class="qr-large" style="width:320px;height:320px;display:block;object-fit:contain;border-radius:6px;"/>
+                        </div>
 
-    <script src="html5-qrcode.min.js"></script>
-    <script>
-        // Clock
-        function updateClock(){
+                        <!-- URL display that updates with the QR -->
+                        <div style="width:100%;max-width:520px;display:flex;gap:8px;align-items:center;">
+                            <a id="rotating-qr-link" href="#" target="_blank" rel="noopener noreferrer" class="link-url" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:10px 12px;background:rgba(255,255,255,0.8);border-radius:8px;color:#374151;text-decoration:none;border:1px solid rgba(15,23,42,0.04);">Open attendance link</a>
+                            <button id="copyLinkBtn" class="btn small" style="padding:8px 12px;font-size:13px;">Copy</button>
+                            <!-- download removed per request -->
+                            <button id="refreshBtn" class="btn small" style="padding:8px 12px;font-size:13px;">Refresh</button>
+                        </div>
+
+                        <div id="qr-meta" class="qr-meta" style="font-size:13px;color:rgba(255,255,255,0.9);width:100%;max-width:520px;text-align:center;">
+                            <div style="color:#f3f4f6;opacity:0.95">Next rotation in <strong id="rot-count">60</strong>s</div>
+                            <div id="qr-updated" style="opacity:0.85;font-size:13px;margin-top:6px;color:#e6e7ee;">Last updated: —</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- hint removed per request; kept minimal instruction in the How it works card -->
+            </div>
+            <div class="right">
+                <div class="clock" id="clock"></div>
+                <div class="info-card" id="info-display" style="margin-top:20px;text-align:center;display:none;position:relative;">
+                    <img id="info-pic" class="info-pic" src="../assets/logo.png" alt="Employee Photo">
+                    <div class="name" id="info-name">—</div>
+                    <div class="emp-id" id="info-empid">Employee ID: —</div>
+                    <div class="dept" id="info-dept">—</div>
+                    <div class="time" id="info-time" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                        <i class="fas fa-clock" style="color:rgba(255,255,255,0.9);"></i>
+                        <span id="info-time-value">—</span>
+                    </div>
+                    <div class="status" id="info-status" style="display:inline-block;padding:8px 20px;border-radius:20px;font-size:15px;font-weight:700;margin-top:8px;">—</div>
+                </div>
+                <div class="idle" id="idle-message">Waiting for attendance scan...</div>
+            </div>
+        <script>
+            // Clock
+            function updateClock(){
             const d = new Date();
             const opts = { 
                 hour: '2-digit', 
@@ -223,249 +240,206 @@
         setInterval(updateClock, 1000); 
         updateClock();
 
-        let scanner = null;
-        let scanning = false;
-        let busy = false;
+        // Rotating QR logic: fetch a signed QR link and build an image URL from external QR API
+        let rotInterval = null;
+        let countdownInterval = null;
 
-        // Wait for Html5Qrcode library to load
-        function waitForLibrary() {
-            return new Promise((resolve) => {
-                if (typeof Html5Qrcode !== 'undefined') {
-                    resolve();
-                } else {
-                    const checkInterval = setInterval(() => {
-                        if (typeof Html5Qrcode !== 'undefined') {
-                            clearInterval(checkInterval);
-                            resolve();
-                        }
-                    }, 100);
-                }
-            });
-        }
-
-        async function startScan(){
-            if (scanning) return;
-            
-            const btn = document.getElementById('startBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-            
+        async function fetchRotatingQR() {
             try {
-                // Wait for library to load
-                console.log('⏳ Waiting for Html5Qrcode library...');
-                await waitForLibrary();
-                console.log('✅ Html5Qrcode library loaded!');
-                
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting Camera...';
-                
-                console.log('🎥 Creating scanner...');
-                scanner = new Html5Qrcode("qr-reader");
-                
-                console.log('📸 Requesting camera...');
-                await scanner.start(
-                    { facingMode: "user" },  // Use front camera for mirrored selfie view
-                    {
-                        fps: 10,
-                        qrbox: function(viewfinderWidth, viewfinderHeight) {
-                            // Use 90% of camera area for scanning - works in any screen size
-                            let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                            let qrboxSize = Math.floor(minEdge * 0.85);
-                            return {
-                                width: qrboxSize,
-                                height: qrboxSize
-                            };
-                        }
-                        // Removed aspectRatio to allow flexible scanning in all screen sizes
-                    },
-                    onScanSuccess,
-                    onScanError
-                );
-                
-                scanning = true;
-                btn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop Scanner';
-                btn.disabled = false;
-                btn.onclick = stopScan;
-                
-                console.log('✅ Scanner started successfully!');
-                
+                const res = await fetch('generate_qr.php');
+                const data = await res.json();
+                const url = data.url;
+                const qrApi = 'https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=' + encodeURIComponent(url);
+                const img = document.getElementById('rotating-qr-img');
+                const link = document.getElementById('rotating-qr-link');
+                const download = document.getElementById('downloadQrBtn');
+                img.src = qrApi;
+                link.href = url;
+                link.textContent = url;
+                download.href = qrApi; // let user download the image
+                document.getElementById('qr-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
             } catch (err) {
-                console.error('❌ Error:', err);
-                alert('Failed to start camera: ' + err.message + '\n\nTip: Make sure to allow camera permission');
-                btn.innerHTML = '<i class="fas fa-play-circle"></i> Start Scanner';
-                btn.disabled = false;
+                console.error('Failed to load rotating QR', err);
             }
         }
 
-        async function stopScan(){
-            if (!scanning || !scanner) return;
-            
-            try {
-                await scanner.stop();
-                scanner.clear();
-                scanner = null;
-                scanning = false;
-                
-                const btn = document.getElementById('startBtn');
-                btn.innerHTML = '<i class="fas fa-play-circle"></i> Start Scanner';
-                btn.onclick = startScan;
-                
-                console.log('🛑 Scanner stopped');
-            } catch (err) {
-                console.error('Stop error:', err);
+        function startRotation() {
+            // initial fetch aligned to minute boundary
+            fetchRotatingQR();
+            // set countdown to seconds until next change
+            function schedule() {
+                const now = Date.now();
+                const msToNextMinute = 60000 - (now % 60000);
+                // update countdown every second
+                let secondsLeft = Math.ceil(msToNextMinute / 1000);
+                const counterEl = document.getElementById('rot-count');
+                if (countdownInterval) clearInterval(countdownInterval);
+                counterEl.textContent = secondsLeft;
+                countdownInterval = setInterval(() => {
+                    secondsLeft--;
+                    if (secondsLeft < 0) secondsLeft = 0;
+                    counterEl.textContent = secondsLeft;
+                }, 1000);
+
+                // schedule the next fetch exactly at next minute
+                setTimeout(() => {
+                    fetchRotatingQR();
+                    // after first aligned update, set fixed interval every 60s
+                    if (rotInterval) clearInterval(rotInterval);
+                    rotInterval = setInterval(fetchRotatingQR, 60000);
+                    schedule(); // reschedule countdown
+                }, msToNextMinute + 200);
             }
+            schedule();
         }
 
-        async function onScanSuccess(decodedText){
-            if (busy) return;
-            busy = true;
-            
-            console.log('📱 QR Code scanned:', decodedText);
-            
-            // Stop scanner temporarily
-            await stopScan();
-            
-            // Send to backend
-            fetch('scan_qr.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ employee_code: decodedText })
-            })
-            .then(r => r.json())
-            .then(res => {
-                console.log('Server response:', res);
-                
-                if (res.success){
-                    const emp = res.employee;
-                    const actionText = res.action === 'time_in' 
-                        ? '✓ TIME IN RECORDED' 
-                        : '✓ TIME OUT RECORDED';
-                    
-                    // Determine status text and color
-                    let statusText = 'Status: ' + (res.status || 'Present');
-                    let statusColor = '';
-                    
-                    if (res.action === 'time_in') {
-                        // Time In statuses: Present, Late, Absent
-                        if (res.status === 'Present') {
-                            statusColor = '#10b981'; // Green
-                        } else if (res.status === 'Late') {
-                            statusColor = '#f59e0b'; // Yellow/Orange
-                        } else {
-                            statusColor = '#ef4444'; // Red (Absent)
-                        }
-                    } else {
-                        // Time Out statuses: On-time, Undertime, Overtime, Absent
-                        if (res.status === 'On-time') {
-                            statusColor = '#10b981'; // Green
-                        } else if (res.status === 'Undertime') {
-                            statusColor = '#f59e0b'; // Yellow
-                        } else if (res.status === 'Overtime') {
-                            statusColor = '#3b82f6'; // Blue
-                        } else {
-                            statusColor = '#ef4444'; // Red (Absent)
-                        }
-                    }
-                    
-                    document.getElementById('scan-info').innerHTML = `
-                        <div class="info-card">
-                            <img class="info-pic" src="${emp.profile_pic || '../assets/logo.png'}" alt="Profile">
-                            <div class="name">${emp.name}</div>
-                            <div class="emp-id">${emp.employee_id}</div>
-                            <div class="dept">${emp.department}</div>
-                            <div class="time">${actionText}<br>${new Date(res.time).toLocaleTimeString()}</div>
-                            <div class="status" style="background: ${statusColor};">${statusText}</div>
-                            <div id="countdown" style="margin-top:16px;font-size:14px;opacity:0.8;">
-                                Ready to scan in <span id="timer">5</span>s
-                            </div>
-                        </div>
-                    `;
-                    document.getElementById('scan-info').style.display = 'block';
-                    document.getElementById('idle').style.display = 'none';
-
-                    // Countdown timer
-                    let seconds = 5;
-                    const timerElement = document.getElementById('timer');
-                    const countdownInterval = setInterval(() => {
-                        seconds--;
-                        if (timerElement) {
-                            timerElement.textContent = seconds;
-                        }
-                        if (seconds <= 0) {
-                            clearInterval(countdownInterval);
-                        }
-                    }, 1000);
-
-                    // Auto restart after 5 seconds
-                    setTimeout(() => {
-                        document.getElementById('scan-info').style.display = 'none';
-                        document.getElementById('idle').style.display = 'block';
-                        busy = false;
-                        startScan();
-                    }, 5000);
-                } else {
-                    // Employee not found or error
-                    document.getElementById('scan-info').innerHTML = `
-                        <div class="info-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
-                            <i class="fas fa-exclamation-triangle" style="font-size:64px;margin-bottom:16px;"></i>
-                            <div class="name">Not Found</div>
-                            <p style="font-size:16px;margin:16px 0;">${res.message || 'Employee not found in the system'}</p>
-                            <div id="countdown" style="margin-top:16px;font-size:14px;opacity:0.8;">
-                                Try again in <span id="timer">5</span>s
-                            </div>
-                        </div>
-                    `;
-                    document.getElementById('scan-info').style.display = 'block';
-                    document.getElementById('idle').style.display = 'none';
-
-                    // Countdown timer for error
-                    let seconds = 5;
-                    const timerElement = document.getElementById('timer');
-                    const countdownInterval = setInterval(() => {
-                        seconds--;
-                        if (timerElement) {
-                            timerElement.textContent = seconds;
-                        }
-                        if (seconds <= 0) {
-                            clearInterval(countdownInterval);
-                        }
-                    }, 1000);
-
-                    // Auto restart after 5 seconds
-                    setTimeout(() => {
-                        document.getElementById('scan-info').style.display = 'none';
-                        document.getElementById('idle').style.display = 'block';
-                        busy = false;
-                        startScan();
-                    }, 5000);
-                }
-            })
-            .catch(err => {
-                console.error('Fetch error:', err);
-                alert('Connection error. Please try again.');
-                busy = false;
-                startScan();
-            });
-        }
-
-        function onScanError(err){
-            // Silent - normal scanning errors happen constantly while scanning
-        }
-
-        console.log('✅ Page loaded');
-        console.log('🔒 Secure context:', window.isSecureContext);
-        console.log('📷 Camera API available:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
-        
-        // Check if library loaded
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                if (typeof Html5Qrcode !== 'undefined') {
-                    console.log('✅ Html5Qrcode library ready!');
-                } else {
-                    console.error('❌ Html5Qrcode library NOT loaded!');
-                    alert('Error: QR scanner library failed to load. Please refresh the page.');
-                }
-            }, 1000);
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            fetchRotatingQR();
         });
+
+        document.getElementById('copyLinkBtn').addEventListener('click', async () => {
+            const link = document.getElementById('rotating-qr-link').href;
+            try {
+                await navigator.clipboard.writeText(link);
+                // show non-blocking notification (optional: you can remove this if not needed)
+                alert('Link copied to clipboard');
+            } catch (e) {
+                prompt('Copy this link', link);
+            }
+        });
+
+        // Poll for last scan produced by server-side attendance recorder
+        async function pollLastScan() {
+            try {
+                const r = await fetch('last_scan.php', { cache: 'no-store' });
+                if (!r.ok) return;
+                const js = await r.json();
+                if (js && js.success && js.scan) {
+                    const s = js.scan;
+                    const name = s.name || (s.employee_id ? s.employee_id : 'Employee');
+                    // Determine action label
+                    let actionLabel = '';
+                    if (s.action === 'time_in') actionLabel = 'Time In';
+                    else if (s.action === 'time_out') actionLabel = 'Time Out';
+                    else if (s.action === 'already_timedout') actionLabel = 'Time Out (Already Recorded)';
+                    else actionLabel = 'Attendance';
+                    const status = s.status || s.time_in_status || '';
+                    const time = s.time || '';
+                    const employeeId = s.employee_id || '—';
+                    const profilePicture = s.profile_picture || '';
+                    showEmployeeInfo({ 
+                        name: name, 
+                        action: actionLabel, 
+                        status: status, 
+                        time: time, 
+                        employeeId: employeeId,
+                        photo: profilePicture
+                    });
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function showEmployeeInfo(data) {
+            const infoDisplay = document.getElementById('info-display');
+            const idleMsg = document.getElementById('idle-message');
+            const pic = document.getElementById('info-pic');
+            const nameEl = document.getElementById('info-name');
+            const empIdEl = document.getElementById('info-empid');
+            const deptEl = document.getElementById('info-dept');
+            const timeEl = document.getElementById('info-time-value');
+            const statusEl = document.getElementById('info-status');
+
+            // Fill data
+            nameEl.textContent = data.name || '—';
+            empIdEl.textContent = 'Employee ID: ' + (data.employeeId || '—');
+            deptEl.textContent = data.action || 'Attendance';
+            
+            // Profile picture: use Mabini logo as default
+            if (data.photo) {
+                pic.src = data.photo;
+            } else {
+                pic.src = '../assets/logo.png';
+            }
+            
+            if (data.time) {
+                const t = new Date(data.time.replace(' ', 'T'));
+                timeEl.textContent = t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            } else {
+                timeEl.textContent = '—';
+            }
+            
+            // Color-coded status badges (matching attendance dashboard exactly)
+            const status = data.status || '—';
+            statusEl.textContent = status;
+            
+            // Remove all status classes first
+            statusEl.className = 'status';
+            
+            // Apply color and icon based on status (matching attendance/dashboard.php exactly)
+            const s = status.toLowerCase();
+            if (s.includes('present')) {
+                statusEl.style.background = '#10b981';
+                statusEl.style.color = '#fff';
+                statusEl.innerHTML = '<i class="fas fa-check-circle" style="margin-right:6px;"></i>' + status;
+            } else if (s.includes('late')) {
+                statusEl.style.background = '#f59e0b';
+                statusEl.style.color = '#fff';
+                statusEl.innerHTML = '<i class="fas fa-clock" style="margin-right:6px;"></i>' + status;
+            } else if (s.includes('absent')) {
+                statusEl.style.background = '#ef4444';
+                statusEl.style.color = '#fff';
+                statusEl.innerHTML = '<i class="fas fa-times-circle" style="margin-right:6px;"></i>' + status;
+            } else if (s.includes('on-time') || s.includes('ontime')) {
+                statusEl.style.background = '#14b8a6';
+                statusEl.style.color = '#fff';
+                statusEl.innerHTML = '<i class="fas fa-user-check" style="margin-right:6px;"></i>' + status;
+            } else if (s.includes('undertime')) {
+                statusEl.style.background = '#fb923c';
+                statusEl.style.color = '#fff';
+                statusEl.innerHTML = '<i class="fas fa-hourglass-half" style="margin-right:6px;"></i>' + status;
+            } else if (s.includes('overtime')) {
+                statusEl.style.background = '#3b82f6';
+                statusEl.style.color = '#fff';
+                statusEl.innerHTML = '<i class="fas fa-clock" style="margin-right:6px;"></i>' + status;
+            } else {
+                statusEl.style.background = 'rgba(255,255,255,0.3)';
+                statusEl.style.color = '#fff';
+                statusEl.textContent = status;
+            }
+
+            // Show info card with animation and hide idle message
+            idleMsg.style.display = 'none';
+            infoDisplay.style.display = 'block';
+            infoDisplay.style.opacity = '0';
+            infoDisplay.style.transform = 'scale(0.95)';
+            infoDisplay.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            
+            requestAnimationFrame(() => {
+                infoDisplay.style.opacity = '1';
+                infoDisplay.style.transform = 'scale(1)';
+            });
+
+            // Auto-hide after 3 seconds and show idle message
+            setTimeout(() => {
+                infoDisplay.style.opacity = '0';
+                infoDisplay.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    infoDisplay.style.display = 'none';
+                    idleMsg.style.display = 'block';
+                    // Reset to default logo
+                    pic.src = '../assets/logo.png';
+                }, 300);
+            }, 3000);
+        }
+
+    // start polling every 2 seconds and run immediately once
+    pollLastScan();
+    setInterval(pollLastScan, 2000);
+
+        // Start rotation
+        startRotation();
     </script>
 </body>
 </html>
