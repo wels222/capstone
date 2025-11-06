@@ -45,10 +45,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $seq = 1;
                 }
                 $employee_id = sprintf('EMP%s-%04d', $year, $seq);
-                $qr_code = $employee_id;
-                
-                $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position, role, contact_no, status, employee_id, qr_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position, $role, $contact_no, $pendingStatus, $employee_id, $qr_code])) {
+
+                // Note: per-user QR codes are retired. We still generate an employee_id here.
+                $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position, role, contact_no, status, employee_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                if ($stmt->execute([$email, $hash, $department, $lastname, $firstname, $mi, $position, $role, $contact_no, $pendingStatus, $employee_id])) {
                     $success = 'Registration submitted! Your Employee ID: <strong>' . $employee_id . '</strong>. Awaiting super admin approval.';
                 } else {
                     $error = 'Registration failed. Please try again.';

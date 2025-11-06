@@ -2,7 +2,7 @@
 CREATE DATABASE IF NOT EXISTS `capstone` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `capstone`;
 
--- users table: includes role, contact number, normalized status, employee_id and qr_code
+-- users table: includes role, contact number, normalized status, and employee_id
 CREATE TABLE IF NOT EXISTS users (
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	lastname VARCHAR(100) NOT NULL,
@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS users (
 	password VARCHAR(255) NOT NULL,
 	profile_picture MEDIUMTEXT,
 	employee_id VARCHAR(100) DEFAULT NULL UNIQUE,
-	qr_code VARCHAR(255) DEFAULT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );

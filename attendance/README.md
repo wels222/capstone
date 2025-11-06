@@ -22,7 +22,6 @@ The system uses **ONLY the `users` table** - no separate employees table needed.
 **users table** contains:
 - Basic info (firstname, lastname, email, etc.)
 - `employee_id` - Unique ID (e.g., EMP2025-0001)
-- `qr_code` - QR code data (same as employee_id)
 - `profile_picture` - User photo
 - `department` - User's department
 - `status` - pending/approved/declined
@@ -61,10 +60,9 @@ The personal `my_qr.php` page has been removed from this project. Use the rotati
 ### 1. Database Setup
 Run this SQL in phpMyAdmin:
 ```sql
--- Add employee_id and qr_code to users table
+-- Add employee_id to users table (personal per-user QR column retired)
 ALTER TABLE users 
-ADD COLUMN employee_id VARCHAR(100) DEFAULT NULL UNIQUE AFTER profile_picture,
-ADD COLUMN qr_code VARCHAR(255) DEFAULT NULL AFTER employee_id;
+ADD COLUMN employee_id VARCHAR(100) DEFAULT NULL UNIQUE AFTER profile_picture;
 
 -- Create attendance table
 CREATE TABLE IF NOT EXISTS attendance (
@@ -84,7 +82,8 @@ CREATE TABLE IF NOT EXISTS attendance (
 ### 2. Registration
 When users register via `register.php`, they automatically get:
 - Unique Employee ID (format: EMP2025-0001, EMP2025-0002, etc.)
-- QR code containing their Employee ID
+
+Note: personal QR pages and automatic per-user QR generation have been retired in favor of the rotating QR station (`attendance/scan.html`). Admins can still generate QR images if needed.
 
 ### 3. Access URLs
 - Scanner: `http://localhost/capstone/attendance/`
@@ -97,7 +96,7 @@ When users register via `register.php`, they automatically get:
 ### Registration Flow
 1. User fills registration form
 2. System auto-generates Employee ID (EMP[YEAR]-[XXXX])
-3. QR code is created from Employee ID
+3. QR images can be generated from Employee ID when needed (personal QR page retired)
 4. Super admin approves account
 5. User can view/download their QR code
 
@@ -145,7 +144,6 @@ When users register via `register.php`, they automatically get:
 
 ## 🔐 Security
 - Only approved users can scan
-- Session-based authentication for my_qr.php
 - SQL injection protection (prepared statements)
 - Unique attendance per day per employee
 

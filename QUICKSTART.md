@@ -2,14 +2,14 @@
 
 ## ✅ What's Been Implemented
 
-### 1. **Database Updates**
-- ✅ Added `employee_id` and `qr_code` columns to `users` table
+-### 1. **Database Updates**
+- ✅ Added `employee_id` column to `users` table
 - ✅ Created `attendance` table for recording attendance
 - ✅ Updated `database.sql` with all necessary tables
 
 ### 2. **Registration System** 
 - ✅ Auto-generates unique Employee ID (EMP2025-0001, EMP2025-0002, etc.)
-- ✅ Auto-creates QR code for each new registration
+- ✅ Employee IDs are generated during registration; personal per-user QR pages were retired in favor of the rotating scanner station
 - ✅ Uses existing department list (17 departments)
 
 ### 3. **Attendance Folder** (`/attendance/`)
@@ -62,7 +62,7 @@ Created complete attendance monitoring system:
 
  #### E. View Your QR Code
  1. Login to your account
- 2. Download or print your QR code via the administration panel or the rotating QR station (the personal QR page has been removed)
+ 2. Obtain QR images via the rotating QR station (`attendance/scan.html`) or through administrative tools (personal QR page has been removed)
 
 ## 📱 Access Links
 
@@ -114,7 +114,7 @@ Created complete attendance monitoring system:
 
 ### Registration Flow:
 ```
-User Registers → System generates EMP2025-0001 → QR code created → Super Admin approves → User can view QR
+User Registers → System generates EMP2025-0001 → Super Admin approves → Employee ID available (per-user QR retired; use rotating station)
 ```
 
 ### Attendance Flow:
@@ -147,7 +147,7 @@ Show QR to camera → Camera reads Employee ID → Check database:
 - [ ] Database imported successfully
 - [ ] Can register new user and see Employee ID
 - [ ] Super admin can approve user
- - [ ] Can view QR code at my_qr.php (note: personal QR page removed)
+ - [ ] Can view QR code at the rotating station or via admin tools (personal QR page removed)
 - [ ] Scanner page auto-opens camera
 - [ ] Camera is mirrored (selfie view)
 - [ ] Can scan QR and record Time In
@@ -174,7 +174,7 @@ Show QR to camera → Camera reads Employee ID → Check database:
 ### Employee not found?
 - Verify user is approved in database
 - Check employee_id column is populated
-- Ensure qr_code matches employee_id
+- Ensure employee_id matches the QR data used by your scanner (personal QR pages were retired)
 
 ### No data showing?
 - Check database connection in `db.php`
@@ -193,7 +193,7 @@ capstone/
 │   ├── get_dashboard.php (API)
 │   ├── records.php
 │   ├── get_attendance.php (API)
-│   ├── my_qr.php
+ 
 │   ├── migration.sql
 │   └── README.md
 └── QUICKSTART.md (This file)
@@ -238,7 +238,7 @@ Response: {
 
 You now have a **complete, professional QR-based attendance monitoring system** that:
 
-1. ✅ Auto-generates Employee IDs and QR codes during registration
+1. ✅ Auto-generates Employee IDs during registration (personal QR pages retired)
 2. ✅ Auto-opens camera for scanning (mirrored view)
 3. ✅ Records Time In/Out automatically
 4. ✅ Classifies status (Present/Late/Absent)
