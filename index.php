@@ -20,7 +20,23 @@ if (isset($_GET['qr']) && $_GET['qr']) {
             $res = qr_record_attendance_for_user($pdo, $_SESSION['user_id']);
             // Clear pending token
             unset($_SESSION['qr_pending']);
-            $redirect = 'employee/dashboard.php';
+
+            // Determine redirect target based on current session role/position (mirror normal login routing)
+            if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === 'superadmin') {
+                $redirect = 'super_admin.html';
+            } else {
+                $sessRole = strtolower($_SESSION['role'] ?? $_SESSION['position'] ?? '');
+                if ($sessRole === 'hr' || $sessRole === 'human resources') {
+                    $redirect = 'hr/dashboard.php';
+                } elseif ($sessRole === 'department_head' || $sessRole === 'dept head' || $sessRole === 'dept_head') {
+                    $redirect = 'dept_head/dashboard.php';
+                } elseif ($sessRole === 'employee') {
+                    $redirect = 'employee/dashboard.php';
+                } else {
+                    $redirect = 'dashboard.php';
+                }
+            }
+
             if ($res['success']) {
                 $msg = ($res['action'] === 'time_in') ? 'timein_ok' : 'timeout_ok';
                 $timeParam = isset($res['time']) ? '&att_time=' . urlencode($res['time']) : '';
@@ -120,8 +136,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $result = qr_record_attendance_for_user($pdo, $user['id']);
                     // Clear pending token
                     unset($_SESSION['qr_pending']);
-                    // Redirect to dashboard with an optional message (simple GET param)
-                    $redirect = 'employee/dashboard.php';
+                    // Determine redirect target based on roleNorm (mirror normal login routing)
+                    if ($roleNorm === 'hr' || $roleNorm === 'human resources') {
+                        $redirect = 'hr/dashboard.php';
+                    } elseif ($roleNorm === 'department_head' || $roleNorm === 'dept head' || $roleNorm === 'dept_head') {
+                        $redirect = 'dept_head/dashboard.php';
+                    } elseif ($roleNorm === 'employee') {
+                        $redirect = 'employee/dashboard.php';
+                    } elseif ($_SESSION['user_id'] === 'superadmin') {
+                        $redirect = 'super_admin.html';
+                    } else {
+                        $redirect = 'dashboard.php';
+                    }
+
                     if ($result['success']) {
                         $msg = ($result['action'] === 'time_in') ? 'timein_ok' : 'timeout_ok';
                         $timeParam = isset($result['time']) ? '&att_time=' . urlencode($result['time']) : '';

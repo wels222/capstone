@@ -413,6 +413,7 @@ if ($user) {
                     <div class="p-2 bg-gray-50 rounded"><div class="text-xs text-gray-500">Late</div><div id="perfLate" class="font-semibold">0</div></div>
                     <div class="p-2 bg-gray-50 rounded"><div class="text-xs text-gray-500">Undertime</div><div id="perfUndertime" class="font-semibold">0</div></div>
                     <div class="p-2 bg-gray-50 rounded"><div class="text-xs text-gray-500">Overtime</div><div id="perfOvertime" class="font-semibold">0</div></div>
+                    <div class="p-2 bg-gray-50 rounded"><div class="text-xs text-gray-500">Absent</div><div id="perfAbsent" class="font-semibold">0</div></div>
                 </div>
                 <div id="perfModalRecommendation" class="text-sm text-gray-700"></div>
             </div>
@@ -911,6 +912,7 @@ if ($user) {
                         { label: 'Late', data: [], backgroundColor: '#F59E0B', stack: 's1' },
                         { label: 'Undertime', data: [], backgroundColor: '#FB923C', stack: 's1' },
                         { label: 'Overtime', data: [], backgroundColor: '#3B82F6', stack: 's1' },
+                        { label: 'Absent', data: [], backgroundColor: '#EF4444', stack: 's1' },
                     ] },
                     options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { position: 'bottom' } } }
                 });
@@ -1034,6 +1036,7 @@ if ($user) {
                 const late = trend.map(t => t.late);
                 const undertime = trend.map(t => t.undertime);
                 const overtime = trend.map(t => t.overtime);
+                const absent = trend.map(t => t.absent || 0);
 
                 // Use attendance_rate for display (actual attendance percentage)
                 const attendancePct = summary.attendance_rate || 0;
@@ -1045,6 +1048,10 @@ if ($user) {
                     attChart.data.datasets[1].data = late;
                     attChart.data.datasets[2].data = undertime;
                     attChart.data.datasets[3].data = overtime;
+                    // if the chart includes the absent series (added), populate it
+                    if (attChart.data.datasets.length > 4) {
+                        attChart.data.datasets[4].data = absent;
+                    }
                     attChart.update();
                 }
 
@@ -1151,6 +1158,7 @@ if ($user) {
                 const lateEl = document.getElementById('perfLate');
                 const undertimeEl = document.getElementById('perfUndertime');
                 const overtimeEl = document.getElementById('perfOvertime');
+                const absentEl = document.getElementById('perfAbsent');
                 const recEl = document.getElementById('perfModalRecommendation');
 
                 const pct = d.overallPct || 0;
@@ -1159,6 +1167,7 @@ if ($user) {
                 lateEl.textContent = d.late || 0;
                 undertimeEl.textContent = d.undertime || 0;
                 overtimeEl.textContent = d.overtime || 0;
+                if (absentEl) absentEl.textContent = d.absent || (d.summary && d.summary.total_absent) || 0;
 
                 // Use summary data if available
                 const summary = d.summary;

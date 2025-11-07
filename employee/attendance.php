@@ -20,6 +20,65 @@ if (!$user) {
     exit();
 }
 
+if ((isset($_GET['qr']) && $_GET['qr']) || (!empty($_SESSION['qr_pending']))) {
+    require_once __DIR__ . '/../attendance/qr_utils.php';
+    $pending = $_GET['qr'] ?? $_SESSION['qr_pending'];
+    if ($pending && qr_verify_token($pending, 0)) {
+        // Record attendance for the current logged-in user
+        $res = qr_record_attendance_for_user($pdo, $_SESSION['user_id']);
+        // Clear any pending token stored in session
+        unset($_SESSION['qr_pending']);
+
+        // Determine base redirect target based on role/position (same logic as index.php)
+        if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === 'superadmin') {
+            $redirect = '../super_admin.html';
+        } else {
+            $sessRole = strtolower($_SESSION['role'] ?? $_SESSION['position'] ?? '');
+            if ($sessRole === 'hr' || $sessRole === 'human resources') {
+                $redirect = '../hr/dashboard.php';
+            } elseif ($sessRole === 'department_head' || $sessRole === 'dept head' || $sessRole === 'dept_head') {
+                $redirect = '../dept_head/dashboard.php';
+            } elseif ($sessRole === 'employee') {
+                $redirect = '../employee/dashboard.php';
+            } else {
+                $redirect = '../dashboard.php';
+            }
+        }
+
+        // If attendance result exists, map it to query params similar to index.php
+        if (!empty($res) && is_array($res)) {
+            if (!empty($res['success'])) {
+                $msg = ($res['action'] === 'time_in') ? 'timein_ok' : 'timeout_ok';
+                $timeParam = isset($res['time']) ? '&att_time=' . urlencode($res['time']) : '';
+                $statusParam = isset($res['status']) ? '&att_status=' . urlencode($res['status']) : '';
+                header('Location: ' . $redirect . '?att=' . $msg . $timeParam . $statusParam);
+                exit();
+            } else {
+                $lowerMsg = strtolower($res['message'] ?? '');
+                if (strpos($lowerMsg, 'time out already') !== false || strpos($lowerMsg, 'time out already recorded') !== false) {
+                    $timeParam = isset($res['time']) ? '&att_time=' . urlencode($res['time']) : '';
+                    $statusParam = isset($res['status']) ? '&att_status=' . urlencode($res['status']) : '';
+                    header('Location: ' . $redirect . '?att=already_timedout' . $timeParam . $statusParam);
+                    exit();
+                }
+                header('Location: ' . $redirect . '?att=failed');
+                exit();
+            }
+        }
+
+        // Fallback: redirect to target dashboard without params
+        header('Location: ' . $redirect);
+        exit();
+    } else {
+        // Invalid/expired token - set a flag so UI can show feedback (consistent with index.php)
+        $_SESSION['qr_pending_invalid'] = true;
+        unset($_SESSION['qr_pending']);
+        // Redirect back to login page to show invalid QR feedback
+        header('Location: ../index.php');
+        exit();
+    }
+}
+
 // Determine identifier used in attendance.employee_id
 $employeeId = $user['employee_id'] ?? null;
 
@@ -188,7 +247,7 @@ $profilePicture = $user['profile_picture'] ?? '';
 	<div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs mx-4 flex flex-col items-center">
 		<img id="profileModalPhoto" src="<?php echo $profilePicture ? htmlspecialchars($profilePicture) : 'https://placehold.co/80x80/FFD700/000000?text=W+P'; ?>" alt="Profile" class="w-20 h-20 rounded-full mb-4">
 		<a href="dashboard.php" class="w-full px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 mb-2 text-center">Go to Dashboard</a>
-		<a href="../logout.php" class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 mb-2 text-center">Log out</a>
+		<a href="logout.php" class="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 mb-2 text-center">Log out</a>
 		<button id="closeProfileModal" class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">Cancel</button>
 	</div>
 </div>
