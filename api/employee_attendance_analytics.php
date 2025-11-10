@@ -1,7 +1,13 @@
 <?php
 session_start();
 require_once __DIR__ . '/../db.php';
+
+// Prevent caching to ensure real-time data
 header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'error' => 'Not authenticated']);
@@ -195,7 +201,7 @@ try {
 
     // Calculate metrics
     $attendanceRate = $totalWorkingDays > 0 ? round((($totalPresent + $totalLate) / $totalWorkingDays) * 100, 1) : 0;
-    $punctualityRate = ($totalPresent + $totalLate) > 0 ? round(($totalPresent / ($totalPresent + $totalLate)) * 100, 1) : 100;
+    $punctualityRate = ($totalPresent + $totalLate) > 0 ? round(($totalPresent / ($totalPresent + $totalLate)) * 100, 1) : 0;
     $overtimeRate = $totalWorkingDays > 0 ? round(($totalOvertime / $totalWorkingDays) * 100, 1) : 0;
     $undertimeRate = $totalWorkingDays > 0 ? round(($totalUndertime / $totalWorkingDays) * 100, 1) : 0;
     $absenteeismRate = $totalWorkingDays > 0 ? round(($totalAbsent / $totalWorkingDays) * 100, 1) : 0;
@@ -214,8 +220,21 @@ try {
         $interpretations['attendance'] = "Low attendance at {$attendanceRate}%. This significantly impacts your work performance. Please discuss attendance concerns with your supervisor.";
     }
 
-    // Punctuality Interpretation
-    if ($punctualityRate >= 95) {
+    // Punctuality Interpretation - Consider both punctuality AND attendance
+    if (($totalPresent + $totalLate) == 0) {
+        // No attendance days recorded, cannot evaluate punctuality
+        $interpretations['punctuality'] = "Cannot evaluate punctuality due to no attendance records. Please improve your attendance first to establish a punctuality track record.";
+    } elseif ($attendanceRate < 50) {
+        // Very low attendance - punctuality is meaningless
+        $interpretations['punctuality'] = "Punctuality cannot be properly evaluated with only {$attendanceRate}% attendance rate. Focus on improving overall attendance first before punctuality matters.";
+    } elseif ($attendanceRate < 70) {
+        // Low attendance - acknowledge punctuality but emphasize attendance issue
+        if ($punctualityRate >= 85) {
+            $interpretations['punctuality'] = "While you show {$punctualityRate}% punctuality on days present, your low attendance ({$attendanceRate}%) remains the primary concern. Consistent presence is more critical than punctuality at this point.";
+        } else {
+            $interpretations['punctuality'] = "Poor punctuality at {$punctualityRate}% combined with low attendance ({$attendanceRate}%). Both areas need immediate improvement for acceptable work performance.";
+        }
+    } elseif ($punctualityRate >= 95) {
         $interpretations['punctuality'] = "Excellent punctuality! You arrive on time {$punctualityRate}% of the days you're present. Your timeliness demonstrates strong professionalism.";
     } elseif ($punctualityRate >= 85) {
         $interpretations['punctuality'] = "Good punctuality at {$punctualityRate}%. Occasional tardiness noted - consider adjusting morning routines for consistent on-time arrival.";
@@ -225,8 +244,17 @@ try {
         $interpretations['punctuality'] = "Chronic tardiness detected ({$punctualityRate}% on-time rate). This pattern needs immediate attention and may require a performance discussion.";
     }
 
-    // Overtime/Undertime Interpretation
-    if ($overtimeRate > 20) {
+    // Work Hours Interpretation - Consider both work hours AND attendance
+    if (($totalPresent + $totalLate) == 0) {
+        // No attendance days recorded, cannot evaluate work hours
+        $interpretations['work_hours'] = "Cannot evaluate work hours due to no attendance records. Please improve your attendance to establish a work hours pattern.";
+    } elseif ($attendanceRate < 50) {
+        // Very low attendance - work hours are meaningless
+        $interpretations['work_hours'] = "Work hours cannot be properly evaluated with only {$attendanceRate}% attendance rate. Your primary focus should be on improving overall attendance before evaluating work hour patterns.";
+    } elseif ($attendanceRate < 70) {
+        // Low attendance - work hours are secondary concern
+        $interpretations['work_hours'] = "While work hour data is available, your low attendance ({$attendanceRate}%) is the primary concern. Consistent daily presence is more important than work hour patterns at this stage.";
+    } elseif ($overtimeRate > 20) {
         $interpretations['work_hours'] = "High overtime detected ({$overtimeRate}% of days). While dedication is appreciated, ensure proper work-life balance to prevent burnout.";
     } elseif ($undertimeRate > 20) {
         $interpretations['work_hours'] = "Frequent undertime noted ({$undertimeRate}% of days). Consistently leaving early may impact productivity. Discuss workload concerns with your supervisor if needed.";

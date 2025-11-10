@@ -6,6 +6,19 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 require_once '../db.php';
+// Auto-mark absent at 17:00 if not already run today (runs for all approved users)
+date_default_timezone_set('Asia/Manila');
+$nowH = (int)date('H');
+if ($nowH >= 17) {
+    $lastRunFile = __DIR__ . '/../attendance/last_absent_run.txt';
+    $last = is_readable($lastRunFile) ? trim(file_get_contents($lastRunFile)) : '';
+    if ($last !== date('Y-m-d')) {
+        // include the mark_absent script but suppress its output
+        ob_start();
+        @include_once __DIR__ . '/../attendance/mark_absent.php';
+        @ob_end_clean();
+    }
+}
 $attendanceFlash = null;
 // Map ?att= flags (set by QR login flow) to human messages
 if (!empty($_GET['att'])) {
@@ -925,7 +938,15 @@ if ($user) {
 
             async function fetchEmployeeAnalytics(range = 'daily') {
                 try {
-                    const res = await fetch(`../api/employee_attendance_analytics.php?range=${range}`);
+                    // Add timestamp to prevent caching
+                    const timestamp = new Date().getTime();
+                    const res = await fetch(`../api/employee_attendance_analytics.php?range=${range}&_t=${timestamp}`, {
+                        cache: 'no-store',
+                        headers: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    });
                     const json = await res.json();
                     if (!json.success) {
                         console.error('Analytics fetch failed:', json.error);
@@ -1114,6 +1135,19 @@ if ($user) {
                 }
             }
 
+            // Function to update performance modal in real-time (if open)
+            function updatePerformanceModalIfOpen() {
+                const modal = document.getElementById('perfInfoModal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    // Modal is open, refresh its content with latest data
+                    const perfDetailsBtn = document.getElementById('performanceDetailsBtn');
+                    if (perfDetailsBtn && perfDetailsBtn.dataset.details) {
+                        const d = JSON.parse(perfDetailsBtn.dataset.details);
+                        showPerformanceInfo(d);
+                    }
+                }
+            }
+
             // wire radio buttons
             periodRadios.forEach(r => r.addEventListener('change', (e) => {
                 if (e.target.checked) {
@@ -1124,8 +1158,11 @@ if ($user) {
 
             // initial load
             updateEmployeeCharts(currentPeriod);
-            // auto-refresh every 5s
-            setInterval(() => updateEmployeeCharts(currentPeriod), 5000);
+            // auto-refresh every 5s - also update modal if it's open
+            setInterval(() => {
+                updateEmployeeCharts(currentPeriod);
+                updatePerformanceModalIfOpen();
+            }, 5000);
 
             // Details buttons
             const perfDetailsBtn = document.getElementById('performanceDetailsBtn');
@@ -1178,7 +1215,24 @@ if ($user) {
                 
                 if (summary) {
                     label = summary.performance_label || label;
-                    desc = `Attendance: ${summary.attendance_rate}% | Punctuality: ${summary.punctuality_rate}%`;
+                    
+                    // Smart punctuality display based on attendance rate
+                    const attendanceRate = summary.attendance_rate || 0;
+                    const punctualityRate = summary.punctuality_rate || 0;
+                    let punctualityDisplay = '';
+                    
+                    if (attendanceRate < 50) {
+                        // Very low attendance - don't show punctuality percentage
+                        punctualityDisplay = 'N/A (Low Attendance)';
+                    } else if (attendanceRate < 70) {
+                        // Low attendance - show with context
+                        punctualityDisplay = `${punctualityRate}% (⚠️ Low Attendance)`;
+                    } else {
+                        // Normal attendance - show punctuality normally
+                        punctualityDisplay = `${punctualityRate}%`;
+                    }
+                    
+                    desc = `Attendance: ${summary.attendance_rate}% | Punctuality: ${punctualityDisplay}`;
                 } else {
                     if (pct >= 85) { label = 'Excellent'; desc = 'Score better than previous period'; }
                     else if (pct >= 70) { label = 'Good'; desc = 'Satisfactory performance'; }

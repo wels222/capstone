@@ -444,8 +444,15 @@ if ($user_email) {
             localStorage.setItem('dept_head_email', deptHead);
             if (serverUserEmail) localStorage.setItem('userEmail', serverUserEmail);
             if (signatureDataUri) localStorage.setItem('leaveSignatureData', signatureDataUri);
+            // forward any return param so the civil form can redirect back appropriately
+            const returnParam = urlParams.get('return') || '';
+            if (returnParam) {
+              try { localStorage.setItem('leave_return_to', returnParam); } catch(e) {}
+            }
           } catch(e) {}
-          window.location.href = 'civil form.html';
+            // append return param in URL if present so the civil form can pick it up
+            const civilUrl = 'civil form.html' + (urlParams.get('return') ? ('?return=' + encodeURIComponent(urlParams.get('return'))) : '');
+            window.location.href = civilUrl;
         }
 
         // Check available credits before proceeding

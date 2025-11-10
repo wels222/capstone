@@ -179,6 +179,22 @@ $payload = [
 
 $profilePicture = $user['profile_picture'] ?? '';
 ?>
+<?php
+// Determine the correct home dashboard for the logged-in user based on role/position
+$home_link = 'dashboard.php'; // default employee dashboard
+if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === 'superadmin') {
+    $home_link = '../super_admin.html';
+} else {
+    $sessRole = strtolower($_SESSION['role'] ?? $_SESSION['position'] ?? '');
+    if ($sessRole === 'hr' || $sessRole === 'human resources') {
+        $home_link = '../hr/dashboard.php';
+    } elseif ($sessRole === 'department_head' || $sessRole === 'dept head' || $sessRole === 'dept_head') {
+        $home_link = '../dept_head/dashboard.php';
+    } else {
+        $home_link = 'dashboard.php';
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -230,8 +246,8 @@ $profilePicture = $user['profile_picture'] ?? '';
 					</div>
 				</div>
 
-				<!-- Home button -->
-				<a id="home-button" href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors" aria-label="Home" title="Home">
+                <!-- Home button -->
+                <a id="home-button" href="<?= htmlspecialchars($home_link, ENT_QUOTES) ?>" class="text-gray-600 hover:text-blue-600 transition-colors" aria-label="Home" title="Home">
 					<i class="fas fa-home text-lg"></i>
 				</a>
 
@@ -265,7 +281,7 @@ $profilePicture = $user['profile_picture'] ?? '';
                     <span class="text-gray-500"><?= date('F j, Y') ?></span>
                 </p>
             </div>
-            <a href="dashboard.php" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all shadow-sm hover:shadow">
+            <a href="<?= htmlspecialchars($home_link, ENT_QUOTES) ?>" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all shadow-sm hover:shadow">
                 <i class="fas fa-arrow-left text-xs"></i>
                 <span>Back to Dashboard</span>
             </a>
