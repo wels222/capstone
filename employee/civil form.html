@@ -50,7 +50,60 @@
         margin-right: 0.25rem;
         min-width: 1rem;
         min-height: 1rem;
-        accent-color: #1f2937;
+        accent-color: #000;
+      }
+      /* Signature name style and enforced black color for submitted values */
+      .signature-name {
+        border-bottom: 1px solid #000;
+        padding-top: 28px;
+        padding-bottom: 2px;
+        display: block;
+        margin: 0 auto;
+        width: 60%;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.95rem;
+        background: transparent;
+        color: #000;
+      }
+      input, textarea, select, .form-input, .form-underline, .signature-name { color: #000 !important; -webkit-text-fill-color: #000 !important; }
+      input[readonly], input[disabled], textarea[readonly], textarea[disabled], select[readonly], select[disabled] { color: #000 !important; opacity: 1 !important; }
+      /* Custom black checkbox/radio visuals */
+      input[type="checkbox"], input[type="radio"] {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        width: 1rem;
+        height: 1rem;
+        border: 1.5px solid #000;
+        display: inline-block;
+        position: relative;
+        vertical-align: middle;
+        background: transparent;
+        margin-top: 0.1rem;
+      }
+      input[type="checkbox"] { border-radius: 3px; }
+      input[type="checkbox"]:checked::after {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 0px;
+        width: 6px;
+        height: 10px;
+        border: solid #000;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+      }
+      input[type="radio"] { border-radius: 50%; }
+      input[type="radio"]:checked::after {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 6px;
+        height: 6px;
+        background: #000;
+        border-radius: 50%;
       }
       /* Print to A4 and hide non-print UI */
       @media print {
@@ -628,12 +681,11 @@
             </div>
 
             <div class="mt-8 text-center text-xxs font-semibold pt-2">
-              <input
-                type="text"
-                class="form-underline w-3/4 text-center text-sm"
-                placeholder=""
-              />
-              <p class="mt-0.5 font-normal">(Authorized Officer)</p>
+              <div style="position:relative; min-height:56px;">
+                <?!-- admin aide is fixed -->
+                <input type="text" class="signature-name" value="ALMA D. ILAO" readonly />
+              </div>
+              <p class="mt-0.5 font-normal">Administrative Aide II</p>
             </div>
           </div>
 
@@ -677,12 +729,11 @@
             </div>
 
             <div class="mt-12 text-center text-xs font-semibold pt-2">
-              <input
-                type="text"
-                class="form-underline w-3/4 text-center text-sm"
-                placeholder=""
-              />
-              <p class="mt-0.5 font-normal">(Authorized Officer)</p>
+              <div style="position:relative; min-height:56px;">
+                <div id="dept_head_sig_container" style="text-align:center;"></div>
+                <input type="text" id="dept_head_name" class="signature-name" value="" readonly />
+              </div>
+              <p class="mt-0.5 font-normal">Department Head</p>
             </div>
           </div>
         </div>
@@ -742,10 +793,12 @@
         <div class="mt-4 text-center text-xs font-semibold p-2">
           <input
             type="text"
-            class="form-underline w-1/4 text-center text-sm"
-            placeholder=""
+            class="signature-name"
+            id="final_official_name"
+            value="ATTY. MARIA CONCEPCION R. HERNANDEZ-BELOSO"
+            readonly
           />
-          <p class="mt-0.5 font-normal">(Authorized Official)</p>
+          <p class="mt-0.5 font-normal">Municipal Administrator</p>
         </div>
       </div>
 
@@ -953,9 +1006,52 @@
                 const opt = document.createElement("option");
                 opt.value = h.email;
                 opt.textContent = h.department + " (" + h.name + ")";
+                // store the plain name for easy access later
+                opt.dataset.name = h.name;
+                opt.dataset.department = h.department;
                 select.appendChild(opt);
               });
-              if (savedDH) select.value = savedDH;
+              if (savedDH) {
+                select.value = savedDH;
+                // trigger change so name/signature are populated
+                try { select.dispatchEvent(new Event('change')); } catch (e) {}
+              }
+
+              // When the selected head changes, populate the signature/name placeholders
+              select.addEventListener('change', function () {
+                const sel = select.options[select.selectedIndex];
+                const nameField = document.getElementById('dept_head_name');
+                const sigContainer = document.getElementById('dept_head_sig_container');
+                if (!sel || !nameField || !sigContainer) return;
+                const name = sel.dataset.name || '';
+                nameField.value = name;
+                const email = sel.value;
+                // Clear current signature
+                sigContainer.innerHTML = '';
+                if (!email) return;
+                // Ask API for signature for that email
+                fetch('../api/get_user_signature.php?email=' + encodeURIComponent(email))
+                  .then(r => r.json())
+                  .then(s => {
+                    if (s && s.success && s.hasSignature && s.url) {
+                      const wrapper = document.createElement('div');
+                      wrapper.style.width = '100%';
+                      wrapper.style.height = '70px';
+                      wrapper.style.display = 'flex';
+                      wrapper.style.alignItems = 'center';
+                      wrapper.style.justifyContent = 'center';
+                      const img = document.createElement('img');
+                      img.alt = 'Signature';
+                      img.style.maxHeight = '60px';
+                      img.style.objectFit = 'contain';
+                      img.style.display = 'block';
+                      img.src = s.url;
+                      wrapper.appendChild(img);
+                      sigContainer.appendChild(wrapper);
+                    }
+                  })
+                  .catch(() => {});
+              });
             }
           });
 
@@ -1305,7 +1401,6 @@
             };
             img.onerror = function () {
               if (candidates.length) img.src = candidates.shift();
-<<<<<<< HEAD
               else
                 fetch("/capstone/api/employee_signature.php")
                   .then((r) => r.json())
@@ -1313,14 +1408,10 @@
                     if (s && s.success && s.hasSignature && s.url) mount(s.url);
                   })
                   .catch(() => {});
-=======
-              else fetch('../api/employee_signature.php').then(r=>r.json()).then(s=>{ if (s && s.success && s.hasSignature && s.url) mount(s.url); }).catch(()=>{});
->>>>>>> 4634cc0 (fix hosting)
             };
             img.src = candidates.shift();
             return true;
           }
-<<<<<<< HEAD
           if (sigPath) {
             if (!tryCandidates(sigPath))
               fetch("/capstone/api/employee_signature.php")
@@ -1337,10 +1428,6 @@
               })
               .catch(() => {});
           }
-=======
-          if (sigPath) { if (!tryCandidates(sigPath)) fetch('../api/employee_signature.php').then(r=>r.json()).then(s=>{ if (s && s.success && s.hasSignature && s.url) mount(s.url); }).catch(()=>{}); }
-          else { fetch('../api/employee_signature.php').then(r=>r.json()).then(s=>{ if (s && s.success && s.hasSignature && s.url) mount(s.url); }).catch(()=>{}); }
->>>>>>> 4634cc0 (fix hosting)
         })();
         // ...other auto-fill logic as needed...
       };
@@ -1383,11 +1470,7 @@
           try {
             const localSigData = localStorage.getItem("leaveSignatureData");
             if (!localSigData) {
-<<<<<<< HEAD
               const r = await fetch("/capstone/api/employee_signature.php");
-=======
-              const r = await fetch('../api/employee_signature.php');
->>>>>>> 4634cc0 (fix hosting)
               const s = await r.json();
               if (s && s.success && s.hasSignature) {
                 const okReuse = confirm(
@@ -1525,7 +1608,6 @@
               alert("Leave application submitted successfully!");
               // show the animation a bit then redirect to the appropriate dashboard
               setTimeout(() => {
-<<<<<<< HEAD
                 try {
                   if (animationDiv && animationDiv.parentNode)
                     body.removeChild(animationDiv);
@@ -1549,10 +1631,6 @@
                 } catch (e) {
                   window.location.href = "/capstone/employee/dashboard.php";
                 }
-=======
-                try { if (animationDiv && animationDiv.parentNode) body.removeChild(animationDiv); } catch (e) {}
-                window.location.href = "dashboard.php";
->>>>>>> 4634cc0 (fix hosting)
               }, 1200);
             } else {
               alert(

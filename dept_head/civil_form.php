@@ -47,6 +47,106 @@ if (!empty($details['snapshot']['salary']['value'])) {
   // Fallback to DB salary if nothing was supplied in the form
   $displaySalary = $user['salary'];
 }
+// Hardcoded signatories and department head resolution
+$adminAideName = 'ALMA D. ILAO';
+$municipalAdminName = 'ATTY. MARIA CONCEPCION R. HERNANDEZ-BELOSO';
+
+$deptHeadName = 'Department Head';
+$deptHeadSig = '';
+// Primary: try a number of possible leave fields that may contain the assigned dept head
+$possibleDeptHeadFields = [
+  'dept_head_email', 'deptHead', 'dept_head', 'deptHeadEmail', 'dept_head_email', 'dept_head_name', 'deptHeadName'
+];
+$resolved = false;
+foreach ($possibleDeptHeadFields as $f) {
+  if ($resolved) break;
+  if (!empty($leave[$f])) {
+    $val = trim($leave[$f]);
+    // If it looks like an email, fetch the user by email
+    if (strpos($val, '@') !== false) {
+      try {
+        $stmtAssigned = $pdo->prepare('SELECT firstname, lastname, mi, department, signature_path, signature, sig_path FROM users WHERE email = ? LIMIT 1');
+        $stmtAssigned->execute([$val]);
+        $assigned = $stmtAssigned->fetch(PDO::FETCH_ASSOC);
+        if ($assigned) {
+          $deptHeadName = trim(($assigned['firstname'] ?? '') . ' ' . (!empty($assigned['mi']) ? ($assigned['mi'] . ' ') : '') . ($assigned['lastname'] ?? ''));
+          if (!empty($assigned['signature_path'])) $deptHeadSig = $assigned['signature_path'];
+          elseif (!empty($assigned['signature'])) $deptHeadSig = $assigned['signature'];
+          elseif (!empty($assigned['sig_path'])) $deptHeadSig = $assigned['sig_path'];
+          $resolved = true;
+          break;
+        }
+      } catch (PDOException $e) { /* ignore */ }
+    }
+    // If it's not an email but looks like a name, use it directly
+    if (!$resolved && preg_match('/[A-Za-z]/', $val)) {
+      $deptHeadName = $val;
+      $resolved = true;
+      break;
+    }
+  }
+}
+
+// Secondary: if no explicit assigned dept head, try to resolve by the employee's department
+if ($deptHeadName === 'Department Head' && !empty($user['department'])) {
+  try {
+    // Try to find a department head by common role keywords within the employee's department
+    $stmtDH = $pdo->prepare("SELECT firstname, lastname, mi, position, signature_path, signature, sig_path FROM users WHERE department = ? AND (position LIKE '%Head%' OR position LIKE '%head%' OR position LIKE '%Chief%' OR position LIKE '%chief%' OR position LIKE '%Officer%' OR position LIKE '%officer%') LIMIT 1");
+    $stmtDH->execute([$user['department']]);
+    $dh = $stmtDH->fetch(PDO::FETCH_ASSOC);
+    if ($dh) {
+      $deptHeadName = trim(($dh['firstname'] ?? '') . ' ' . (!empty($dh['mi']) ? ($dh['mi'] . ' ') : '') . ($dh['lastname'] ?? ''));
+      if (!empty($dh['signature_path'])) $deptHeadSig = $dh['signature_path'];
+      elseif (!empty($dh['signature'])) $deptHeadSig = $dh['signature'];
+      elseif (!empty($dh['sig_path'])) $deptHeadSig = $dh['sig_path'];
+    } else {
+      // fallback: first user in the same department
+      $stmtDH2 = $pdo->prepare("SELECT firstname, lastname, mi, signature_path, signature, sig_path FROM users WHERE department = ? LIMIT 1");
+      $stmtDH2->execute([$user['department']]);
+      $dh2 = $stmtDH2->fetch(PDO::FETCH_ASSOC);
+      if ($dh2) {
+        $deptHeadName = trim(($dh2['firstname'] ?? '') . ' ' . (!empty($dh2['mi']) ? ($dh2['mi'] . ' ') : '') . ($dh2['lastname'] ?? ''));
+        if (!empty($dh2['signature_path'])) $deptHeadSig = $dh2['signature_path'];
+        elseif (!empty($dh2['signature'])) $deptHeadSig = $dh2['signature'];
+        elseif (!empty($dh2['sig_path'])) $deptHeadSig = $dh2['sig_path'];
+      }
+    }
+  } catch (PDOException $e) { /* ignore */ }
+}
+
+// If still unresolved, allow forcing via GET params: dept_head_email or dept
+if ($deptHeadName === 'Department Head') {
+  $forcedEmail = $_GET['dept_head_email'] ?? $_GET['dept_email'] ?? null;
+  $forcedDept = $_GET['dept'] ?? null;
+  if ($forcedEmail) {
+    try {
+      $st = $pdo->prepare('SELECT firstname, lastname, mi, signature_path, signature, sig_path FROM users WHERE email = ? LIMIT 1');
+      $st->execute([$forcedEmail]);
+      $f = $st->fetch(PDO::FETCH_ASSOC);
+      if ($f) {
+        $deptHeadName = trim(($f['firstname'] ?? '') . ' ' . (!empty($f['mi']) ? ($f['mi'] . ' ') : '') . ($f['lastname'] ?? ''));
+        if (!empty($f['signature_path'])) $deptHeadSig = $f['signature_path'];
+        elseif (!empty($f['signature'])) $deptHeadSig = $f['signature'];
+        elseif (!empty($f['sig_path'])) $deptHeadSig = $f['sig_path'];
+      }
+    } catch (PDOException $e) { }
+  } elseif ($forcedDept) {
+    try {
+      $st2 = $pdo->prepare("SELECT firstname, lastname, mi, signature_path, signature, sig_path FROM users WHERE department = ? AND (position LIKE '%Head%' OR position LIKE '%head%' OR position LIKE '%Chief%' OR position LIKE '%chief%') LIMIT 1");
+      $st2->execute([$forcedDept]);
+      $f2 = $st2->fetch(PDO::FETCH_ASSOC);
+      if ($f2) {
+        $deptHeadName = trim(($f2['firstname'] ?? '') . ' ' . (!empty($f2['mi']) ? ($f2['mi'] . ' ') : '') . ($f2['lastname'] ?? ''));
+        if (!empty($f2['signature_path'])) $deptHeadSig = $f2['signature_path'];
+        elseif (!empty($f2['signature'])) $deptHeadSig = $f2['signature'];
+        elseif (!empty($f2['sig_path'])) $deptHeadSig = $f2['sig_path'];
+      }
+    } catch (PDOException $e) { }
+  }
+}
+
+// Ensure the department head name is uppercase like the other signatories
+$deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -63,9 +163,76 @@ if (!empty($details['snapshot']['salary']['value'])) {
     .form-input { width: 100%; border: none; outline: none; padding: 0 4px; line-height: 1.25rem; }
     .form-line { border-bottom: 1px solid #000; }
     .form-underline { border-bottom: 1px solid #000; padding-bottom: 2px; }
+    /* Signature / authorized-official name field: centered, wider, and spaced to leave room for
+       an optional signature image above. Use this on the certifier / authorizing officer inputs
+       so long names are visible and the underline aligns with the displayed name. */
+    .signature-name {
+      border-bottom: 1px solid #000;
+      padding-top: 28px; /* same vertical spacing used by the signature img positioning */
+      padding-bottom: 2px;
+      display: block;
+      margin: 0 auto;
+      width: 60%;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.95rem;
+      background: transparent;
+      color: #000;
+    }
     .text-xxs { font-size: 0.65rem; }
     .checkbox-label { display: flex; align-items: flex-start; line-height: 1.1; }
-    .checkbox-label input[type="checkbox"], .checkbox-label input[type="radio"] { margin-top: 2px; margin-right: 0.25rem; min-width: 1rem; min-height: 1rem; accent-color: #1f2937; }
+    .checkbox-label input[type="checkbox"], .checkbox-label input[type="radio"] { margin-top: 2px; margin-right: 0.25rem; min-width: 1rem; min-height: 1rem; accent-color: #000; }
+    /* Draw custom black checkbox/radio visuals to override browser defaults so marks are solid black
+       and consistent across screen and print (works for disabled inputs too). */
+    input[type="checkbox"], input[type="radio"] {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      width: 1rem;
+      height: 1rem;
+      border: 1.5px solid #000;
+      display: inline-block;
+      position: relative;
+      vertical-align: middle;
+      background: transparent;
+      margin-top: 0.1rem;
+    }
+    /* Checkbox specifics */
+    input[type="checkbox"] { border-radius: 3px; }
+    input[type="checkbox"]:checked::after {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 0px;
+      width: 6px;
+      height: 10px;
+      border: solid #000;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+    /* Radio specifics */
+    input[type="radio"] { border-radius: 50%; }
+    input[type="radio"]:checked::after {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 6px;
+      height: 6px;
+      background: #000;
+      border-radius: 50%;
+    }
+    /* Force all form text and disabled values to print/screen in solid black */
+    input, textarea, select, .form-input, .form-underline, .signature-name { color: #000 !important; -webkit-text-fill-color: #000 !important; }
+    /* Ensure readonly/disabled inputs remain fully opaque and black */
+    input[readonly], input[disabled], textarea[readonly], textarea[disabled], select[readonly], select[disabled] { color: #000 !important; opacity: 1 !important; }
+    /* Force the checkbox/radio mark color across browsers when possible */
+    input[type="checkbox"], input[type="radio"] { accent-color: #000 !important; filter: none !important; }
+    /* Print adjustments to ensure black colors preserved */
+    @media print {
+      input, textarea, select, .form-input, .form-underline, .signature-name { color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      input[readonly], input[disabled], textarea[readonly], textarea[disabled], select[readonly], select[disabled] { color: #000 !important; opacity: 1 !important; }
+    }
     @media print {
       @page { size: A4 portrait; margin: 12mm; }
       html, body { width: 210mm; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -542,9 +709,9 @@ if (!empty($details['snapshot']['salary']['value'])) {
                   <?php if (!empty($certSig)): ?>
                     <img src="../<?= ltrim($certSig, '/') ?>" alt="Certifier sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
                   <?php endif; ?>
-                  <input type="text" class="form-underline w-3/4 text-center text-sm" style="padding-top:28px;" value="<?= htmlspecialchars($s['certifier_name'] ?? $s['authorized_officer'] ?? $s['authorized_officer_7a'] ?? $leave['authorized_officer'] ?? '') ?>" readonly />
+                  <input type="text" class="signature-name" value="<?= htmlspecialchars($adminAideName) ?>" readonly />
                 </div>
-              <p class="mt-0.5 font-normal">(Authorized Officer)</p>
+              <p class="mt-0.5 font-normal">Administrative Aide II</p>
             </div>
           </div>
 
@@ -594,12 +761,18 @@ if (!empty($details['snapshot']['salary']['value'])) {
 
             <div class="mt-12 text-center text-xs font-semibold pt-2">
               <div style="position:relative; min-height:56px;">
-                <?php if (!empty($hsigs['7b'])): ?>
-                  <img src="../<?= ltrim($hsigs['7b'], '/') ?>" alt="7B sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
-                <?php endif; ?>
-                <input type="text" class="form-underline w-3/4 text-center text-sm" style="padding-top:28px;" value="<?= htmlspecialchars($s['authorized_officer_7b'] ?? $leave['authorized_officer_recommendation'] ?? '') ?>" readonly />
-              </div>
-              <p class="mt-0.5 font-normal">(Authorized Officer)</p>
+                  <?php
+                    // Prefer a signature attached to the resolved dept head, otherwise fall back to HR-provided 7B signature
+                    $deptSigToShow = '';
+                    if (!empty($deptHeadSig)) $deptSigToShow = $deptHeadSig;
+                    elseif (!empty($hsigs['7b'])) $deptSigToShow = $hsigs['7b'];
+                  ?>
+                  <?php if (!empty($deptSigToShow)): ?>
+                    <img src="../<?= ltrim($deptSigToShow, '/') ?>" alt="7B sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+                  <?php endif; ?>
+                  <input type="text" class="signature-name" value="<?= htmlspecialchars($deptHeadName) ?>" readonly />
+                </div>
+              <p class="mt-0.5 font-normal">Department Head</p>
             </div>
           </div>
         </div>
@@ -666,9 +839,9 @@ if (!empty($details['snapshot']['salary']['value'])) {
             <?php if (!empty($finalSig)): ?>
               <img src="../<?= ltrim($finalSig, '/') ?>" alt="final sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
             <?php endif; ?>
-            <input type="text" class="form-underline w-1/4 text-center text-sm" style="padding-top:28px;" value="<?= htmlspecialchars($s['final_official'] ?? $leave['authorized_official'] ?? 'Mayor Noel Bitrics Luistro') ?>" readonly />
+            <input type="text" class="signature-name" value="<?= htmlspecialchars($s['final_official'] ?? $leave['authorized_official'] ?? 'ATTY. MARIA CONCEPCION R. HERNANDEZ-BELOSO') ?>" readonly />
           </div>
-          <p class="mt-0.5 font-normal">(Authorized Official)</p>
+          <p class="mt-0.5 font-normal">Municipal Administrator</p>
         </div>
       </div>
 
