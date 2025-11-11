@@ -317,23 +317,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="department" class="input-label">Department</label>
                             <select name="department" id="department" required>
                                 <option value="">Select Department</option>
-                                <option value="Mayor's Office">Mayor's Office</option>
-                                <option value="Vice Mayor's Office">Vice Mayor's Office</option>
-                                <option value="SB Office">SB Office</option>
-                                <option value="Accounting">Accounting</option>
-                                <option value="Budget">Budget</option>
-                                <option value="Treasury">Treasury</option>
-                                <option value="Assessor">Assessor</option>
-                                <option value="Engineering">Engineering</option>
-                                <option value="Planning & Development">Planning & Development</option>
-                                <option value="HR">HR</option>
-                                <option value="Civil Registrar">Civil Registrar</option>
-                                <option value="MSWDO">MSWDO</option>
-                                <option value="MHO">MHO</option>
-                                <option value="Agriculture">Agriculture</option>
-                                <option value="Tourism">Tourism</option>
-                                <option value="Market">Market</option>
-                                <option value="General Services">General Services</option>
+                                <option value="Office of the Municipal Mayor">Office of the Municipal Mayor</option>
+                                <option value="Office of the Municipal Vice Mayor">Office of the Municipal Vice Mayor</option>
+                                <option value="Office of the Sangguiniang Bayan">Office of the Sangguiniang Bayan</option>
+                                <option value="Office of the Municipal Administrator">Office of the Municipal Administrator</option>
+                                <option value="Office of the Municipal Engineer">Office of the Municipal Engineer</option>
+                                <option value="Office of the MPDC">Office of the MPDC</option>
+                                <option value="Office of the Municipal Budget Officer">Office of the Municipal Budget Officer</option>
+                                <option value="Office of the Municipal Assessor">Office of the Municipal Assessor</option>
+                                <option value="Office of the Municipal Accountant">Office of the Municipal Accountant</option>
+                                <option value="Office of the Municipal Civil Registrar">Office of the Municipal Civil Registrar</option>
+                                <option value="Office of the Municipal Treasurer">Office of the Municipal Treasurer</option>
+                                <option value="Office of the Municipal Social Welfare and Development Officer">Office of the Municipal Social Welfare and Development Officer</option>
+                                <option value="Office of the Municipal Health Officer">Office of the Municipal Health Officer</option>
+                                <option value="Office of the Municipal Agriculturist">Office of the Municipal Agriculturist</option>
+                                <option value="Office of the MDRRMO">Office of the MDRRMO</option>
+                                <option value="Office of the Municipal Legal Officer">Office of the Municipal Legal Officer</option>
+                                <option value="Office of the Municipal General Services Officer">Office of the Municipal General Services Officer</option>
                             </select>
                         </div>
                         <div class="input-block">

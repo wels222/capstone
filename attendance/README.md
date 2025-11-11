@@ -116,23 +116,23 @@ Note: personal QR pages and automatic per-user QR generation have been retired i
 - **Absent**: No Time In record for the day
 
 ## 🏢 Department List (17 Total)
-1. Mayor's Office
-2. Vice Mayor's Office
-3. SB Office
-4. Accounting
-5. Budget
-6. Treasury
-7. Assessor
-8. Engineering
-9. Planning & Development
-10. HR
-11. Civil Registrar
-12. MSWDO
-13. MHO
-14. Agriculture
-15. Tourism
-16. Market
-17. General Services
+1. Office of the Municipal Mayor
+2. Office of the Municipal Vice Mayor
+3. Office of the Sangguiniang Bayan
+4. Office of the Municipal Administrator
+5. Office of the Municipal Engineer
+6. Office of the MPDC
+7. Office of the Municipal Budget Officer
+8. Office of the Municipal Assessor
+9. Office of the Municipal Accountant
+10. Office of the Municipal Civil Registrar
+11. Office of the Municipal Treasurer
+12. Office of the Municipal Social Welfare and Development Officer
+13. Office of the Municipal Health Officer
+14. Office of the Municipal Agriculturist
+15. Office of the MDRRMO
+16. Office of the Municipal Legal Officer
+17. Office of the Municipal General Services Officer
 
 ## 🎨 Design Features
 - Modern gradient UI (Purple theme)
