@@ -162,7 +162,7 @@ if ($user_email) {
     document.addEventListener('DOMContentLoaded', () => {
       let hasServerSignature = false;
       // If a signature already exists on the server, make the upload optional and inform the user
-      fetch('/capstone/api/employee_signature.php')
+      fetch('../api/employee_signature.php')
         .then(r => r.json())
         .then(sig => {
           if (sig && sig.success && sig.hasSignature) {
@@ -465,7 +465,7 @@ if ($user_email) {
             return;
           }
 
-          const creditsApi = `/capstone/api/employee_leave_credits.php?email=${encodeURIComponent(userEmailForCheck)}`;
+          const creditsApi = `../api/employee_leave_credits.php?email=${encodeURIComponent(userEmailForCheck)}`;
 
           function normalizeKey(s) {
             return (s || '').toString().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

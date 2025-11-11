@@ -278,12 +278,20 @@
         // Rotating QR logic: fetch a signed QR link and build an image URL from external QR API
         let rotInterval = null;
         let countdownInterval = null;
+        let serverTimeOffset = 0; // Track difference between server and client time
 
         async function fetchRotatingQR() {
             try {
                 const res = await fetch('generate_qr.php');
                 const data = await res.json();
                 const url = data.url;
+                
+                // Sync with server time for accurate rotation on hosting
+                if (data.serverTime) {
+                    const clientTime = Math.floor(Date.now() / 1000);
+                    serverTimeOffset = data.serverTime - clientTime;
+                }
+                
                 const qrApi = 'https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=' + encodeURIComponent(url);
                 const img = document.getElementById('rotating-qr-img');
                 const link = document.getElementById('rotating-qr-link');
@@ -303,7 +311,8 @@
             fetchRotatingQR();
             // set countdown to seconds until next change
             function schedule() {
-                const now = Date.now();
+                // Use server-synced time for accurate rotation on hosting
+                const now = Date.now() + (serverTimeOffset * 1000);
                 const msToNextMinute = 60000 - (now % 60000);
                 // update countdown every second
                 let secondsLeft = Math.ceil(msToNextMinute / 1000);

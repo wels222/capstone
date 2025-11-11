@@ -1262,7 +1262,7 @@
             const id = window._declineRequestId;
             if (!reason || !id) return;
             // Update backend with decline and reason, mark as declined by HR
-            fetch(`/capstone/api/update_leave_status.php`, {
+            fetch(`../api/update_leave_status.php`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -1278,7 +1278,7 @@
                   // Send notification to employee
                   const request = window._leaveRequests.find((r) => r.id == id);
                   if (request && request.employee_email) {
-                    fetch("/capstone/api/add_notification.php", {
+                    fetch("../api/add_notification.php", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
@@ -1305,7 +1305,7 @@
       });
 
       function fetchLeaveRequests() {
-        fetch("/capstone/api/get_hr_leave_requests.php")
+        fetch("../api/get_hr_leave_requests.php")
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
@@ -1352,7 +1352,7 @@
               });
 
               // Fetch all leave requests for history and recall
-              fetch("/capstone/api/get_leave_requests.php")
+              fetch("../api/get_leave_requests.php")
                 .then((response) => response.json())
                 .then((allData) => {
                   if (allData.success) {
@@ -1447,7 +1447,7 @@
               }
 
               // HR Approve action: update backend with approved_by_hr = 1
-              fetch(`/capstone/api/update_leave_status.php`, {
+              fetch(`../api/update_leave_status.php`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -1462,7 +1462,7 @@
                     // Send notification to employee
                     const request = window._leaveRequests.find((r) => r.id == id);
                     if (request && request.employee_email) {
-                      fetch("/capstone/api/add_notification.php", {
+                      fetch("../api/add_notification.php", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -1549,7 +1549,7 @@
         // Attempt to fetch current HR account name and cache it for the save
         window._hrCurrentName = '';
         try {
-          fetch('/capstone/api/current_user.php').then(r => r.json()).then(js => {
+          fetch('../api/current_user.php').then(r => r.json()).then(js => {
             // Support two response shapes: { success,user: {...} } OR current_user.php's top-level fields { logged_in:true, firstname, lastname, mi }
             let u = null;
             if (!js) return;
@@ -1607,13 +1607,13 @@
         }
         const payload = { id, section7, signatures: sigs };
         try {
-          const resp = await fetch('/capstone/api/update_hr_section7.php', {
+          const resp = await fetch('../api/update_hr_section7.php', {
             method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
           });
           const js = await resp.json();
           if (js && js.success) {
             // open preview of the civil form so user can confirm the signature placement
-            const previewUrl = `/capstone/dept_head/civil_form.php?id=${id}`;
+            const previewUrl = `../dept_head/civil_form.php?id=${id}`;
             window.open(previewUrl, '_blank');
             alert('HR section saved. A preview of the form has been opened in a new tab. Please verify that the signature appears in the Authorized Officer area before finalizing.');
             closeHRSectionModal();

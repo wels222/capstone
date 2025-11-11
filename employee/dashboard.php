@@ -495,7 +495,7 @@ if ($user) {
                     badge.textContent = t.status === 'pending' ? 'Pending' : 'In Progress';
                     const view = document.createElement('a');
                     view.className = 'text-xs text-gray-400 hover:text-blue-600';
-                    view.href = '/capstone/employee/task.html';
+                    view.href = 'task.html';
                     view.textContent = 'View';
                     right.appendChild(badge);
                     right.appendChild(view);
@@ -521,7 +521,7 @@ if ($user) {
 
             async function fetchTasks(){
                 try{
-                    const r = await fetch('/capstone/api/tasks_list_employee.php');
+                    const r = await fetch('../api/tasks_list_employee.php');
                     if (!r.ok) throw new Error('network');
                     const js = await r.json();
                     if (!js || !js.success || !Array.isArray(js.tasks)) {

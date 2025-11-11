@@ -10,8 +10,9 @@ if (!isset($_GET['qr'])) {
 if (isset($_GET['qr']) && $_GET['qr']) {
     require_once __DIR__ . '/attendance/qr_utils.php';
     $pending = $_GET['qr'];
-    // Validate now so we can show immediate feedback on the login page
-    if (qr_verify_token($pending, 0)) {
+    // Validate with 1-minute tolerance (current + previous minute only)
+    // This keeps strict 1-minute rotation while allowing for scan/network delay on hosting
+    if (qr_verify_token($pending, 1)) {
         // store the valid raw token; will be validated and processed after successful login
         $_SESSION['qr_pending'] = $pending;
         unset($_SESSION['qr_pending_invalid']);
@@ -131,7 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // include QR utilities
                 require_once __DIR__ . '/attendance/qr_utils.php';
                 $pending = $_SESSION['qr_pending'];
-                    if (qr_verify_token($pending, 0)) {
+                    // Validate with 1-minute tolerance (current + previous minute only)
+                    // This keeps strict 1-minute rotation while allowing for scan/network delay on hosting
+                    if (qr_verify_token($pending, 1)) {
                     // Record attendance for this user
                     $result = qr_record_attendance_for_user($pdo, $user['id']);
                     // Clear pending token
@@ -418,12 +421,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .logo-button {
             cursor: pointer;
             border-radius: 50%;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.5s ease;
+            animation: logoEntrance 1.5s ease-in-out;
         }
 
         .logo-button:hover {
             transform: scale(1.05);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo-button.clicked {
+            animation: logoClick 0.6s ease-in-out forwards;
+        }
+
+        @keyframes logoEntrance {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) rotate(-10deg);
+            }
+            50% {
+                transform: scale(1.1) rotate(5deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        @keyframes logoClick {
+            0% {
+                transform: scale(1);
+            }
+            25% {
+                transform: scale(0.95) rotate(-5deg);
+            }
+            50% {
+                transform: scale(1.15) rotate(5deg);
+            }
+            75% {
+                transform: scale(0.9);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
         }
 
         @media(min-width: 768px) {
@@ -523,6 +565,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         forgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
             alert('A password reset link has been sent to your email.');
+        });
+
+        // Auto-click logo animation on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                // Add clicked animation to logo
+                openButton.classList.add('clicked');
+                
+                // Open modal after animation starts
+                setTimeout(() => {
+                    openModal();
+                }, 300);
+            }, 800); // Wait 800ms after page load before starting animation
         });
     </script>
 </body>

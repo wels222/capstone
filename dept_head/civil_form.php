@@ -433,7 +433,7 @@ if (!empty($details['snapshot']['salary']['value'])) {
             <div class="mt-6 text-center pt-2 text-xs">
               <div id="signature_container" class="w-full" style="text-align:center;">
                 <?php if (!empty($leave['signature_path'])): ?>
-                  <img src="/capstone/<?= ltrim($leave['signature_path'], '/') ?>" alt="Signature" style="max-height:60px; object-fit:contain; display:block; margin:0 auto;" />
+                  <img src="../<?= ltrim($leave['signature_path'], '/') ?>" alt="Signature" style="max-height:60px; object-fit:contain; display:block; margin:0 auto;" />
                 <?php else: ?>
                   <input type="text" id="signature_text" class="form-underline w-full text-center text-sm" value="" readonly />
                 <?php endif; ?>
@@ -540,7 +540,7 @@ if (!empty($details['snapshot']['salary']['value'])) {
               <?php $certSig = $hsigs['certifier'] ?? ($hsigs['7a'] ?? null); ?>
                 <div style="position:relative; min-height:56px;">
                   <?php if (!empty($certSig)): ?>
-                    <img src="/capstone/<?= ltrim($certSig, '/') ?>" alt="Certifier sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+                    <img src="../<?= ltrim($certSig, '/') ?>" alt="Certifier sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
                   <?php endif; ?>
                   <input type="text" class="form-underline w-3/4 text-center text-sm" style="padding-top:28px;" value="<?= htmlspecialchars($s['certifier_name'] ?? $s['authorized_officer'] ?? $s['authorized_officer_7a'] ?? $leave['authorized_officer'] ?? '') ?>" readonly />
                 </div>
@@ -595,7 +595,7 @@ if (!empty($details['snapshot']['salary']['value'])) {
             <div class="mt-12 text-center text-xs font-semibold pt-2">
               <div style="position:relative; min-height:56px;">
                 <?php if (!empty($hsigs['7b'])): ?>
-                  <img src="/capstone/<?= ltrim($hsigs['7b'], '/') ?>" alt="7B sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+                  <img src="../<?= ltrim($hsigs['7b'], '/') ?>" alt="7B sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
                 <?php endif; ?>
                 <input type="text" class="form-underline w-3/4 text-center text-sm" style="padding-top:28px;" value="<?= htmlspecialchars($s['authorized_officer_7b'] ?? $leave['authorized_officer_recommendation'] ?? '') ?>" readonly />
               </div>
@@ -664,7 +664,7 @@ if (!empty($details['snapshot']['salary']['value'])) {
           <?php $finalSig = $hsigs['final'] ?? ($hsigs['authorized'] ?? null); ?>
           <div style="position:relative; min-height:56px;">
             <?php if (!empty($finalSig)): ?>
-              <img src="/capstone/<?= ltrim($finalSig, '/') ?>" alt="final sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+              <img src="../<?= ltrim($finalSig, '/') ?>" alt="final sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
             <?php endif; ?>
             <input type="text" class="form-underline w-1/4 text-center text-sm" style="padding-top:28px;" value="<?= htmlspecialchars($s['final_official'] ?? $leave['authorized_official'] ?? 'Mayor Noel Bitrics Luistro') ?>" readonly />
           </div>
@@ -696,7 +696,7 @@ if (!empty($details['snapshot']['salary']['value'])) {
       if (params.get('live') === '1'){
         setInterval(async ()=>{
           try{
-            const res = await fetch('/capstone/api/get_leave_requests.php');
+            const res = await fetch('../api/get_leave_requests.php');
             const js = await res.json();
             if(js && js.success && Array.isArray(js.data)){
               const row = js.data.find(r => String(r.id) === String(leaveId));
@@ -725,8 +725,8 @@ if (!empty($details['snapshot']['salary']['value'])) {
         return;
       }
     }catch(e){}
-    // Otherwise navigate back to the dept head leave-request listing
-    window.location.href = '/capstone/dept_head/leave-request.html';
+    // Otherwise navigate back to the dept head leave-request listing (relative path for hosting compatibility)
+    window.location.href = 'leave-request.html';
   }
 </script>
 </html>

@@ -56,10 +56,35 @@ if ($envSecret && $envSecret !== '') {
     if (!defined('QR_SECRET')) define('QR_SECRET', $generated);
 }
 
-// Base path for the application. If this file is used behind a different URL, adjust accordingly.
+// Base path for the application. Automatically detects the correct path for both local and hosted environments.
 if (!defined('BASE_PATH')) {
-    // Try to detect automatically, fallback to '/capstone'
-    $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '') ?: '/capstone';
-    if ($scriptDir === '/' || $scriptDir === '') $scriptDir = '/capstone';
-    define('BASE_PATH', $scriptDir);
+    // Detect the base path dynamically from the current script location
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    
+    // If we're in a subdirectory like /capstone/something/file.php or /myapp/something/file.php
+    // Extract the first directory level as the base path
+    if ($scriptName) {
+        // Remove the filename and any subdirectories
+        $scriptDir = dirname($scriptName);
+        
+        // For files in root subdirectories like /capstone/index.php, scriptDir will be /capstone
+        // For files in nested dirs like /capstone/api/file.php, we need to go up to /capstone
+        // For files at root like /index.php, scriptDir will be /
+        
+        // Find the first directory level after root
+        $parts = explode('/', trim($scriptDir, '/'));
+        
+        if (!empty($parts) && $parts[0] !== '') {
+            // We're in a subdirectory - use the first part
+            $basePath = '/' . $parts[0];
+        } else {
+            // We're at root level
+            $basePath = '';
+        }
+    } else {
+        // Fallback: empty means root
+        $basePath = '';
+    }
+    
+    define('BASE_PATH', $basePath);
 }

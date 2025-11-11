@@ -108,7 +108,7 @@ if ($user_email) {
     // Load existing signature if any
     async function loadExisting() {
       try {
-        const r = await fetch('/capstone/api/employee_signature.php');
+        const r = await fetch('../api/employee_signature.php');
         const j = await r.json();
         if (j && j.success && j.hasSignature && j.url) {
           const div = document.getElementById('existingSig');
@@ -143,7 +143,7 @@ if ($user_email) {
 
       status.textContent = 'Saving...';
       try {
-        const resp = await fetch('/capstone/api/save_signature.php', {
+        const resp = await fetch('../api/save_signature.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ signature_data_uri: dataUri })
@@ -163,7 +163,7 @@ if ($user_email) {
     // Use saved signature: copy to clipboard as URL or open in new tab
     document.getElementById('useExistingBtn').addEventListener('click', async function(){
       try {
-        const r = await fetch('/capstone/api/employee_signature.php');
+        const r = await fetch('../api/employee_signature.php');
         const j = await r.json();
         if (j && j.success && j.hasSignature && j.url) {
           const ok = confirm('Open saved signature in a new tab?');

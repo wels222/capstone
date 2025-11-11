@@ -62,5 +62,5 @@ try {
   // non-fatal for file save
 }
 
-$url = '/capstone/' . ltrim($relPath, '/');
+$url = '../' . ltrim($relPath, '/');
 echo json_encode(['success'=>true, 'file_path'=>$relPath, 'url'=>$url]);

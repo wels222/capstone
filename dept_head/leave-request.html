@@ -1400,7 +1400,7 @@
             const id = window._declineRequestId;
             if (!reason || !id) return;
             // Update backend with decline and reason
-            fetch(`/capstone/api/update_leave_status.php`, {
+            fetch(`../api/update_leave_status.php`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id, status: "declined", reason }),
@@ -1411,7 +1411,7 @@
                   // Send notification to employee
                   const request = window._leaveRequests.find((r) => r.id == id);
                   if (request && request.employee_email) {
-                    fetch("/capstone/api/add_notification.php", {
+                    fetch("../api/add_notification.php", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
@@ -1440,8 +1440,8 @@
       async function fetchLeaveRequests() {
         try {
           const [resReq, resUser] = await Promise.all([
-            fetch("/capstone/api/get_leave_requests.php"),
-            fetch("/capstone/api/current_user.php"),
+            fetch("../api/get_leave_requests.php"),
+            fetch("../api/current_user.php"),
           ]);
           const reqJson = await resReq.json();
           const userJson = await resUser.json();
@@ -1600,7 +1600,7 @@
         document.getElementById("recall-new-resumption-date").value =
           request.new_resumption_date || "";
         // Fetch users for relief dropdown
-        fetch("/capstone/api/get_users.php")
+        fetch("../api/get_users.php")
           .then((response) => response.json())
           .then((data) => {
             const select = document.getElementById("recall-relief-officer");
@@ -1635,7 +1635,7 @@
       function initiateRecall(id) {
         // Find the request object for the employee email
         const request = window._leaveRequests.find((r) => r.id == id);
-        fetch(`/capstone/api/update_leave_status.php`, {
+        fetch(`../api/update_leave_status.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id, status: "recall" }),
@@ -1645,7 +1645,7 @@
             if (data.success) {
               // Send notification to employee
               if (request && request.employee_email) {
-                fetch("/capstone/api/add_notification.php", {
+                fetch("../api/add_notification.php", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -1678,7 +1678,7 @@
 
       // View form function
       function viewForm(id) {
-        window.location.href = `/capstone/dept_head/civil_form.php?id=${id}`;
+        window.location.href = `civil_form.php?id=${id}`;
       }
 
       // Handle approve/decline action
@@ -1734,7 +1734,7 @@
             }
 
             // Approve action: update backend immediately
-            fetch(`/capstone/api/update_leave_status.php`, {
+            fetch(`../api/update_leave_status.php`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id, status: action }),
@@ -1782,7 +1782,7 @@
             const id = window._declineRequestId;
             if (!reason || !id) return;
             // Update backend with decline and reason
-            fetch(`/capstone/api/update_leave_status.php`, {
+            fetch(`../api/update_leave_status.php`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id, status: "declined", reason }),
@@ -1793,7 +1793,7 @@
                   // Send notification to employee
                   const request = window._leaveRequests.find((r) => r.id == id);
                   if (request && request.employee_email) {
-                    fetch("/capstone/api/add_notification.php", {
+                    fetch("../api/add_notification.php", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
@@ -1871,7 +1871,7 @@
         const fi = document.getElementById("dept7b_sig");
         if (fi) fi.value = null;
         // auto-fill name from current_user
-        fetch("/capstone/api/current_user.php")
+        fetch("../api/current_user.php")
           .then((r) => r.json())
           .then((js) => {
             let u = null;
@@ -1922,7 +1922,7 @@
         const section7 = { authorized_officer_7b: name };
         const payload = { id, section7, signatures: sigs };
         try {
-          const resp = await fetch("/capstone/api/update_hr_section7.php", {
+          const resp = await fetch("../api/update_hr_section7.php", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -1930,7 +1930,7 @@
           const js = await resp.json();
           if (js && js.success) {
             // Open preview so the dept head can verify placement immediately
-            const previewUrl = `/capstone/dept_head/civil_form.php?id=${id}&live=1&from=dept7b`;
+            const previewUrl = `civil_form.php?id=${id}&live=1&from=dept7b`;
             window.open(previewUrl, "_blank");
             alert(
               "Signature saved. A preview has been opened so you can verify the form."

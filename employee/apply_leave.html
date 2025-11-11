@@ -606,7 +606,7 @@
     <script>
       // Employee Leave History (realtime + filters + export)
       (function () {
-        let API_URL = "/capstone/api/employee_leave_history.php";
+        let API_URL = "../api/employee_leave_history.php";
         const uEmail = localStorage.getItem("userEmail");
         if (uEmail) API_URL += `?email=${encodeURIComponent(uEmail)}`;
 
@@ -789,7 +789,7 @@
             const local = localStorage.getItem("userEmail");
             if (local && local.trim() !== "") return local.trim();
             // Ask server for current logged-in user (session)
-            const r = await fetch("/capstone/api/current_user.php");
+            const r = await fetch("../api/current_user.php");
             if (!r.ok) return "";
             const js = await r.json();
             if (js && js.logged_in && js.email) {
@@ -817,7 +817,7 @@
           if (!email) return; // nothing to do if not logged in
 
           // Call API without email param so server-side session is used as the authority.
-          const API = "/capstone/api/employee_leave_credits.php";
+          const API = "../api/employee_leave_credits.php";
 
           try {
             const resp = await fetch(API);

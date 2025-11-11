@@ -893,7 +893,7 @@
         // No auto-disable or auto-submit: user must click Submit to send.
 
         // Fetch current logged-in user (session-backed)
-        fetch("/capstone/api/current_user.php")
+        fetch("../api/current_user.php")
           .then((res) => res.json())
           .then((data) => {
             if (data && data.logged_in) {
@@ -913,7 +913,7 @@
             } else {
               // fallback to employee-info endpoint if needed
               fetch(
-                "/capstone/api/employee_info.php?email=" +
+                "../api/employee_info.php?email=" +
                   encodeURIComponent(localStorage.getItem("userEmail"))
               )
                 .then((r) => r.json())
@@ -941,7 +941,7 @@
           .catch(() => {});
 
         // Fetch Dept Heads for dropdown (PHP endpoint)
-        fetch("/capstone/api/dept_heads.php")
+        fetch("../api/dept_heads.php")
           .then((res) => res.json())
           .then((heads) => {
             const select = document.getElementById("dept_head_select");
@@ -1296,7 +1296,6 @@
             const candidates = [];
             if (/^https?:\/\//i.test(raw)) candidates.push(raw);
             candidates.push("../" + cleaned);
-            candidates.push("/capstone/" + cleaned);
             candidates.push("/" + cleaned);
             candidates.push(cleaned);
             if (!candidates.length) return false;
@@ -1306,6 +1305,7 @@
             };
             img.onerror = function () {
               if (candidates.length) img.src = candidates.shift();
+<<<<<<< HEAD
               else
                 fetch("/capstone/api/employee_signature.php")
                   .then((r) => r.json())
@@ -1313,10 +1313,14 @@
                     if (s && s.success && s.hasSignature && s.url) mount(s.url);
                   })
                   .catch(() => {});
+=======
+              else fetch('../api/employee_signature.php').then(r=>r.json()).then(s=>{ if (s && s.success && s.hasSignature && s.url) mount(s.url); }).catch(()=>{});
+>>>>>>> 4634cc0 (fix hosting)
             };
             img.src = candidates.shift();
             return true;
           }
+<<<<<<< HEAD
           if (sigPath) {
             if (!tryCandidates(sigPath))
               fetch("/capstone/api/employee_signature.php")
@@ -1333,6 +1337,10 @@
               })
               .catch(() => {});
           }
+=======
+          if (sigPath) { if (!tryCandidates(sigPath)) fetch('../api/employee_signature.php').then(r=>r.json()).then(s=>{ if (s && s.success && s.hasSignature && s.url) mount(s.url); }).catch(()=>{}); }
+          else { fetch('../api/employee_signature.php').then(r=>r.json()).then(s=>{ if (s && s.success && s.hasSignature && s.url) mount(s.url); }).catch(()=>{}); }
+>>>>>>> 4634cc0 (fix hosting)
         })();
         // ...other auto-fill logic as needed...
       };
@@ -1375,7 +1383,11 @@
           try {
             const localSigData = localStorage.getItem("leaveSignatureData");
             if (!localSigData) {
+<<<<<<< HEAD
               const r = await fetch("/capstone/api/employee_signature.php");
+=======
+              const r = await fetch('../api/employee_signature.php');
+>>>>>>> 4634cc0 (fix hosting)
               const s = await r.json();
               if (s && s.success && s.hasSignature) {
                 const okReuse = confirm(
@@ -1490,7 +1502,7 @@
               return;
             }
 
-            const resp = await fetch("/capstone/api/submit_leave.php", {
+            const resp = await fetch("../api/submit_leave.php", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(formData),
@@ -1513,6 +1525,7 @@
               alert("Leave application submitted successfully!");
               // show the animation a bit then redirect to the appropriate dashboard
               setTimeout(() => {
+<<<<<<< HEAD
                 try {
                   if (animationDiv && animationDiv.parentNode)
                     body.removeChild(animationDiv);
@@ -1536,6 +1549,10 @@
                 } catch (e) {
                   window.location.href = "/capstone/employee/dashboard.php";
                 }
+=======
+                try { if (animationDiv && animationDiv.parentNode) body.removeChild(animationDiv); } catch (e) {}
+                window.location.href = "dashboard.php";
+>>>>>>> 4634cc0 (fix hosting)
               }, 1200);
             } else {
               alert(

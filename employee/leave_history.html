@@ -144,7 +144,7 @@
         localStorage.getItem("leaveType") || "Civil Service Form";
 
       // Realtime history with filters and export
-      let API_URL = "/capstone/api/employee_leave_history.php";
+      let API_URL = "../api/employee_leave_history.php";
       const uEmail = localStorage.getItem('userEmail');
       if (uEmail) {
         API_URL += `?email=${encodeURIComponent(uEmail)}`;

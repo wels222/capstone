@@ -19,7 +19,7 @@ try {
   $stmt->execute([$email]);
   $path = $stmt->fetchColumn();
   if ($path) {
-    $url = '/capstone/' . ltrim($path, '/');
+    $url = '../' . ltrim($path, '/');
     echo json_encode(['success'=>true, 'hasSignature'=>true, 'url'=>$url]);
     exit;
   }
@@ -31,7 +31,7 @@ try {
   $stmt->execute([$email]);
   $path = $stmt->fetchColumn();
   if ($path) {
-    $url = '/capstone/' . ltrim($path, '/');
+    $url = '../' . ltrim($path, '/');
     echo json_encode(['success'=>true, 'hasSignature'=>true, 'url'=>$url]);
     exit;
   }

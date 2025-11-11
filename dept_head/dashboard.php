@@ -1246,7 +1246,7 @@ try {
 
                             async function fetchNotifications(){
                                     try{
-                                            const res = await fetch('/capstone/api/notifications_list.php?limit=50', { credentials: 'include' });
+                                            const res = await fetch('../api/notifications_list.php?limit=50', { credentials: 'include' });
                                             const data = await res.json();
                                             if(!data || !data.success){ renderEmpty(); return; }
                                             const notes = Array.isArray(data.notifications) ? data.notifications : [];
@@ -1295,17 +1295,17 @@ try {
                             }
 
                             async function markRead(id){
-                                    try{ await fetch('/capstone/api/notifications_mark_read.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id}), credentials: 'include' }); }catch(e){ console.error(e); }
+                                    try{ await fetch('../api/notifications_mark_read.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id}), credentials: 'include' }); }catch(e){ console.error(e); }
                             }
 
                             async function markAll(){
-                                    try{ await fetch('/capstone/api/notifications_mark_read.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}), credentials: 'include' }); await fetchNotifications(); }catch(e){ console.error(e); }
+                                    try{ await fetch('../api/notifications_mark_read.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}), credentials: 'include' }); await fetchNotifications(); }catch(e){ console.error(e); }
                             }
 
                                 async function clearRead(){
                                     if(!confirm('Clear all read notifications? This will permanently remove them for you.')) return;
                                     try{
-                                        const res = await fetch('/capstone/api/notifications_clear.php', { method:'POST', credentials: 'include' });
+                                        const res = await fetch('../api/notifications_clear.php', { method:'POST', credentials: 'include' });
                                         const data = await res.json();
                                         if(data && data.success){ await fetchNotifications(); }
                                     }catch(e){ console.error('clearRead', e); }
