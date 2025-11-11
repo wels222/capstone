@@ -1503,20 +1503,16 @@
         <button class="modal-close-btn" id="hr-modal-close">&times;</button>
         <div class="modal-profile-header">
           <h4 id="hr-modal-title">Edit HR Section 7 — Authorized Officer Signature</h4>
-          <div class="employee-details text-sm text-gray-500">Upload the e-signature that will be placed on the form; names are not required here.</div>
+          <div class="employee-details text-sm text-gray-500">Upload the HR Certifier e-signature that will be placed on the Certification of Leave Credits; names are not required here.</div>
         </div>
 
         <div class="modal-leave-credits">
           <div class="form-group mt-3">
             <label class="font-semibold">Upload Authorized Officer E-Signature</label>
-            <p class="text-xs text-gray-500 mt-2">Choose two signatures as needed. The first is the HR certifier (will be placed opposite the Certification of Leave Credits). The second is the Authorized Official (bottom of the form) which will be saved with the hardcoded name.</p>
+            <p class="text-xs text-gray-500 mt-2">Upload the HR Certifier signature (placed opposite the Certification of Leave Credits).</p>
             <div class="mt-2">
               <label class="text-sm">1) HR Certifier (Certificate of Leave Credits)</label>
               <input id="hr_sig_certifier" type="file" accept="image/*" class="mt-1" />
-            </div>
-            <div class="mt-3">
-              <label class="text-sm">2) Authorized Official (Mayor)</label>
-              <input id="hr_sig_final" type="file" accept="image/*" class="mt-1" />
             </div>
           </div>
         </div>
@@ -1534,7 +1530,7 @@
         window._editingHRRequestId = id;
         const modal = document.getElementById('hr-section-modal');
   // clear the HR Section 7 signature fields
-  ['hr_sig_certifier','hr_sig_final','hr_sig_authorized'].forEach(i => { const fi = document.getElementById(i); if (fi) fi.value = null; });
+  ['hr_sig_certifier'].forEach(i => { const fi = document.getElementById(i); if (fi) fi.value = null; });
         // try to prefill from loaded requests data (only authorized officer name)
         try {
           const req = window._leaveRequests.find(r => String(r.id) === String(id));
@@ -1596,13 +1592,6 @@
           try {
             const dataUri = await toDataURI(fiCert.files[0]);
             sigs.push({ key: 'certifier', data_uri: dataUri });
-          } catch(e) { /* ignore */ }
-        }
-        const fiFinal = document.getElementById('hr_sig_final');
-        if (fiFinal && fiFinal.files && fiFinal.files[0]) {
-          try {
-            const dataUri = await toDataURI(fiFinal.files[0]);
-            sigs.push({ key: 'final', data_uri: dataUri });
           } catch(e) { /* ignore */ }
         }
         const payload = { id, section7, signatures: sigs };

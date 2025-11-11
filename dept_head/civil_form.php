@@ -1,5 +1,7 @@
 <?php
 require_once '../db.php';
+// Ensure session is available so we can read the logged-in user
+if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
 // Get leave request ID from URL
 $leave_id = $_GET['id'] ?? null;
 $leave = null;
@@ -79,7 +81,9 @@ foreach ($possibleDeptHeadFields as $f) {
       } catch (PDOException $e) { /* ignore */ }
     }
     // If it's not an email but looks like a name, use it directly
-    if (!$resolved && preg_match('/[A-Za-z]/', $val)) {
+    // NOTE: avoid treating raw email strings as names — require the value
+    // to NOT contain an '@' before accepting it as a name.
+    if (!$resolved && strpos($val, '@') === false && preg_match('/[A-Za-z]/', $val)) {
       $deptHeadName = $val;
       $resolved = true;
       break;
@@ -114,6 +118,71 @@ if ($deptHeadName === 'Department Head' && !empty($user['department'])) {
   } catch (PDOException $e) { /* ignore */ }
 }
 
+// If still not resolved and someone is logged in, prefer showing the
+// logged-in user's name/signature. This guarantees that when a dept head
+// is viewing the form in their portal, their real-time name shows up.
+if ($deptHeadName === 'Department Head') {
+  $sessEmail = $_SESSION['email'] ?? null;
+  $sessUserId = $_SESSION['user_id'] ?? null;
+  if ($sessEmail || $sessUserId) {
+    try {
+      if (!empty($sessUserId) && preg_match('/^\d+$/', (string)$sessUserId)) {
+        $stMe = $pdo->prepare('SELECT firstname, lastname, mi, position, department, signature_path, signature, sig_path FROM users WHERE id = ? LIMIT 1');
+        $stMe->execute([$sessUserId]);
+      } else {
+        $stMe = $pdo->prepare('SELECT firstname, lastname, mi, position, department, signature_path, signature, sig_path FROM users WHERE email = ? LIMIT 1');
+        $stMe->execute([$sessEmail]);
+      }
+      $me = $stMe->fetch(PDO::FETCH_ASSOC);
+      if ($me) {
+        $deptHeadName = trim(($me['firstname'] ?? '') . ' ' . (!empty($me['mi']) ? ($me['mi'] . ' ') : '') . ($me['lastname'] ?? ''));
+        if (!empty($me['signature_path'])) $deptHeadSig = $me['signature_path'];
+        elseif (!empty($me['signature'])) $deptHeadSig = $me['signature'];
+        elseif (!empty($me['sig_path'])) $deptHeadSig = $me['sig_path'];
+        $resolved = true;
+      }
+    } catch (PDOException $e) { /* ignore */ }
+  }
+}
+
+// Final: if still unresolved, try a robust department-head lookup using
+// multiple possible department sources and return the current user in the
+// `users` table whose position suggests leadership in that department.
+if ($deptHeadName === 'Department Head') {
+  // Try to determine the employee's department from several places
+  $deptCandidates = [];
+  if (!empty($user['department'])) $deptCandidates[] = $user['department'];
+  if (!empty($leave['department'])) $deptCandidates[] = $leave['department'];
+  if (!empty($leave['dept'])) $deptCandidates[] = $leave['dept'];
+  if (!empty($leave['department_name'])) $deptCandidates[] = $leave['department_name'];
+  if (!empty($details['department'])) $deptCandidates[] = $details['department'];
+  if (!empty($details['snapshot']['department']['value'])) $deptCandidates[] = $details['snapshot']['department']['value'];
+  // normalize and pick first non-empty
+  $dept = null;
+  foreach ($deptCandidates as $dc) {
+    $dc = trim((string)$dc);
+    if ($dc !== '') { $dept = $dc; break; }
+  }
+
+  if (!empty($dept)) {
+    try {
+      // Prefer users whose position explicitly contains Head/Chief/Officer
+      // Order so strong matches come first. Limit 1.
+      $q = "SELECT firstname, lastname, mi, position, signature_path, signature, sig_path FROM users WHERE department = ? AND (position LIKE '%Head%' OR position LIKE '%head%' OR position LIKE '%Chief%' OR position LIKE '%chief%' OR position LIKE '%Officer%' OR position LIKE '%officer%') ORDER BY CASE WHEN position LIKE '%Head%' THEN 0 WHEN position LIKE '%Chief%' THEN 1 WHEN position LIKE '%Officer%' THEN 2 ELSE 3 END LIMIT 1";
+      $st = $pdo->prepare($q);
+      $st->execute([$dept]);
+      $found = $st->fetch(PDO::FETCH_ASSOC);
+      if ($found) {
+        $deptHeadName = trim(($found['firstname'] ?? '') . ' ' . (!empty($found['mi']) ? ($found['mi'] . ' ') : '') . ($found['lastname'] ?? ''));
+        if (!empty($found['signature_path'])) $deptHeadSig = $found['signature_path'];
+        elseif (!empty($found['signature'])) $deptHeadSig = $found['signature'];
+        elseif (!empty($found['sig_path'])) $deptHeadSig = $found['sig_path'];
+        $resolved = true;
+      }
+    } catch (PDOException $e) { /* ignore */ }
+  }
+}
+
 // If still unresolved, allow forcing via GET params: dept_head_email or dept
 if ($deptHeadName === 'Department Head') {
   $forcedEmail = $_GET['dept_head_email'] ?? $_GET['dept_email'] ?? null;
@@ -142,6 +211,52 @@ if ($deptHeadName === 'Department Head') {
         elseif (!empty($f2['sig_path'])) $deptHeadSig = $f2['sig_path'];
       }
     } catch (PDOException $e) { }
+  }
+}
+
+// If the value we resolved (or a fallback value) still looks like an email
+// (for example the leave stored an email string), try a final lookup so
+// the displayed value is the real-time full name from the users table.
+try {
+  if (strpos($deptHeadName, '@') !== false) {
+    $stEmail = $pdo->prepare('SELECT firstname, lastname, mi, signature_path, signature, sig_path FROM users WHERE email = ? LIMIT 1');
+    $stEmail->execute([$deptHeadName]);
+    $fe = $stEmail->fetch(PDO::FETCH_ASSOC);
+    if ($fe) {
+      $deptHeadName = trim(($fe['firstname'] ?? '') . ' ' . (!empty($fe['mi']) ? ($fe['mi'] . ' ') : '') . ($fe['lastname'] ?? ''));
+      if (!empty($fe['signature_path'])) $deptHeadSig = $fe['signature_path'];
+      elseif (!empty($fe['signature'])) $deptHeadSig = $fe['signature'];
+      elseif (!empty($fe['sig_path'])) $deptHeadSig = $fe['sig_path'];
+    }
+  }
+  // Also handle the case where the leave stored a numeric user id for the dept head
+  // (try to resolve that to a name). Guard against missing array key.
+  $maybeIdRaw = isset($leave['dept_head']) ? $leave['dept_head'] : null;
+  if (!$deptHeadSig && $maybeIdRaw !== null) {
+    $maybeId = trim((string)$maybeIdRaw);
+    if (!preg_match('/^\d+$/', $maybeId)) {
+      $maybeId = '';
+    }
+  }
+  if (!$deptHeadSig && !empty($maybeId)) {
+    $stId = $pdo->prepare('SELECT firstname, lastname, mi, signature_path, signature, sig_path FROM users WHERE id = ? LIMIT 1');
+    $stId->execute([$maybeId]);
+    $fi = $stId->fetch(PDO::FETCH_ASSOC);
+    if ($fi) {
+      $deptHeadName = trim(($fi['firstname'] ?? '') . ' ' . (!empty($fi['mi']) ? ($fi['mi'] . ' ') : '') . ($fi['lastname'] ?? ''));
+      if (!empty($fi['signature_path'])) $deptHeadSig = $fi['signature_path'];
+      elseif (!empty($fi['signature'])) $deptHeadSig = $fi['signature'];
+      elseif (!empty($fi['sig_path'])) $deptHeadSig = $fi['sig_path'];
+    }
+  }
+} catch (PDOException $e) { /* ignore final resolution errors */ }
+
+// If still unresolved, try to use the name captured in details.hr.section7.authorized_officer_7b
+// which the dept head page saves when they review/submit.
+if ($deptHeadName === 'Department Head') {
+  $dhFromDetails = $details['hr']['section7']['authorized_officer_7b'] ?? '';
+  if (!empty($dhFromDetails) && is_string($dhFromDetails)) {
+    $deptHeadName = trim($dhFromDetails);
   }
 }
 
@@ -702,7 +817,12 @@ $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
               </div>
             </div>
 
-            <?php $hr = $details['hr'] ?? null; $s = $hr['section7'] ?? []; $hsigs = $hr['signatures'] ?? []; ?>
+            <?php
+              $hr = $details['hr'] ?? null; $s = $hr['section7'] ?? []; $hsigs = $hr['signatures'] ?? [];
+              if ($deptHeadName === 'DEPARTMENT HEAD' && !empty($s['authorized_officer_7b'])) {
+                $deptHeadName = mb_strtoupper(trim($s['authorized_officer_7b']), 'UTF-8');
+              }
+            ?>
             <div class="mt-8 text-center text-xxs font-semibold pt-2">
               <?php $certSig = $hsigs['certifier'] ?? ($hsigs['7a'] ?? null); ?>
                 <div style="position:relative; min-height:56px;">

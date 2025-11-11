@@ -1878,8 +1878,9 @@
             if (!js) return;
             if (js.user) u = js.user;
             else if (js.logged_in || js.firstname) u = js;
+            // Use First Middle Last format per requirement
             const name = u
-              ? [u.lastname || "", u.firstname || "", u.mi || ""]
+              ? [u.firstname || "", u.mi || "", u.lastname || ""]
                   .map((s) => s.trim())
                   .filter(Boolean)
                   .join(" ")

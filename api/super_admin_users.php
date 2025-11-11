@@ -15,6 +15,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$stmt->execute([
 			$data['lastname'], $data['firstname'], $data['mi'], $data['department'], $data['position'], $role, $contact_no, $status, $data['email'], $hash
 		]);
+		// Generate automatic employee_id based on the inserted numeric id
+		try {
+			$insertId = (int)$pdo->lastInsertId();
+			if ($insertId > 0) {
+				$year = date('Y');
+				$employeeId = sprintf('EMP-%s-%06d', $year, $insertId);
+				$up = $pdo->prepare('UPDATE users SET employee_id = ? WHERE id = ?');
+				$up->execute([$employeeId, $insertId]);
+				echo json_encode(['success' => true, 'id' => $insertId, 'employee_id' => $employeeId]);
+				exit;
+			}
+		} catch (Throwable $e) {
+			// Fall through to generic success if employee_id generation fails
+		}
 		echo json_encode(['success' => true]);
 		exit;
 	} elseif ($action === 'edit') {
