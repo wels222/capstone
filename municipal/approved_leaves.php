@@ -618,6 +618,30 @@ if (!isset($_SESSION['municipal_logged_in']) || $_SESSION['municipal_logged_in']
       let hasExistingSignature = false;
       let uploadedSignatureDataURL = null;
 
+      // Toggle sections (Pending vs History)
+      function showSection(which) {
+        const pendingSec = document.getElementById('pending-section');
+        const historySec = document.getElementById('history-section');
+        const pendingNav = document.getElementById('pending-nav');
+        const historyNav = document.getElementById('history-nav');
+
+        if (which === 'history') {
+          pendingSec.style.display = 'none';
+          historySec.style.display = 'block';
+          pendingNav.classList.remove('active');
+          historyNav.classList.add('active');
+          // Refresh history when switching tabs
+          fetchApprovalHistory();
+        } else {
+          pendingSec.style.display = 'block';
+          historySec.style.display = 'none';
+          historyNav.classList.remove('active');
+          pendingNav.classList.add('active');
+          // Refresh pending when switching tabs
+          fetchApprovedLeaves();
+        }
+      }
+
       // Handle signature file upload
       function handleSignatureUpload(event) {
         const file = event.target.files[0];
@@ -786,6 +810,7 @@ if (!isset($_SESSION['municipal_logged_in']) || $_SESSION['municipal_logged_in']
             alert('Leave request approved successfully!');
             closeSignatureModal();
             fetchApprovedLeaves(); // Refresh the table
+            fetchApprovalHistory(); // Refresh history
             
             // Reload existing signature if it was updated
             if (!usingExisting) {
@@ -850,6 +875,7 @@ if (!isset($_SESSION['municipal_logged_in']) || $_SESSION['municipal_logged_in']
             alert('Leave request declined successfully.');
             closeDeclineModal();
             fetchApprovedLeaves(); // Refresh the table
+            fetchApprovalHistory(); // Refresh history
           } else {
             alert('Error: ' + (result.error || 'Failed to decline leave'));
           }
@@ -918,6 +944,65 @@ if (!isset($_SESSION['municipal_logged_in']) || $_SESSION['municipal_logged_in']
         }
       }
 
+      // Fetch municipal approval history (approved or declined)
+      async function fetchApprovalHistory() {
+        try {
+          const response = await fetch('../api/get_leave_requests.php');
+          const json = await response.json();
+
+          if (!json.success) {
+            console.error('Failed to fetch leave requests (history)');
+            return;
+          }
+
+          let requests = Array.isArray(json.data) ? json.data : [];
+          // Filter: processed by municipal (1=approved, 2=declined)
+          requests = requests.filter(r => r.approved_by_municipal == 1 || r.approved_by_municipal == 2);
+
+          // Sort by municipal_approval_date desc if available
+          requests.sort((a, b) => {
+            const da = a.municipal_approval_date ? new Date(a.municipal_approval_date) : 0;
+            const db = b.municipal_approval_date ? new Date(b.municipal_approval_date) : 0;
+            return db - da;
+          });
+
+          const tbody = document.querySelector('#history-leaves-table');
+          tbody.innerHTML = '';
+
+          if (requests.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="border border-gray-300 px-4 py-2 text-center text-gray-500">No municipal approvals yet</td></tr>';
+            return;
+          }
+
+          requests.forEach((request) => {
+            const name = (request.firstname ? request.firstname : '') + (request.lastname ? ' ' + request.lastname : '');
+            const approved = request.approved_by_municipal == 1;
+            const statusBadge = approved
+              ? '<span class="status-badge" style="background-color:#d1fae5;color:#065f46;">Approved by Municipal</span>'
+              : '<span class="status-badge" style="background-color:#fee2e2;color:#991b1b;">Declined by Municipal</span>';
+
+            const approvedDateText = request.municipal_approval_date
+              ? new Date(request.municipal_approval_date.replace(' ', 'T')).toLocaleString()
+              : '—';
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td class="border border-gray-300 px-4 py-2 text-left">${name || 'N/A'}</td>
+              <td class="border border-gray-300 px-4 py-2 text-left">${request.leave_type || 'N/A'}</td>
+              <td class="border border-gray-300 px-4 py-2 text-left">${request.dates || 'N/A'}</td>
+              <td class="border border-gray-300 px-4 py-2 text-center">
+                <button class="view-button" onclick="viewForm('${request.id}')">View</button>
+              </td>
+              <td class="border border-gray-300 px-4 py-2 text-center">${statusBadge}</td>
+              <td class="border border-gray-300 px-4 py-2 text-center">${approvedDateText}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        } catch (error) {
+          console.error('Error fetching approval history:', error);
+        }
+      }
+
       // View form function
       function viewForm(id) {
         window.open(`../dept_head/civil_form.php?id=${id}`, '_blank');
@@ -966,10 +1051,14 @@ if (!isset($_SESSION['municipal_logged_in']) || $_SESSION['municipal_logged_in']
       document.addEventListener('DOMContentLoaded', () => {
         loadExistingSignature();
         fetchApprovedLeaves();
+        fetchApprovalHistory();
       });
 
-      // Refresh data every minute
-      setInterval(fetchApprovedLeaves, 60000);
+      // Refresh data every minute (both tabs)
+      setInterval(() => {
+        fetchApprovedLeaves();
+        fetchApprovalHistory();
+      }, 60000);
     </script>
   </body>
 </html>

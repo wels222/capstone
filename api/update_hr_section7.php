@@ -54,39 +54,28 @@ try {
   // Save any provided signature data URIs as files. Support both plain dataURI strings (append)
   // and objects with { key: '7a', data_uri: 'data:image/...' } to map per-officer.
   if (!isset($details['hr']['signatures']) || !is_array($details['hr']['signatures'])) $details['hr']['signatures'] = [];
-  
-  // Check if new signatures are being uploaded
-  $hasNewSignature = false;
-  foreach ($signatures as $sig) {
-    if (is_string($sig) && strpos($sig, 'data:image/') === 0) {
-      $hasNewSignature = true;
-      break;
-    } elseif (is_array($sig) && !empty($sig['data_uri'])) {
-      $hasNewSignature = true;
-      break;
-    }
-  }
-  
-  // Only delete old signatures if new ones are being uploaded
-  if ($hasNewSignature) {
-    // Delete old HR signature files before saving new ones
-    foreach ($details['hr']['signatures'] as $oldSigKey => $oldSigPath) {
-      if (is_string($oldSigPath) && file_exists(__DIR__ . '/../' . $oldSigPath)) {
-        @unlink(__DIR__ . '/../' . $oldSigPath);
-      }
-    }
-    // Clear old signatures array
-    $details['hr']['signatures'] = [];
-  }
-  
+
+  // Build a normalized array of incoming signatures keyed by their role when provided
+  $incomingSigs = [];
   foreach ($signatures as $idx => $sig) {
-    $key = null; $dataUri = null;
-    if (is_string($sig) && strpos($sig, 'data:image/') === 0) {
-      $dataUri = $sig;
-    } elseif (is_array($sig) && !empty($sig['data_uri'])) {
-      $dataUri = $sig['data_uri'];
-      if (!empty($sig['key'])) $key = $sig['key'];
+    if (is_array($sig) && !empty($sig['data_uri'])) {
+      $k = isset($sig['key']) && $sig['key'] !== '' ? (string)$sig['key'] : null;
+      $incomingSigs[] = ['key' => $k, 'data_uri' => $sig['data_uri'], 'idx' => $idx];
+    } elseif (is_string($sig) && strpos($sig, 'data:image/') === 0) {
+      // No explicit key provided; keep as is
+      $incomingSigs[] = ['key' => null, 'data_uri' => $sig, 'idx' => $idx];
     }
+  }
+
+  // When replacing a specific keyed signature (e.g., '7b' from Dept Head), only replace that key,
+  // and preserve other existing keys (prevents wiping 7b when HR uploads certifier, and vice versa).
+  foreach ($incomingSigs as $in) {
+    $key = $in['key'];
+    $dataUri = $in['data_uri'];
+    $key = null; $dataUri = null;
+    // Already normalized above; keep for backward compatibility in the rest of the logic
+    $key = $in['key'];
+    $dataUri = $in['data_uri'];
     if (!$dataUri || strpos($dataUri, 'data:image/') !== 0) continue;
     $parts = explode(',', $dataUri, 2);
     if (count($parts) !== 2) continue;
@@ -105,11 +94,17 @@ try {
     $absPath = __DIR__ . '/../' . $relPath;
     if (!is_dir(dirname($absPath))) @mkdir(dirname($absPath), 0777, true);
     if (@file_put_contents($absPath, $bin) !== false) {
-      if ($key) {
-        // map by key
+      if ($key !== null && $key !== '') {
+        // If replacing existing keyed signature, attempt to delete the old file for that key
+        if (!empty($details['hr']['signatures'][$key]) && is_string($details['hr']['signatures'][$key])) {
+          $old = __DIR__ . '/../' . ltrim($details['hr']['signatures'][$key], '/');
+          if (strpos(realpath($old) ?: '', realpath(__DIR__ . '/../uploads/signatures')) === 0 && file_exists($old)) {
+            @unlink($old);
+          }
+        }
         $details['hr']['signatures'][$key] = $relPath;
       } else {
-        // append
+        // Append as an unkeyed signature; do NOT clear existing signatures
         $details['hr']['signatures'][] = $relPath;
       }
       $savedPaths[] = $relPath;
@@ -117,6 +112,7 @@ try {
   }
   
   // If no new signature provided, try to use saved HR signature from hr_signatures table
+  $hasNewSignature = count($incomingSigs) > 0; // recompute using normalized list
   if (!$hasNewSignature && empty($details['hr']['signatures']['certifier'])) {
     try {
       $hr_email = $_SESSION['email'] ?? null;

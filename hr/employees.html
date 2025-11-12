@@ -737,7 +737,6 @@
         <span class="header-text">Bayan ng Mabini</span>
       </div>
       <div class="header-profile">
-        <i class="fas fa-bell notification-icon"></i>
         <img src="../assets/logo.png" alt="Profile" class="profile-image" />
       </div>
     </header>
@@ -769,6 +768,11 @@
                 ><i class="fa fa-calendar-times"></i> Manage Events</a
               >
             </li>
+            <li class="nav-item">
+              <a href="analytics.html"
+                ><i class="fas fa-chart-line"></i> Analytics</a
+              >
+            </li>
           </ul>
         </nav>
         <div class="sign-out">
@@ -782,9 +786,15 @@
             <h2 class="text-2xl font-bold mb-4">Employees</h2>
 
             <div class="employee-tabs">
-              <button class="employee-tab-btn active" data-category="All">All</button>
-              <button class="employee-tab-btn" data-category="Permanent">Permanent</button>
-              <button class="employee-tab-btn" data-category="Casual">Casual</button>
+              <button class="employee-tab-btn active" data-category="All">
+                All
+              </button>
+              <button class="employee-tab-btn" data-category="Permanent">
+                Permanent
+              </button>
+              <button class="employee-tab-btn" data-category="Casual">
+                Casual
+              </button>
               <button class="employee-tab-btn" data-category="JO">JO</button>
               <button class="employee-tab-btn" data-category="OJT">OJT</button>
             </div>
@@ -796,7 +806,7 @@
     </div>
 
     <script>
-      document.addEventListener("DOMContentLoaded", function() {
+      document.addEventListener("DOMContentLoaded", function () {
         const employeeGrid = document.getElementById("employee-grid");
         const tabButtons = document.querySelectorAll(".employee-tab-btn");
         let employees = [];
@@ -806,8 +816,8 @@
 
         // Fetch employees from API
         fetch("../api/get_employees.php")
-          .then(res => res.json())
-          .then(data => {
+          .then((res) => res.json())
+          .then((data) => {
             if (data.success) {
               employees = data.employees;
               // show all by default
@@ -817,23 +827,30 @@
 
         function renderEmployees(category) {
           employeeGrid.innerHTML = "";
-          const list = category === 'All' ? employees : employees.filter(emp => emp.position === category);
-          list.forEach(emp => {
+          const list =
+            category === "All"
+              ? employees
+              : employees.filter((emp) => emp.position === category);
+          list.forEach((emp) => {
             const card = document.createElement("div");
             card.className = "employee-card";
             card.dataset.category = emp.position;
-            card.dataset.name = emp.firstname + ' ' + emp.lastname;
+            card.dataset.name = emp.firstname + " " + emp.lastname;
             card.dataset.position = emp.position;
             card.dataset.department = emp.department;
             card.dataset.email = emp.email;
             card.dataset.leaves = JSON.stringify({}); // Placeholder for leave credits
             card.innerHTML = `
               <span class="active-status"></span>
-              <img src="${emp.profile_picture ? emp.profile_picture : 'assets/profile-placeholder.png'}" alt="${emp.firstname} ${emp.lastname}" class="profile-image" />
+              <img src="${
+                emp.profile_picture
+                  ? emp.profile_picture
+                  : "assets/profile-placeholder.png"
+              }" alt="${emp.firstname} ${emp.lastname}" class="profile-image" />
               <p class="employee-name">${emp.firstname} ${emp.lastname}</p>
               <p class="employee-category">${emp.position}</p>
             `;
-            card.addEventListener("click", function() {
+            card.addEventListener("click", function () {
               const name = card.dataset.name;
               const position = card.dataset.position;
               const department = card.dataset.department;
@@ -842,7 +859,11 @@
                 <div class="modal-content">
                   <button class="modal-close-btn">&times;</button>
                   <div class="modal-profile-header">
-                    <img src="${emp.profile_picture ? emp.profile_picture : 'assets/profile-placeholder.png'}" alt="${name}">
+                    <img src="${
+                      emp.profile_picture
+                        ? emp.profile_picture
+                        : "assets/profile-placeholder.png"
+                    }" alt="${name}">
                     <h4>${name}</h4>
                     <p class="employee-details">${position} - ${department}</p>
                   </div>
@@ -859,48 +880,62 @@
               modalOverlay.innerHTML = modalContent;
               modalOverlay.classList.add("show");
               let closeButton = modalOverlay.querySelector(".modal-close-btn");
-              closeButton.addEventListener("click", function() {
+              closeButton.addEventListener("click", function () {
                 modalOverlay.classList.remove("show");
-                setTimeout(function() { modalOverlay.innerHTML = ""; }, 300);
+                setTimeout(function () {
+                  modalOverlay.innerHTML = "";
+                }, 300);
               });
-              modalOverlay.addEventListener("click", function(e) {
+              modalOverlay.addEventListener("click", function (e) {
                 if (e.target === modalOverlay) {
                   modalOverlay.classList.remove("show");
-                  setTimeout(function() { modalOverlay.innerHTML = ""; }, 300);
+                  setTimeout(function () {
+                    modalOverlay.innerHTML = "";
+                  }, 300);
                 }
               });
 
               // Fetch leave credits for selected employee
-              fetch(`../api/employee_leave_credits.php?email=${encodeURIComponent(email)}`)
-                .then(r => r.json())
-                .then(res => {
-                  const grid = modalOverlay.querySelector('#leaveGrid > div');
+              fetch(
+                `../api/employee_leave_credits.php?email=${encodeURIComponent(
+                  email
+                )}`
+              )
+                .then((r) => r.json())
+                .then((res) => {
+                  const grid = modalOverlay.querySelector("#leaveGrid > div");
                   if (!res || !res.success) {
-                    grid.innerHTML = '<div class="text-center text-red-500 p-4">Failed to load leave credits.</div>';
+                    grid.innerHTML =
+                      '<div class="text-center text-red-500 p-4">Failed to load leave credits.</div>';
                     return;
                   }
                   const items = Array.isArray(res.data) ? res.data : [];
                   if (items.length === 0) {
-                    grid.innerHTML = '<div class="text-center text-gray-500 p-4">No leave credits available.</div>';
+                    grid.innerHTML =
+                      '<div class="text-center text-gray-500 p-4">No leave credits available.</div>';
                     return;
                   }
                   // Cards
-                  grid.innerHTML = '';
-                  items.forEach(it => {
-                    const div = document.createElement('div');
-                    div.className = 'h-full box-border overflow-hidden flex flex-col items-start p-5 md:p-6 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow space-y-4';
+                  grid.innerHTML = "";
+                  items.forEach((it) => {
+                    const div = document.createElement("div");
+                    div.className =
+                      "h-full box-border overflow-hidden flex flex-col items-start p-5 md:p-6 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow space-y-4";
                     const rawUsed = Number(it.used) || 0;
                     const total = Math.max(0, Number(it.total) || 0);
                     const used = Math.min(Math.max(0, rawUsed), total);
                     const avail = Math.max(0, total - used);
-                    const usedPct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+                    const usedPct =
+                      total > 0
+                        ? Math.min(100, Math.round((used / total) * 100))
+                        : 0;
                     const availPct = Math.max(0, 100 - usedPct);
-                    const nameLen = (it.type || '').length;
-                    let titleSize = 'text-[15px]';
-                    if (nameLen > 24) titleSize = 'text-[14px]';
-                    if (nameLen > 30) titleSize = 'text-sm';
-                    if (nameLen > 36) titleSize = 'text-[13px]';
-                    if (nameLen > 44) titleSize = 'text-xs';
+                    const nameLen = (it.type || "").length;
+                    let titleSize = "text-[15px]";
+                    if (nameLen > 24) titleSize = "text-[14px]";
+                    if (nameLen > 30) titleSize = "text-sm";
+                    if (nameLen > 36) titleSize = "text-[13px]";
+                    if (nameLen > 44) titleSize = "text-xs";
                     div.innerHTML = `
                       <div class="flex items-start justify-between w-full">
                         <span class="${titleSize} font-semibold text-gray-900 break-words leading-snug pr-4 min-w-0">${it.type}</span>
@@ -928,60 +963,80 @@
                       </div>
                     `;
                     grid.appendChild(div);
-                     // Helper to draw crisp, contained progress bars with SVG
-                     const makeProgressSVG = (pct, fill, track) => {
-                       const w = Math.max(0, Math.min(100, Number(pct) || 0));
-                       const hasFill = w > 0;
-                       return `
+                    // Helper to draw crisp, contained progress bars with SVG
+                    const makeProgressSVG = (pct, fill, track) => {
+                      const w = Math.max(0, Math.min(100, Number(pct) || 0));
+                      const hasFill = w > 0;
+                      return `
                          <svg viewBox="0 0 100 8" width="100%" height="8" preserveAspectRatio="none" style="display:block">
                            <rect x="0" y="0" width="100" height="8" rx="4" fill="${track}"></rect>
-                           ${hasFill ? `<rect x="0" y="0" width="${w}" height="8" rx="4" fill="${fill}"></rect>` : ''}
+                           ${
+                             hasFill
+                               ? `<rect x="0" y="0" width="${w}" height="8" rx="4" fill="${fill}"></rect>`
+                               : ""
+                           }
                          </svg>
                        `;
-                     };
+                    };
 
-                     // Inject SVG progress bars
-                     const usedHost = div.querySelector('.progress-used');
-                     const availHost = div.querySelector('.progress-avail');
-                     if (usedHost) usedHost.innerHTML = makeProgressSVG(usedPct, '#6366F1', '#E0E7FF');
-                     if (availHost) availHost.innerHTML = makeProgressSVG(availPct, '#10B981', '#D1FAE5');
+                    // Inject SVG progress bars
+                    const usedHost = div.querySelector(".progress-used");
+                    const availHost = div.querySelector(".progress-avail");
+                    if (usedHost)
+                      usedHost.innerHTML = makeProgressSVG(
+                        usedPct,
+                        "#6366F1",
+                        "#E0E7FF"
+                      );
+                    if (availHost)
+                      availHost.innerHTML = makeProgressSVG(
+                        availPct,
+                        "#10B981",
+                        "#D1FAE5"
+                      );
 
-                     // Draw donut chart for this leave type
-                    const canvas = div.querySelector('canvas');
+                    // Draw donut chart for this leave type
+                    const canvas = div.querySelector("canvas");
                     if (canvas && window.Chart) {
-                      const ctx = canvas.getContext('2d');
+                      const ctx = canvas.getContext("2d");
                       new Chart(ctx, {
-                        type: 'doughnut',
+                        type: "doughnut",
                         data: {
-                          labels: ['Used','Available'],
-                          datasets: [{
-                            data: [used, avail],
-                            backgroundColor: ['#6366F1', '#10B981'],
-                            borderWidth: 0
-                          }]
+                          labels: ["Used", "Available"],
+                          datasets: [
+                            {
+                              data: [used, avail],
+                              backgroundColor: ["#6366F1", "#10B981"],
+                              borderWidth: 0,
+                            },
+                          ],
                         },
                         options: {
                           responsive: false,
-                          cutout: '68%',
-                          plugins: { legend: { display: false }, tooltip: { enabled: false } }
-                        }
+                          cutout: "68%",
+                          plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: false },
+                          },
+                        },
                       });
                     }
                   });
                 })
                 .catch(() => {
-                  const grid = modalOverlay.querySelector('#leaveGrid > div');
-                  grid.innerHTML = '<div class="text-center text-red-500 p-4">Failed to load leave credits.</div>';
+                  const grid = modalOverlay.querySelector("#leaveGrid > div");
+                  grid.innerHTML =
+                    '<div class="text-center text-red-500 p-4">Failed to load leave credits.</div>';
                 });
             });
             employeeGrid.appendChild(card);
           });
         }
 
-        tabButtons.forEach(function(button) {
-          button.addEventListener("click", function() {
+        tabButtons.forEach(function (button) {
+          button.addEventListener("click", function () {
             const category = button.dataset.category;
-            tabButtons.forEach(btn => btn.classList.remove("active"));
+            tabButtons.forEach((btn) => btn.classList.remove("active"));
             button.classList.add("active");
             renderEmployees(category);
           });

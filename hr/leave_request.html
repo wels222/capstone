@@ -1047,7 +1047,6 @@
         <span class="header-text">Bayan ng Mabini</span>
       </div>
       <div class="header-profile">
-        <i class="fas fa-bell notification-icon"></i>
         <img src="../assets/logo.png" alt="Profile" class="profile-image" />
       </div>
     </header>
@@ -1079,6 +1078,11 @@
                 ><i class="fa fa-calendar-times"></i> Manage Events</a
               >
             </li>
+            <li class="nav-item">
+              <a href="analytics.html"
+                ><i class="fas fa-chart-line"></i> Analytics</a
+              >
+            </li>
           </ul>
         </nav>
         <div class="sign-out">
@@ -1107,6 +1111,24 @@
                   <button class="export-button">
                     Export &nbsp;<i class="fas fa-download"></i>
                   </button>
+                  <!-- Apply Leave button for HR -->
+                  <a
+                    href="apply_leave.html"
+                    class="export-button"
+                    style="
+                      background-color: #3b82f6;
+                      color: #fff;
+                      margin-left: 0.5rem;
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 0.5rem;
+                      padding: 0.5rem 0.75rem;
+                      border-radius: 0.375rem;
+                      text-decoration: none;
+                    "
+                  >
+                    <i class="fas fa-plus"></i> Apply Leave
+                  </a>
                 </div>
                 <table class="min-w-full border border-gray-300">
                   <thead>
@@ -1116,6 +1138,9 @@
                       </th>
                       <th class="border border-gray-300 px-4 py-2 text-left">
                         Leave Type
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">
+                        Remaining Credits
                       </th>
                       <th class="border border-gray-300 px-4 py-2 text-left">
                         Dates
@@ -1329,6 +1354,12 @@
                   <td class="border border-gray-300 px-4 py-2 text-left">${
                     request.leave_type || ""
                   }</td>
+                  <td class="border border-gray-300 px-4 py-2 text-left remaining-days" data-email="${
+                    request.employee_email || ""
+                  }" data-leave-type="${(request.leave_type || "").replace(
+                  /"/g,
+                  "&quot;"
+                )}">…</td>
                   <td class="border border-gray-300 px-4 py-2 text-left">${
                     request.dates || ""
                   }</td>
@@ -1336,7 +1367,9 @@
                     <button class="bg-blue-500 text-white px-2 py-1 rounded view-button" onclick="viewForm('${
                       request.id
                     }')">View</button>
-                    <button class="ml-2 bg-yellow-500 text-white px-2 py-1 rounded edit-hr-button" onclick="openHRSectionModal('${request.id}')">Edit</button>
+                    <button class="ml-2 bg-yellow-500 text-white px-2 py-1 rounded edit-hr-button" onclick="openHRSectionModal('${
+                      request.id
+                    }')">Edit</button>
                   </td>
                   <td class="border border-gray-300 px-4 py-2 text-center">
                     <select class="action-dropdown px-2 py-1 rounded border border-gray-300" data-id="${
@@ -1349,6 +1382,157 @@
                   </td>
                 `;
                 tbodyRequest.appendChild(row);
+              });
+
+              // After rendering rows, fetch remaining credits per unique employee and fill the column
+              const uniqueEmails = Array.from(
+                new Set(
+                  (data.data || [])
+                    .map((r) => r.employee_email)
+                    .filter((e) => !!e)
+                )
+              );
+
+              const creditsByEmail = {};
+              const fetches = uniqueEmails.map((email) =>
+                fetch(
+                  `../api/employee_leave_credits.php?email=${encodeURIComponent(
+                    email
+                  )}`
+                )
+                  .then((r) => r.json())
+                  .then((js) => {
+                    if (js && js.success) creditsByEmail[email] = js;
+                  })
+                  .catch(() => {})
+              );
+
+              Promise.all(fetches).then(() => {
+                // Helper: normalize leave type similar to backend
+                const ENTITLEMENTS = {
+                  "Vacation Leave": true,
+                  "Mandatory / Forced Leave": true,
+                  "Sick Leave": true,
+                  "Maternity Leave": true,
+                  "Paternity Leave": true,
+                  "Special Privilege Leave": true,
+                  "Solo Parent Leave": true,
+                  "Study Leave": true,
+                  "10-Day VAWC Leave": true,
+                  "Rehabilitation Leave": true,
+                  "Special Leave Benefits for Women": true,
+                  "Special Emergency (Calamity) Leave": true,
+                  "Adoption Leave": true,
+                };
+                const TYPE_ALIASES = [
+                  ["vacation", "Vacation Leave"],
+                  ["mandatory", "Mandatory / Forced Leave"],
+                  ["forced", "Mandatory / Forced Leave"],
+                  ["sick", "Sick Leave"],
+                  ["maternity", "Maternity Leave"],
+                  ["paternity", "Paternity Leave"],
+                  ["privilege", "Special Privilege Leave"],
+                  ["solo parent", "Solo Parent Leave"],
+                  ["study", "Study Leave"],
+                  ["vawc", "10-Day VAWC Leave"],
+                  ["rehabilitation", "Rehabilitation Leave"],
+                  ["women", "Special Leave Benefits for Women"],
+                  ["emergency", "Special Emergency (Calamity) Leave"],
+                  ["calamity", "Special Emergency (Calamity) Leave"],
+                  ["adoption", "Adoption Leave"],
+                ];
+                function normalizeLeaveType(raw) {
+                  const r = String(raw || "").trim();
+                  if (!r) return null;
+                  // exact
+                  if (ENTITLEMENTS[r]) return r;
+                  const low = r.toLowerCase();
+                  for (const [needle, mapped] of TYPE_ALIASES) {
+                    if (low.indexOf(needle) !== -1) return mapped;
+                  }
+                  return null;
+                }
+                function fmtDays(n) {
+                  const v = Number(n);
+                  if (!isFinite(v)) return "N/A";
+                  return Number.isInteger(v) ? `${v}d` : `${v.toFixed(2)}d`;
+                }
+                function renderBadgeAndBar(available, total) {
+                  const a = Math.max(0, Number(available) || 0);
+                  const t = Math.max(0, Number(total) || 0);
+                  let ratio = t > 0 ? Math.min(1, a / t) : 0;
+                  // Color scheme based on remaining ratio
+                  let badgeBg = "bg-green-100",
+                    badgeText = "text-green-700",
+                    bar = "bg-green-500";
+                  if (a <= 0) {
+                    badgeBg = "bg-red-100";
+                    badgeText = "text-red-700";
+                    bar = "bg-red-500";
+                    ratio = 0;
+                  } else if (ratio < 0.2) {
+                    badgeBg = "bg-yellow-100";
+                    badgeText = "text-yellow-700";
+                    bar = "bg-yellow-500";
+                  }
+                  const percent = Math.round(ratio * 100);
+                  const ofText = t > 0 ? `of ${t}` : "";
+                  return `
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${badgeBg} ${badgeText}">${fmtDays(
+                    a
+                  )}</span>
+                      <span class="text-xs text-gray-500">${ofText}</span>
+                    </div>
+                    <div class="mt-1 h-1.5 w-24 bg-gray-200 rounded" title="${a} of ${t} days remaining">
+                      <div class="h-1.5 rounded ${bar}" style="width: ${percent}%;"></div>
+                    </div>
+                  `;
+                }
+
+                document
+                  .querySelectorAll("#hr-leave-request td.remaining-days")
+                  .forEach((td) => {
+                    const email = td.getAttribute("data-email") || "";
+                    const rawType = td.getAttribute("data-leave-type") || "";
+                    const credits = creditsByEmail[email];
+                    td.innerHTML =
+                      '<span class="text-gray-400 text-xs">Loading…</span>';
+                    if (!credits || !credits.success) {
+                      td.innerHTML =
+                        '<span class="text-gray-400 text-xs">N/A</span>';
+                      return;
+                    }
+                    const norm = normalizeLeaveType(rawType);
+                    if (norm && Array.isArray(credits.data)) {
+                      const item = credits.data.find((x) => x.type === norm);
+                      if (item) {
+                        td.innerHTML = renderBadgeAndBar(
+                          item.available,
+                          item.total
+                        );
+                        return;
+                      }
+                    }
+                    // Fallback to overall available days if specific type not found
+                    if (
+                      credits.summary &&
+                      typeof credits.summary.availableDays !== "undefined"
+                    ) {
+                      const a = Number(credits.summary.availableDays) || 0;
+                      td.innerHTML = `
+                        <div class="flex items-center gap-2">
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">${fmtDays(
+                            a
+                          )}</span>
+                          <span class="text-xs text-gray-500">overall</span>
+                        </div>
+                      `;
+                    } else {
+                      td.innerHTML =
+                        '<span class="text-gray-400 text-xs">N/A</span>';
+                    }
+                  });
               });
 
               // Fetch all leave requests for history and recall
@@ -1423,70 +1607,89 @@
           window._declineRequestId = id;
           document.getElementById("decline-modal").classList.add("show");
         } else if (action === "approved") {
-            // Before HR approves, ensure HR has filled/edited Section 7 (signatures or certifier name)
-            try {
-              const req = window._leaveRequests.find((r) => String(r.id) === String(id));
-              let edited = false;
-              if (req) {
-                // check details.hr.section7.certifier_name or details.hr.signatures (certifier/final)
-                if (req.details) {
-                  try {
-                    const d = (typeof req.details === 'string') ? JSON.parse(req.details) : req.details;
-                    if (d && d.hr) {
-                      const s7 = d.hr.section7 || {};
-                      const sigs = d.hr.signatures || {};
-                      if ((s7 && (s7.certifier_name || s7.final_official)) || (sigs && (sigs.certifier || sigs.final || sigs['certifier'] || sigs['final']))) edited = true;
-                    }
-                  } catch (e) { /* ignore parse errors */ }
+          // Before HR approves, ensure HR has filled/edited Section 7 (signatures or certifier name)
+          try {
+            const req = window._leaveRequests.find(
+              (r) => String(r.id) === String(id)
+            );
+            let edited = false;
+            if (req) {
+              // check details.hr.section7.certifier_name or details.hr.signatures (certifier/final)
+              if (req.details) {
+                try {
+                  const d =
+                    typeof req.details === "string"
+                      ? JSON.parse(req.details)
+                      : req.details;
+                  if (d && d.hr) {
+                    const s7 = d.hr.section7 || {};
+                    const sigs = d.hr.signatures || {};
+                    if (
+                      (s7 && (s7.certifier_name || s7.final_official)) ||
+                      (sigs &&
+                        (sigs.certifier ||
+                          sigs.final ||
+                          sigs["certifier"] ||
+                          sigs["final"]))
+                    )
+                      edited = true;
+                  }
+                } catch (e) {
+                  /* ignore parse errors */
                 }
               }
-              if (!edited) {
-                alert('You must edit the form (HR Section 7 signatures) before approving. Please click "Edit" and upload the HR signatures.');
-                select.value = '';
-                return;
-              }
-
-              // HR Approve action: update backend with approved_by_hr = 1
-              fetch(`../api/update_leave_status.php`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  id,
-                  status: "approved",
-                  approved_by_hr: true,
-                }),
-              })
-                .then((response) => response.json())
-                .then((data) => {
-                  if (data.success) {
-                    // Send notification to employee
-                    const request = window._leaveRequests.find((r) => r.id == id);
-                    if (request && request.employee_email) {
-                      fetch("../api/add_notification.php", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          recipient_email: request.employee_email,
-                          message: `Your leave request has been approved by HR!`,
-                          type: "approved",
-                        }),
-                      });
-                    }
-                    alert("Leave request approved successfully!");
-                    fetchLeaveRequests();
-                  } else {
-                    alert("Failed to approve leave request.");
-                  }
-                })
-                .catch((error) => {
-                  console.error("Error approving leave request:", error);
-                  alert("An error occurred while approving the leave request.");
-                });
-            } catch (e) {
-              console.error('HR approval check', e);
-              alert('Error checking HR Section 7 state. Cannot approve at this time.');
-              select.value = '';
             }
+            if (!edited) {
+              alert(
+                'You must edit the form (HR Section 7 signatures) before approving. Please click "Edit" and upload the HR signatures.'
+              );
+              select.value = "";
+              return;
+            }
+
+            // HR Approve action: update backend with approved_by_hr = 1
+            fetch(`../api/update_leave_status.php`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id,
+                status: "approved",
+                approved_by_hr: true,
+              }),
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                if (data.success) {
+                  // Send notification to employee
+                  const request = window._leaveRequests.find((r) => r.id == id);
+                  if (request && request.employee_email) {
+                    fetch("../api/add_notification.php", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        recipient_email: request.employee_email,
+                        message: `Your leave request has been approved by HR!`,
+                        type: "approved",
+                      }),
+                    });
+                  }
+                  alert("Leave request approved successfully!");
+                  fetchLeaveRequests();
+                } else {
+                  alert("Failed to approve leave request.");
+                }
+              })
+              .catch((error) => {
+                console.error("Error approving leave request:", error);
+                alert("An error occurred while approving the leave request.");
+              });
+          } catch (e) {
+            console.error("HR approval check", e);
+            alert(
+              "Error checking HR Section 7 state. Cannot approve at this time."
+            );
+            select.value = "";
+          }
         }
       }
 
@@ -1499,103 +1702,216 @@
 
     <!-- HR Section 7 Modal -->
     <div id="hr-section-modal" class="modal-overlay">
-      <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-content" style="max-width: 700px">
         <button class="modal-close-btn" id="hr-modal-close">&times;</button>
         <div class="modal-profile-header">
-          <h4 id="hr-modal-title">Edit HR Section 7.A — Certification of Leave Credits</h4>
-          <div class="employee-details text-sm text-gray-500">Fill out the leave credits certification and upload HR signature.</div>
+          <h4 id="hr-modal-title">
+            Edit HR Section 7.A — Certification of Leave Credits
+          </h4>
+          <div class="employee-details text-sm text-gray-500">
+            Fill out the leave credits certification and upload HR signature.
+          </div>
         </div>
 
         <div class="modal-leave-credits">
           <!-- 7.A CERTIFICATION OF LEAVE CREDITS -->
           <div class="form-group mt-4">
-            <label class="font-semibold text-base mb-2 block">7.A CERTIFICATION OF LEAVE CREDITS</label>
-            
+            <label class="font-semibold text-base mb-2 block"
+              >7.A CERTIFICATION OF LEAVE CREDITS</label
+            >
+
             <div class="mt-3">
-              <label class="text-sm font-medium mb-1 block">As of (Date):</label>
-              <input 
-                type="date" 
-                id="hr_certification_date" 
+              <label class="text-sm font-medium mb-1 block"
+                >As of (Date):</label
+              >
+              <input
+                type="date"
+                id="hr_certification_date"
                 class="w-full p-2 border border-gray-300 rounded text-sm"
               />
             </div>
 
             <div class="mt-4 border border-gray-300 rounded">
-              <div class="grid grid-cols-3 gap-0 border-b border-gray-300 bg-gray-50">
+              <div
+                class="grid grid-cols-3 gap-0 border-b border-gray-300 bg-gray-50"
+              >
                 <div class="p-2 font-semibold text-sm"></div>
-                <div class="p-2 font-semibold text-sm text-center border-l border-gray-300">Vacation Leave</div>
-                <div class="p-2 font-semibold text-sm text-center border-l border-gray-300">Sick Leave</div>
+                <div
+                  class="p-2 font-semibold text-sm text-center border-l border-gray-300"
+                >
+                  Vacation Leave
+                </div>
+                <div
+                  class="p-2 font-semibold text-sm text-center border-l border-gray-300"
+                >
+                  Sick Leave
+                </div>
               </div>
-              
+
               <div class="grid grid-cols-3 gap-0 border-b border-gray-300">
                 <div class="p-2 text-sm font-medium">Total Earned</div>
                 <div class="p-2 border-l border-gray-300">
-                  <input type="number" step="0.01" id="hr_vl_total_earned" class="w-full p-1 border border-gray-300 rounded text-sm" placeholder="0.00" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="hr_vl_total_earned"
+                    class="w-full p-1 border border-gray-300 rounded text-sm"
+                    placeholder="0.00"
+                  />
                 </div>
                 <div class="p-2 border-l border-gray-300">
-                  <input type="number" step="0.01" id="hr_sl_total_earned" class="w-full p-1 border border-gray-300 rounded text-sm" placeholder="0.00" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="hr_sl_total_earned"
+                    class="w-full p-1 border border-gray-300 rounded text-sm"
+                    placeholder="0.00"
+                  />
                 </div>
               </div>
-              
+
               <div class="grid grid-cols-3 gap-0 border-b border-gray-300">
                 <div class="p-2 text-sm font-medium">Less this application</div>
                 <div class="p-2 border-l border-gray-300">
-                  <input type="number" step="0.01" id="hr_vl_less_application" class="w-full p-1 border border-gray-300 rounded text-sm" placeholder="0.00" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="hr_vl_less_application"
+                    class="w-full p-1 border border-gray-300 rounded text-sm"
+                    placeholder="0.00"
+                  />
                 </div>
                 <div class="p-2 border-l border-gray-300">
-                  <input type="number" step="0.01" id="hr_sl_less_application" class="w-full p-1 border border-gray-300 rounded text-sm" placeholder="0.00" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="hr_sl_less_application"
+                    class="w-full p-1 border border-gray-300 rounded text-sm"
+                    placeholder="0.00"
+                  />
                 </div>
               </div>
-              
+
               <div class="grid grid-cols-3 gap-0">
                 <div class="p-2 text-sm font-medium">Balance</div>
                 <div class="p-2 border-l border-gray-300">
-                  <input type="number" step="0.01" id="hr_vl_balance" class="w-full p-1 border border-gray-300 rounded text-sm bg-gray-50" placeholder="0.00" readonly />
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="hr_vl_balance"
+                    class="w-full p-1 border border-gray-300 rounded text-sm bg-gray-50"
+                    placeholder="0.00"
+                    readonly
+                  />
                 </div>
                 <div class="p-2 border-l border-gray-300">
-                  <input type="number" step="0.01" id="hr_sl_balance" class="w-full p-1 border border-gray-300 rounded text-sm bg-gray-50" placeholder="0.00" readonly />
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="hr_sl_balance"
+                    class="w-full p-1 border border-gray-300 rounded text-sm bg-gray-50"
+                    placeholder="0.00"
+                    readonly
+                  />
                 </div>
               </div>
             </div>
-            
-            <p class="text-xs text-gray-500 mt-2">Note: Balance will auto-calculate (Total Earned - Less this application)</p>
+
+            <p class="text-xs text-gray-500 mt-2">
+              Note: Balance will auto-calculate (Total Earned - Less this
+              application)
+            </p>
           </div>
 
           <div class="form-group mt-4">
             <label class="font-semibold">HR Certifier Signature</label>
-            <p class="text-xs text-gray-500 mt-2">Upload the HR certifier signature for Section 7.A.</p>
-            
+            <p class="text-xs text-gray-500 mt-2">
+              Upload the HR certifier signature for Section 7.A.
+            </p>
+
             <div class="mt-3">
               <label class="text-sm font-medium">Signed by (auto-filled)</label>
-              <input id="hr_certifier_name" type="text" class="w-full mt-1 p-2 border border-gray-300 rounded text-sm" readonly />
+              <input
+                id="hr_certifier_name"
+                type="text"
+                class="w-full mt-1 p-2 border border-gray-300 rounded text-sm"
+                readonly
+              />
             </div>
-            
+
             <!-- Existing Signature Display -->
-            <div id="hr_existing_signature_container" style="display: none; margin-top: 1rem;">
-              <p style="color: #059669; font-size: 0.875rem; margin-bottom: 0.5rem;">
+            <div
+              id="hr_existing_signature_container"
+              style="display: none; margin-top: 1rem"
+            >
+              <p
+                style="
+                  color: #059669;
+                  font-size: 0.875rem;
+                  margin-bottom: 0.5rem;
+                "
+              >
                 ✓ You have an existing signature on file
               </p>
-              <div style="border: 2px solid #d1d5db; border-radius: 0.5rem; padding: 1rem; background: #f9fafb;">
-                <img id="hr_existing_signature_img" src="" alt="Existing Signature" style="max-width: 300px; max-height: 100px; display: block;" />
+              <div
+                style="
+                  border: 2px solid #d1d5db;
+                  border-radius: 0.5rem;
+                  padding: 1rem;
+                  background: #f9fafb;
+                "
+              >
+                <img
+                  id="hr_existing_signature_img"
+                  src=""
+                  alt="Existing Signature"
+                  style="max-width: 300px; max-height: 100px; display: block"
+                />
               </div>
-              <p style="color: #6b7280; font-size: 0.75rem; margin-top: 0.5rem;">
-                Upload a new file below to replace it (old signature will be deleted)
+              <p style="color: #6b7280; font-size: 0.75rem; margin-top: 0.5rem">
+                Upload a new file below to replace it (old signature will be
+                deleted)
               </p>
             </div>
-            
+
             <div class="mt-3">
-              <label class="text-sm font-medium">Upload HR Certifier E-Signature</label>
-              <input id="hr_sig_certifier" type="file" accept="image/*" class="mt-2 w-full" />
-              <p style="color: #6b7280; font-size: 0.75rem; margin-top: 0.25rem;">
+              <label class="text-sm font-medium"
+                >Upload HR Certifier E-Signature</label
+              >
+              <input
+                id="hr_sig_certifier"
+                type="file"
+                accept="image/*"
+                class="mt-2 w-full"
+              />
+              <p
+                style="color: #6b7280; font-size: 0.75rem; margin-top: 0.25rem"
+              >
                 Upload once and it will be saved to your account for future use
               </p>
             </div>
           </div>
         </div>
-        
-        <div class="form-buttons" style="margin-top:1.5rem;">
-          <button id="hr-save-btn" class="initiate-button" style="background-color:#10b981; padding: 0.75rem 1.5rem;">Save & Preview Form</button>
-          <button id="hr-cancel-btn" class="cancel-button" style="background-color:#6b7280; margin-left:0.5rem; padding: 0.75rem 1.5rem;">Cancel</button>
+
+        <div class="form-buttons" style="margin-top: 1.5rem">
+          <button
+            id="hr-save-btn"
+            class="initiate-button"
+            style="background-color: #10b981; padding: 0.75rem 1.5rem"
+          >
+            Save & Preview Form
+          </button>
+          <button
+            id="hr-cancel-btn"
+            class="cancel-button"
+            style="
+              background-color: #6b7280;
+              margin-left: 0.5rem;
+              padding: 0.75rem 1.5rem;
+            "
+          >
+            Cancel
+          </button>
         </div>
       </div>
     </div>
@@ -1604,234 +1920,309 @@
       // Load existing HR signature
       async function loadExistingHRSignature() {
         try {
-          const response = await fetch('../api/get_hr_signature.php');
+          const response = await fetch("../api/get_hr_signature.php");
           const data = await response.json();
-          
+
           if (data.success && data.signature_path) {
             // Show existing signature
-            document.getElementById('hr_existing_signature_container').style.display = 'block';
-            document.getElementById('hr_existing_signature_img').src = '../' + data.signature_path + '?t=' + Date.now();
+            document.getElementById(
+              "hr_existing_signature_container"
+            ).style.display = "block";
+            document.getElementById("hr_existing_signature_img").src =
+              "../" + data.signature_path + "?t=" + Date.now();
           } else {
             // No existing signature
-            document.getElementById('hr_existing_signature_container').style.display = 'none';
+            document.getElementById(
+              "hr_existing_signature_container"
+            ).style.display = "none";
           }
         } catch (error) {
-          console.error('Error loading HR signature:', error);
-          document.getElementById('hr_existing_signature_container').style.display = 'none';
+          console.error("Error loading HR signature:", error);
+          document.getElementById(
+            "hr_existing_signature_container"
+          ).style.display = "none";
         }
       }
-      
+
       // HR Section modal logic
       function openHRSectionModal(id) {
         window._editingHRRequestId = id;
-        const modal = document.getElementById('hr-section-modal');
-        
+        const modal = document.getElementById("hr-section-modal");
+
         // Clear the HR Section 7 signature field
-        const fi = document.getElementById('hr_sig_certifier');
+        const fi = document.getElementById("hr_sig_certifier");
         if (fi) fi.value = null;
-        
+
         // Clear leave credits fields
-        document.getElementById('hr_certification_date').value = '';
-        document.getElementById('hr_vl_total_earned').value = '';
-        document.getElementById('hr_vl_less_application').value = '';
-        document.getElementById('hr_vl_balance').value = '';
-        document.getElementById('hr_sl_total_earned').value = '';
-        document.getElementById('hr_sl_less_application').value = '';
-        document.getElementById('hr_sl_balance').value = '';
-        
+        document.getElementById("hr_certification_date").value = "";
+        document.getElementById("hr_vl_total_earned").value = "";
+        document.getElementById("hr_vl_less_application").value = "";
+        document.getElementById("hr_vl_balance").value = "";
+        document.getElementById("hr_sl_total_earned").value = "";
+        document.getElementById("hr_sl_less_application").value = "";
+        document.getElementById("hr_sl_balance").value = "";
+
         // Try to prefill from loaded requests data
         try {
-          const req = window._leaveRequests.find(r => String(r.id) === String(id));
+          const req = window._leaveRequests.find(
+            (r) => String(r.id) === String(id)
+          );
           if (req) {
             // Prefill leave credits if exists
             if (req.certification_date) {
-              document.getElementById('hr_certification_date').value = req.certification_date;
+              document.getElementById("hr_certification_date").value =
+                req.certification_date;
             }
             if (req.vl_total_earned) {
-              document.getElementById('hr_vl_total_earned').value = parseFloat(req.vl_total_earned);
+              document.getElementById("hr_vl_total_earned").value = parseFloat(
+                req.vl_total_earned
+              );
             }
             if (req.vl_less_this_application) {
-              document.getElementById('hr_vl_less_application').value = parseFloat(req.vl_less_this_application);
+              document.getElementById("hr_vl_less_application").value =
+                parseFloat(req.vl_less_this_application);
             }
             if (req.vl_balance) {
-              document.getElementById('hr_vl_balance').value = parseFloat(req.vl_balance);
+              document.getElementById("hr_vl_balance").value = parseFloat(
+                req.vl_balance
+              );
             }
             if (req.sl_total_earned) {
-              document.getElementById('hr_sl_total_earned').value = parseFloat(req.sl_total_earned);
+              document.getElementById("hr_sl_total_earned").value = parseFloat(
+                req.sl_total_earned
+              );
             }
             if (req.sl_less_this_application) {
-              document.getElementById('hr_sl_less_application').value = parseFloat(req.sl_less_this_application);
+              document.getElementById("hr_sl_less_application").value =
+                parseFloat(req.sl_less_this_application);
             }
             if (req.sl_balance) {
-              document.getElementById('hr_sl_balance').value = parseFloat(req.sl_balance);
-            }
-          }
-        } catch(e) { console.error(e); }
-        
-        // Load existing HR signature if available
-        loadExistingHRSignature();
-        
-        // Attempt to fetch current HR account name and cache it for the save
-        window._hrCurrentName = '';
-        try {
-          fetch('../api/current_user.php').then(r => r.json()).then(js => {
-            let u = null;
-            if (!js) return;
-            if (js.user) u = js.user;
-            else if (js.logged_in || js.firstname) u = js;
-            if (u) {
-              const name = [u.lastname || '', u.firstname || '', u.mi || ''].map(s => s.trim()).filter(Boolean).join(' ');
-              window._hrCurrentName = name || (u.name || '');
-              document.getElementById('hr_certifier_name').value = window._hrCurrentName.toUpperCase();
-              const hdr = document.querySelector('#hr-section-modal .employee-details');
-              if (hdr) hdr.textContent = 'Fill out the leave credits certification and upload HR signature. Certifying as: ' + (window._hrCurrentName || 'HR');
-            }
-          }).catch(()=>{});
-        } catch(e) {}
-        
-        modal.classList.add('show');
-      }
-
-      function closeHRSectionModal() {
-        const modal = document.getElementById('hr-section-modal');
-        modal.classList.remove('show');
-        window._editingHRRequestId = null;
-      }
-
-      document.getElementById('hr-modal-close').addEventListener('click', closeHRSectionModal);
-      document.getElementById('hr-cancel-btn').addEventListener('click', closeHRSectionModal);
-      
-      // Auto-calculate balance for VL
-      document.getElementById('hr_vl_total_earned').addEventListener('input', calculateVLBalance);
-      document.getElementById('hr_vl_less_application').addEventListener('input', calculateVLBalance);
-      
-      function calculateVLBalance() {
-        const total = parseFloat(document.getElementById('hr_vl_total_earned').value) || 0;
-        const less = parseFloat(document.getElementById('hr_vl_less_application').value) || 0;
-        const balance = total - less;
-        document.getElementById('hr_vl_balance').value = balance.toFixed(2);
-      }
-      
-      // Auto-calculate balance for SL
-      document.getElementById('hr_sl_total_earned').addEventListener('input', calculateSLBalance);
-      document.getElementById('hr_sl_less_application').addEventListener('input', calculateSLBalance);
-      
-      function calculateSLBalance() {
-        const total = parseFloat(document.getElementById('hr_sl_total_earned').value) || 0;
-        const less = parseFloat(document.getElementById('hr_sl_less_application').value) || 0;
-        const balance = total - less;
-        document.getElementById('hr_sl_balance').value = balance.toFixed(2);
-      }
-
-      document.getElementById('hr-save-btn').addEventListener('click', async function() {
-        const id = window._editingHRRequestId;
-        if (!id) return alert('No request selected');
-        
-        // Get leave credits values
-        const certificationDate = document.getElementById('hr_certification_date').value;
-        const vlTotalEarned = document.getElementById('hr_vl_total_earned').value;
-        const vlLessApplication = document.getElementById('hr_vl_less_application').value;
-        const vlBalance = document.getElementById('hr_vl_balance').value;
-        const slTotalEarned = document.getElementById('hr_sl_total_earned').value;
-        const slLessApplication = document.getElementById('hr_sl_less_application').value;
-        const slBalance = document.getElementById('hr_sl_balance').value;
-        
-        // Validate: certification date is required
-        if (!certificationDate) {
-          return alert('Please enter the certification date (As of)');
-        }
-        
-        // Build section7: include HR certifier name and hardcoded final official
-        const section7 = {
-          certifier_name: window._hrCurrentName || '',
-          final_official: 'ATTY. MARIA CONCEPCION R. HERNANDEZ-BELOSO'
-        };
-
-        // Collect signature file (HR certifier only)
-        const toDataURI = (file) => new Promise((res, rej) => {
-          const r = new FileReader(); 
-          r.onload = () => res(r.result); 
-          r.onerror = () => rej(); 
-          r.readAsDataURL(file);
-        });
-        
-        const sigs = [];
-        let hrSignatureDataUri = null;
-        
-        // HR Certifier signature (7A)
-        const fiCert = document.getElementById('hr_sig_certifier');
-        if (fiCert && fiCert.files && fiCert.files[0]) {
-          try {
-            const dataUri = await toDataURI(fiCert.files[0]);
-            sigs.push({ key: 'certifier', data_uri: dataUri });
-            hrSignatureDataUri = dataUri; // Save for HR signature table
-          } catch(e) { /* ignore */ }
-        }
-        
-        // Save HR signature to hr_signatures table if uploaded
-        if (hrSignatureDataUri) {
-          try {
-            const sigResp = await fetch('../api/save_hr_signature.php', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ signature_data_uri: hrSignatureDataUri })
-            });
-            const sigResult = await sigResp.json();
-            if (!sigResult.success) {
-              console.error('Failed to save HR signature:', sigResult.error);
-            }
-          } catch (e) {
-            console.error('Error saving HR signature:', e);
-          }
-        }
-        
-        const payload = { 
-          id, 
-          section7, 
-          signatures: sigs,
-          leave_credits: {
-            certification_date: certificationDate,
-            vl_total_earned: vlTotalEarned,
-            vl_less_this_application: vlLessApplication,
-            vl_balance: vlBalance,
-            sl_total_earned: slTotalEarned,
-            sl_less_this_application: slLessApplication,
-            sl_balance: slBalance
-          }
-        };
-        
-        try {
-          const resp = await fetch('../api/update_hr_section7.php', {
-            method: 'POST', 
-            headers: {'Content-Type':'application/json'}, 
-            body: JSON.stringify(payload)
-          });
-          const js = await resp.json();
-          if (js && js.success) {
-            // Open preview of the civil form so user can confirm the signature placement
-            const previewUrl = `../dept_head/civil_form.php?id=${id}&live=1`;
-            window.open(previewUrl, '_blank');
-            alert('Leave credits and HR signature saved. A preview of the form has been opened in a new tab. Please verify that all information appears correctly before finalizing.');
-            closeHRSectionModal();
-            fetchLeaveRequests();
-          } else {
-            const errorMsg = js.error || 'unknown';
-            if (errorMsg.includes('DB error') || errorMsg.includes('Unknown column')) {
-              alert('Database Error: Missing columns detected.\n\n' +
-                    'Please run the database migration:\n' +
-                    '1. Open: http://localhost/capstone/run_migration.php\n' +
-                    '2. Wait for success message\n' +
-                    '3. Try saving again\n\n' +
-                    'Error details: ' + errorMsg);
-            } else {
-              alert('Failed to save HR section: ' + errorMsg);
+              document.getElementById("hr_sl_balance").value = parseFloat(
+                req.sl_balance
+              );
             }
           }
         } catch (e) {
           console.error(e);
-          alert('Network error saving HR section');
         }
-      });
+
+        // Load existing HR signature if available
+        loadExistingHRSignature();
+
+        // Attempt to fetch current HR account name and cache it for the save
+        window._hrCurrentName = "";
+        try {
+          fetch("../api/current_user.php")
+            .then((r) => r.json())
+            .then((js) => {
+              let u = null;
+              if (!js) return;
+              if (js.user) u = js.user;
+              else if (js.logged_in || js.firstname) u = js;
+              if (u) {
+                const name = [u.lastname || "", u.firstname || "", u.mi || ""]
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .join(" ");
+                window._hrCurrentName = name || u.name || "";
+                document.getElementById("hr_certifier_name").value =
+                  window._hrCurrentName.toUpperCase();
+                const hdr = document.querySelector(
+                  "#hr-section-modal .employee-details"
+                );
+                if (hdr)
+                  hdr.textContent =
+                    "Fill out the leave credits certification and upload HR signature. Certifying as: " +
+                    (window._hrCurrentName || "HR");
+              }
+            })
+            .catch(() => {});
+        } catch (e) {}
+
+        modal.classList.add("show");
+      }
+
+      function closeHRSectionModal() {
+        const modal = document.getElementById("hr-section-modal");
+        modal.classList.remove("show");
+        window._editingHRRequestId = null;
+      }
+
+      document
+        .getElementById("hr-modal-close")
+        .addEventListener("click", closeHRSectionModal);
+      document
+        .getElementById("hr-cancel-btn")
+        .addEventListener("click", closeHRSectionModal);
+
+      // Auto-calculate balance for VL
+      document
+        .getElementById("hr_vl_total_earned")
+        .addEventListener("input", calculateVLBalance);
+      document
+        .getElementById("hr_vl_less_application")
+        .addEventListener("input", calculateVLBalance);
+
+      function calculateVLBalance() {
+        const total =
+          parseFloat(document.getElementById("hr_vl_total_earned").value) || 0;
+        const less =
+          parseFloat(document.getElementById("hr_vl_less_application").value) ||
+          0;
+        const balance = total - less;
+        document.getElementById("hr_vl_balance").value = balance.toFixed(2);
+      }
+
+      // Auto-calculate balance for SL
+      document
+        .getElementById("hr_sl_total_earned")
+        .addEventListener("input", calculateSLBalance);
+      document
+        .getElementById("hr_sl_less_application")
+        .addEventListener("input", calculateSLBalance);
+
+      function calculateSLBalance() {
+        const total =
+          parseFloat(document.getElementById("hr_sl_total_earned").value) || 0;
+        const less =
+          parseFloat(document.getElementById("hr_sl_less_application").value) ||
+          0;
+        const balance = total - less;
+        document.getElementById("hr_sl_balance").value = balance.toFixed(2);
+      }
+
+      document
+        .getElementById("hr-save-btn")
+        .addEventListener("click", async function () {
+          const id = window._editingHRRequestId;
+          if (!id) return alert("No request selected");
+
+          // Get leave credits values
+          const certificationDate = document.getElementById(
+            "hr_certification_date"
+          ).value;
+          const vlTotalEarned =
+            document.getElementById("hr_vl_total_earned").value;
+          const vlLessApplication = document.getElementById(
+            "hr_vl_less_application"
+          ).value;
+          const vlBalance = document.getElementById("hr_vl_balance").value;
+          const slTotalEarned =
+            document.getElementById("hr_sl_total_earned").value;
+          const slLessApplication = document.getElementById(
+            "hr_sl_less_application"
+          ).value;
+          const slBalance = document.getElementById("hr_sl_balance").value;
+
+          // Validate: certification date is required
+          if (!certificationDate) {
+            return alert("Please enter the certification date (As of)");
+          }
+
+          // Build section7: include HR certifier name and hardcoded final official
+          const section7 = {
+            certifier_name: window._hrCurrentName || "",
+            final_official: "ATTY. MARIA CONCEPCION R. HERNANDEZ-BELOSO",
+          };
+
+          // Collect signature file (HR certifier only)
+          const toDataURI = (file) =>
+            new Promise((res, rej) => {
+              const r = new FileReader();
+              r.onload = () => res(r.result);
+              r.onerror = () => rej();
+              r.readAsDataURL(file);
+            });
+
+          const sigs = [];
+          let hrSignatureDataUri = null;
+
+          // HR Certifier signature (7A)
+          const fiCert = document.getElementById("hr_sig_certifier");
+          if (fiCert && fiCert.files && fiCert.files[0]) {
+            try {
+              const dataUri = await toDataURI(fiCert.files[0]);
+              sigs.push({ key: "certifier", data_uri: dataUri });
+              hrSignatureDataUri = dataUri; // Save for HR signature table
+            } catch (e) {
+              /* ignore */
+            }
+          }
+
+          // Save HR signature to hr_signatures table if uploaded
+          if (hrSignatureDataUri) {
+            try {
+              const sigResp = await fetch("../api/save_hr_signature.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  signature_data_uri: hrSignatureDataUri,
+                }),
+              });
+              const sigResult = await sigResp.json();
+              if (!sigResult.success) {
+                console.error("Failed to save HR signature:", sigResult.error);
+              }
+            } catch (e) {
+              console.error("Error saving HR signature:", e);
+            }
+          }
+
+          const payload = {
+            id,
+            section7,
+            signatures: sigs,
+            leave_credits: {
+              certification_date: certificationDate,
+              vl_total_earned: vlTotalEarned,
+              vl_less_this_application: vlLessApplication,
+              vl_balance: vlBalance,
+              sl_total_earned: slTotalEarned,
+              sl_less_this_application: slLessApplication,
+              sl_balance: slBalance,
+            },
+          };
+
+          try {
+            const resp = await fetch("../api/update_hr_section7.php", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const js = await resp.json();
+            if (js && js.success) {
+              // Open preview of the civil form so user can confirm the signature placement
+              const previewUrl = `../dept_head/civil_form.php?id=${id}&live=1`;
+              window.open(previewUrl, "_blank");
+              alert(
+                "Leave credits and HR signature saved. A preview of the form has been opened in a new tab. Please verify that all information appears correctly before finalizing."
+              );
+              closeHRSectionModal();
+              fetchLeaveRequests();
+            } else {
+              const errorMsg = js.error || "unknown";
+              if (
+                errorMsg.includes("DB error") ||
+                errorMsg.includes("Unknown column")
+              ) {
+                alert(
+                  "Database Error: Missing columns detected.\n\n" +
+                    "Please run the database migration:\n" +
+                    "1. Open: http://localhost/capstone/run_migration.php\n" +
+                    "2. Wait for success message\n" +
+                    "3. Try saving again\n\n" +
+                    "Error details: " +
+                    errorMsg
+                );
+              } else {
+                alert("Failed to save HR section: " + errorMsg);
+              }
+            }
+          } catch (e) {
+            console.error(e);
+            alert("Network error saving HR section");
+          }
+        });
     </script>
   </body>
 </html>

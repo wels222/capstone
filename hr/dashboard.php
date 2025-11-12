@@ -859,6 +859,9 @@ try {
                     <li class="nav-item">
                         <a href="manage_events.html"><i class="fa fa-calendar-times"></i> Manage Events</a>
                     </li>
+                    <li class="nav-item">
+                        <a href="analytics.html"><i class="fas fa-chart-line"></i> Analytics</a>
+                    </li>
                 </ul>
             </nav>
             <div class="sign-out">

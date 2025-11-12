@@ -991,7 +991,6 @@
         <span class="header-text">Bayan ng Mabini</span>
       </div>
       <div class="header-profile">
-        <i class="fas fa-bell notification-icon"></i>
         <a
           href="apply_leave.html"
           title="Apply for Leave"
@@ -1085,6 +1084,9 @@
                       </th>
                       <th class="border border-gray-300 px-4 py-2 text-left">
                         Duration(s)
+                      </th>
+                      <th class="border border-gray-300 px-4 py-2 text-left">
+                        Remaining Credits
                       </th>
                       <th class="border border-gray-300 px-4 py-2 text-left">
                         Dates
@@ -1522,6 +1524,12 @@
                     <td class="border border-gray-300 px-4 py-2 text-left">${
                       request.leave_type || ""
                     }</td>
+                    <td class="border border-gray-300 px-4 py-2 text-left remaining-days" data-email="${
+                      request.employee_email || ""
+                    }" data-leave-type="${(request.leave_type || "").replace(
+                /"/g,
+                "&quot;"
+              )}"><span class="text-gray-400 text-xs">Loading…</span></td>
                     <td class="border border-gray-300 px-4 py-2 text-left">${
                       request.dates || ""
                     }</td>
@@ -1594,6 +1602,155 @@
                   `;
               tbodyRecall.appendChild(recallRow);
             }
+          });
+
+          // After rendering pending rows, fetch remaining credits per unique employee and fill the column
+          const pendingEmails = Array.from(
+            new Set(
+              requests
+                .filter((r) => r && r.status === "pending" && r.employee_email)
+                .map((r) => r.employee_email)
+            )
+          );
+
+          const creditsByEmail = {};
+          const fetches = pendingEmails.map((email) =>
+            fetch(
+              `../api/employee_leave_credits.php?email=${encodeURIComponent(
+                email
+              )}`
+            )
+              .then((r) => r.json())
+              .then((js) => {
+                if (js && js.success) creditsByEmail[email] = js;
+              })
+              .catch(() => {})
+          );
+
+          Promise.all(fetches).then(() => {
+            // Helper: normalize leave type similar to backend
+            const ENTITLEMENTS = {
+              "Vacation Leave": true,
+              "Mandatory / Forced Leave": true,
+              "Sick Leave": true,
+              "Maternity Leave": true,
+              "Paternity Leave": true,
+              "Special Privilege Leave": true,
+              "Solo Parent Leave": true,
+              "Study Leave": true,
+              "10-Day VAWC Leave": true,
+              "Rehabilitation Leave": true,
+              "Special Leave Benefits for Women": true,
+              "Special Emergency (Calamity) Leave": true,
+              "Adoption Leave": true,
+            };
+            const TYPE_ALIASES = [
+              ["vacation", "Vacation Leave"],
+              ["mandatory", "Mandatory / Forced Leave"],
+              ["forced", "Mandatory / Forced Leave"],
+              ["sick", "Sick Leave"],
+              ["maternity", "Maternity Leave"],
+              ["paternity", "Paternity Leave"],
+              ["privilege", "Special Privilege Leave"],
+              ["solo parent", "Solo Parent Leave"],
+              ["study", "Study Leave"],
+              ["vawc", "10-Day VAWC Leave"],
+              ["rehabilitation", "Rehabilitation Leave"],
+              ["women", "Special Leave Benefits for Women"],
+              ["emergency", "Special Emergency (Calamity) Leave"],
+              ["calamity", "Special Emergency (Calamity) Leave"],
+              ["adoption", "Adoption Leave"],
+            ];
+            function normalizeLeaveType(raw) {
+              const r = String(raw || "").trim();
+              if (!r) return null;
+              // exact
+              if (ENTITLEMENTS[r]) return r;
+              const low = r.toLowerCase();
+              for (const [needle, mapped] of TYPE_ALIASES) {
+                if (low.indexOf(needle) !== -1) return mapped;
+              }
+              return null;
+            }
+            function fmtDays(n) {
+              const v = Number(n);
+              if (!isFinite(v)) return "N/A";
+              return Number.isInteger(v) ? `${v}d` : `${v.toFixed(2)}d`;
+            }
+            function renderBadgeAndBar(available, total) {
+              const a = Math.max(0, Number(available) || 0);
+              const t = Math.max(0, Number(total) || 0);
+              let ratio = t > 0 ? Math.min(1, a / t) : 0;
+              // Color scheme based on remaining ratio
+              let badgeBg = "bg-green-100",
+                badgeText = "text-green-700",
+                bar = "bg-green-500";
+              if (a <= 0) {
+                badgeBg = "bg-red-100";
+                badgeText = "text-red-700";
+                bar = "bg-red-500";
+                ratio = 0;
+              } else if (ratio < 0.2) {
+                badgeBg = "bg-yellow-100";
+                badgeText = "text-yellow-700";
+                bar = "bg-yellow-500";
+              }
+              const percent = Math.round(ratio * 100);
+              const ofText = t > 0 ? `of ${t}` : "";
+              return `
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${badgeBg} ${badgeText}">${fmtDays(
+                a
+              )}</span>
+                  <span class="text-xs text-gray-500">${ofText}</span>
+                </div>
+                <div class="mt-1 h-1.5 w-24 bg-gray-200 rounded" title="${a} of ${t} days remaining">
+                  <div class="h-1.5 rounded ${bar}" style="width: ${percent}%;"></div>
+                </div>
+              `;
+            }
+
+            document
+              .querySelectorAll("#leave-request td.remaining-days")
+              .forEach((td) => {
+                const email = td.getAttribute("data-email") || "";
+                const rawType = td.getAttribute("data-leave-type") || "";
+                const credits = creditsByEmail[email];
+                if (!credits || !credits.success) {
+                  td.innerHTML =
+                    '<span class="text-gray-400 text-xs">N/A</span>';
+                  return;
+                }
+                const norm = normalizeLeaveType(rawType);
+                if (norm && Array.isArray(credits.data)) {
+                  const item = credits.data.find((x) => x.type === norm);
+                  if (item) {
+                    td.innerHTML = renderBadgeAndBar(
+                      item.available,
+                      item.total
+                    );
+                    return;
+                  }
+                }
+                // Fallback to overall available days if specific type not found
+                if (
+                  credits.summary &&
+                  typeof credits.summary.availableDays !== "undefined"
+                ) {
+                  const a = Number(credits.summary.availableDays) || 0;
+                  td.innerHTML = `
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">${fmtDays(
+                        a
+                      )}</span>
+                      <span class="text-xs text-gray-500">overall</span>
+                    </div>
+                  `;
+                } else {
+                  td.innerHTML =
+                    '<span class="text-gray-400 text-xs">N/A</span>';
+                }
+              });
           });
         } catch (error) {
           console.error("Failed to fetch leave requests", error);

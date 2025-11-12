@@ -42,7 +42,6 @@ if ($user_id) {
         </div>
         <div class="flex items-center space-x-4">
             <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
-                <i class="fas fa-bell text-lg"></i>
             </a>
             <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
                 <i class="fas fa-home text-lg"></i>

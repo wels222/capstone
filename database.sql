@@ -172,13 +172,3 @@ CREATE TABLE IF NOT EXISTS department_heads (
     updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_department (department)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Insert default municipal admin account
--- Password: MunicipalAdmin (hashed with PHP password_hash)
-INSERT INTO users (lastname, firstname, mi, department, position, role, status, email, password, vacation_leave, sick_leave)
-VALUES 
-('Municipal', 'Admin', NULL, 'Municipal Office', 'Permanent', 'hr', 'approved', 'municipaladmin@gmail.com', '$2y$10$8K9vZ4lGfY.QXn5YvX5zK.qZ4fMxE5qG8P3hN1jU0fKvL6wJ2Y.0e', 0.00, 0.00)
-ON DUPLICATE KEY UPDATE email = email;
-
--- Note: To create additional HR or Super Admin accounts, use the register page or insert them manually with role='hr'
-

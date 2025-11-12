@@ -1,5 +1,7 @@
 <?php
 header('Content-Type: application/json');
+// Start session to allow fallback to current logged-in user email if not provided in payload
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once '../db.php';
 
 // Persist signatures to disk so they can be reused across submissions
@@ -68,6 +70,8 @@ $signature_path = null;
 $details_json = null;
 $request_token = $_POST['request_token'] ?? null;
 $signature_data_uri = null;
+// honor submit_to_municipal flag when present (JSON body or form POST)
+$submit_to_municipal = isset($_POST['submit_to_municipal']) ? $_POST['submit_to_municipal'] : null;
 
 // If JSON body was provided
 if (!$employee_email) {
@@ -81,8 +85,56 @@ if (!$employee_email) {
     if (isset($data['details'])) $details_json = json_encode($data['details']);
     $request_token = $data['request_token'] ?? $request_token;
     $signature_data_uri = $data['signature_data_uri'] ?? null;
+    if (isset($data['submit_to_municipal'])) $submit_to_municipal = $data['submit_to_municipal'];
   }
 }
+
+// Normalize municipal routing flag and apply fallbacks
+$isMunicipalRoute = !empty($submit_to_municipal) && ($submit_to_municipal === '1' || $submit_to_municipal === 1 || $submit_to_municipal === true || $submit_to_municipal === 'true');
+// Fallback employee email from session if missing
+if (empty($employee_email) && !empty($_SESSION['email'])) {
+  $employee_email = $_SESSION['email'];
+}
+// For HR direct-to-municipal submissions, ensure dept_head_email is present to satisfy NOT NULL
+if ($isMunicipalRoute && empty($dept_head_email)) {
+  $dept_head_email = 'municipaladmin@gmail.com';
+}
+
+// Determine submitter role/department to auto-route based on business rules
+try {
+  if (!empty($employee_email)) {
+    $usr = $pdo->prepare('SELECT role, department FROM users WHERE email = ? LIMIT 1');
+    $usr->execute([$employee_email]);
+    $submitter = $usr->fetch(PDO::FETCH_ASSOC);
+    if ($submitter) {
+      $submitterRole = strtolower((string)$submitter['role']);
+      $submitterDept = (string)$submitter['department'];
+
+      if ($submitterRole === 'employee') {
+        // Employee -> route to their Department Head if none provided
+        $isMunicipalRoute = false; // never direct to municipal for employee submit
+        $submit_to_municipal = null;
+        if (empty($dept_head_email) && !empty($submitterDept)) {
+          try {
+            $dh = $pdo->prepare("SELECT email FROM users WHERE role = 'department_head' AND department = ? LIMIT 1");
+            $dh->execute([$submitterDept]);
+            $dept_head_email = $dh->fetchColumn() ?: $dept_head_email;
+          } catch (PDOException $e) { /* non-fatal */ }
+        }
+      } elseif ($submitterRole === 'department_head') {
+        // Dept Head applying -> route to HR (mark as dept head approved later)
+        $isMunicipalRoute = false; // not direct to municipal
+        $submit_to_municipal = null;
+        $dept_head_email = $employee_email; // triggers autoRouteToHR handling below
+      } elseif ($submitterRole === 'hr') {
+        // HR applying -> route directly to Municipal Admin
+        $isMunicipalRoute = true;
+        $submit_to_municipal = '1';
+        if (empty($dept_head_email)) { $dept_head_email = 'municipaladmin@gmail.com'; }
+      }
+    }
+  }
+} catch (PDOException $e) { /* proceed without role-based routing if lookup fails */ }
 
 // Capture any uploaded signature or data URI into memory; we will later store
 // a SINGLE deterministic file per employee and overwrite it if needed.
@@ -107,6 +159,14 @@ if (isset($_POST['details'])) {
 
 // Normalize leave_type: accept array or CSV
 if (is_array($leave_type)) { $leave_type = implode(', ', $leave_type); }
+
+// If the department head is applying for their own leave, auto-route to HR:
+$autoRouteToHR = false;
+if ($employee_email && $dept_head_email && strtolower(trim($employee_email)) === strtolower(trim($dept_head_email))) {
+  // Treat as already approved by dept head and send to HR for processing
+  $status = 'approved';
+  $autoRouteToHR = true;
+}
 
 if (!$employee_email || !$dept_head_email || !$leave_type) {
   http_response_code(400); echo json_encode(['error'=>'Missing required fields']); exit;
@@ -162,11 +222,24 @@ try {
     if ($existingSig) { $signature_path = $existingSig; }
   }
 
+  // If HR routed directly to municipal, mark as HR-approved so it shows in municipal pending list
+  $hrApproved = 0;
+  if ($isMunicipalRoute) {
+    $status = 'approved';
+    $hrApproved = 1;
+  }
+
   // Idempotent insert
   $stmt = $pdo->prepare("INSERT INTO leave_requests (employee_email, dept_head_email, leave_type, dates, reason, signature_path, details, request_token, status, applied_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
   $stmt->execute([$employee_email, $dept_head_email, $leave_type, $dates, $reason, $signature_path, $details_json, $request_token, $status, $applied_at]);
   $insertId = $pdo->lastInsertId();
-  // Create a notification for the assigned department head so they know a new leave was applied
+  // Set approved_by_hr flag when applicable (ignore if column missing)
+  if ($hrApproved && !empty($insertId)) {
+    try {
+      $upd = $pdo->prepare('UPDATE leave_requests SET approved_by_hr = 1 WHERE id = ?');
+      $upd->execute([$insertId]);
+    } catch (PDOException $e) { /* ignore if column missing */ }
+  }
   try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -177,13 +250,39 @@ try {
       is_read TINYINT(1) DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
-    if (!empty($dept_head_email) && $dept_head_email !== $employee_email) {
-      $msg = sprintf('New leave request from %s: %s (%s)', $employee_email, $leave_type, $dates);
-      $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
-      $ins->execute([$dept_head_email, null, $msg, 'leave_application']);
+    $msg = sprintf('New leave request from %s: %s (%s)', $employee_email, $leave_type, $dates);
+    if ($autoRouteToHR) {
+      // Notify HR role so HR users will see this request
+      try {
+        $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
+        $ins->execute([null, 'hr', $msg, 'leave_application']);
+      } catch (PDOException $ne) { }
+    } else {
+      // If submit_to_municipal is set (HR route), notify Municipal Admin instead of Dept Head
+      $shouldNotifyMunicipal = !empty($submit_to_municipal) && ($submit_to_municipal === '1' || $submit_to_municipal === 1 || $submit_to_municipal === true || $submit_to_municipal === 'true');
+      if ($shouldNotifyMunicipal) {
+        try {
+          $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
+          $ins->execute(['municipaladmin@gmail.com', null, $msg, 'leave_pending_municipal']);
+        } catch (PDOException $ne) { }
+      } else {
+        if (!empty($dept_head_email) && strtolower(trim($dept_head_email)) !== strtolower(trim($employee_email))) {
+          try {
+            $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
+            $ins->execute([$dept_head_email, null, $msg, 'leave_application']);
+          } catch (PDOException $ne) { }
+        }
+      }
     }
   } catch (PDOException $ne) {
     // non-fatal
+  }
+  // If auto-routed to HR, mark approved_by_dept_head flag so records reflect that dept head approved their own request
+  if ($autoRouteToHR && !empty($insertId)) {
+    try {
+      $upd = $pdo->prepare('UPDATE leave_requests SET approved_by_dept_head = 1 WHERE id = ?');
+      $upd->execute([$insertId]);
+    } catch (PDOException $ee) { /* ignore if column missing */ }
   }
   echo json_encode(['success'=>true, 'id'=>$insertId, 'signature_path'=>$signature_path, 'applied_at'=>$applied_at]);
 } catch (PDOException $e) {

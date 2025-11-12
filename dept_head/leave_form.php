@@ -134,10 +134,7 @@ if ($user_email) {
           </div>
           <div class="mt-6" id="detailsOfLeave"></div>
           <div class="mt-8">
-            <label for="dept_head_select" class="block text-sm font-medium text-gray-700 mb-2">Select Dept Head</label>
-            <select id="dept_head_select" name="dept_head_select" required class="border rounded px-2 py-2 text-sm w-full mb-4">
-              <option value="">Select department head</option>
-            </select>
+            <!-- Department Head selection removed: requests will automatically go through HR -->
             <div class="flex justify-end space-x-4">
               <button type="reset" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Reset</button>
               <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">Submit</button>
@@ -176,25 +173,7 @@ if ($user_email) {
         .catch(() => {/* non-blocking */});
 
       // Note: Actual submission will be done on the Civil Form page.
-      // Load department heads dynamically
-      fetch('../api/dept_heads.php')
-        .then(response => response.json())
-        .then(heads => {
-          const select = document.getElementById('dept_head_select');
-          select.innerHTML = '<option value="">Select department head</option>';
-          heads.forEach(head => {
-            const opt = document.createElement('option');
-            opt.value = head.email;
-            opt.textContent = `${head.name} (${head.department})`;
-            // store department on the option for client-side validation
-            if (head.department) opt.dataset.department = head.department;
-            select.appendChild(opt);
-          });
-        })
-        .catch(() => {
-          const select = document.getElementById('dept_head_select');
-          select.innerHTML = '<option value="">Failed to load department heads</option>';
-        });
+      // Department Head selection removed: requests will automatically go through HR.
 
       // Relief officer selection removed; no need to fetch employee list here.
 
@@ -318,19 +297,7 @@ if ($user_email) {
           }
         }
 
-        // Ensure dept head selected
-        const deptHeadSelectEl = document.getElementById('dept_head_select');
-        const deptHead = deptHeadSelectEl.value || '';
-        if (!deptHead) { alert('Please select a Department Head.'); deptHeadSelectEl.focus(); return false; }
-
-        // Validate selected dept head belongs to same department as the applicant
-        try {
-          const selectedDept = deptHeadSelectEl.options[deptHeadSelectEl.selectedIndex]?.dataset?.department || '';
-          if (serverUserDepartment && selectedDept && serverUserDepartment !== selectedDept) {
-            showFormAlert('You may only select a Department Head from your own department.');
-            return false;
-          }
-        } catch(e) { /* non-blocking */ }
+        // Department Head selection removed; requests go directly to HR.
 
         // Ensure signature file selected unless an existing signature is on file
         const sigInput = document.getElementById('signature');
@@ -411,7 +378,7 @@ if ($user_email) {
             localStorage.setItem('leaveCommutation', details.commutation);
             // Relief officer removed; do not store
             localStorage.setItem('leaveSalary', details.salary);
-            localStorage.setItem('dept_head_email', deptHead);
+            // Department Head email not required; routed to HR automatically.
             if (serverUserEmail) localStorage.setItem('userEmail', serverUserEmail);
             if (signatureDataUri) localStorage.setItem('leaveSignatureData', signatureDataUri);
             // forward any return param so the civil form can redirect back appropriately
@@ -421,7 +388,7 @@ if ($user_email) {
             }
           } catch(e) {}
             // append return param in URL if present so the civil form can pick it up
-            const civilUrl = 'civil form.html' + (urlParams.get('return') ? ('?return=' + encodeURIComponent(urlParams.get('return'))) : '');
+            const civilUrl = 'civil_form.html' + (urlParams.get('return') ? ('?return=' + encodeURIComponent(urlParams.get('return'))) : '');
             window.location.href = civilUrl;
         }
 

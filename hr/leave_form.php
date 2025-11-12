@@ -41,7 +41,7 @@ if ($user_email) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leave Form</title>
+    <title>HR Leave Form</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -58,15 +58,12 @@ if ($user_email) {
             <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                 <img src="../assets/logo.png" alt="Logo" class="rounded-full">
             </div>
-            <h1 id="header-title" class="text-xl font-bold text-gray-800">Dashboard</h1>
+            <h1 id="header-title" class="text-xl font-bold text-gray-800">HR — Apply for Leave</h1>
         </div>
         <div class="flex items-center space-x-4">
-            <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
-            </a>
+            <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors"></a>
             <div class="flex items-center space-x-4">
-                <a href="dashboard.php" class="text-gray-600 hover:text-blue-600 transition-colors">
-                </a>
-                <img src="https://placehold.co/40x40/FF5733/FFFFFF?text=P" alt="Profile" class="w-10 h-10 rounded-full cursor-pointer">
+                <img src="https://placehold.co/40x40/FF5733/FFFFFF?text=H" alt="Profile" class="w-10 h-10 rounded-full cursor-pointer">
             </div>
         </div>
     </header>
@@ -87,9 +84,9 @@ if ($user_email) {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M17 17h.01" />
             </svg>
           </span>
-          <span id="form-leave-type">Annual Leave</span>
+          <span id="form-leave-type">Leave Form</span>
         </h2>
-        <p class="text-sm text-gray-500 mb-6" id="form-description">Fill the required fields below to apply for leave.</p>
+        <p class="text-sm text-gray-500 mb-6" id="form-description">Fill the required fields below to apply for leave as HR. Note: HR submissions will be flagged to be routed to the Municipal Administrator for final approval.</p>
 
         <form id="leaveAppForm" method="post" enctype="multipart/form-data">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -127,17 +124,15 @@ if ($user_email) {
               </label>
             </div>
           </div>
-          <!-- Relief officer removed per request -->
+          <!-- Relief officer and Department Head selection removed for HR submissions -->
           <div class="mt-6">
             <label for="signature" class="block text-sm font-medium text-gray-700">Upload E-Signature</label>
             <input type="file" id="signature" name="signature" accept="image/*" required class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
           </div>
           <div class="mt-6" id="detailsOfLeave"></div>
           <div class="mt-8">
-            <label for="dept_head_select" class="block text-sm font-medium text-gray-700 mb-2">Select Dept Head</label>
-            <select id="dept_head_select" name="dept_head_select" required class="border rounded px-2 py-2 text-sm w-full mb-4">
-              <option value="">Select department head</option>
-            </select>
+            <input type="hidden" id="submit_to_municipal" name="submit_to_municipal" value="1" />
+            <p class="text-xs text-gray-500 mb-4">This HR leave request will be routed directly to the Municipal Administrator. No Department Head selection is required.</p>
             <div class="flex justify-end space-x-4">
               <button type="reset" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Reset</button>
               <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">Submit</button>
@@ -175,28 +170,10 @@ if ($user_email) {
         })
         .catch(() => {/* non-blocking */});
 
-      // Note: Actual submission will be done on the Civil Form page.
-      // Load department heads dynamically
-      fetch('../api/dept_heads.php')
-        .then(response => response.json())
-        .then(heads => {
-          const select = document.getElementById('dept_head_select');
-          select.innerHTML = '<option value="">Select department head</option>';
-          heads.forEach(head => {
-            const opt = document.createElement('option');
-            opt.value = head.email;
-            opt.textContent = `${head.name} (${head.department})`;
-            // store department on the option for client-side validation
-            if (head.department) opt.dataset.department = head.department;
-            select.appendChild(opt);
-          });
-        })
-        .catch(() => {
-          const select = document.getElementById('dept_head_select');
-          select.innerHTML = '<option value="">Failed to load department heads</option>';
-        });
+      // Department Head selection removed for HR submissions.
 
-      // Relief officer selection removed; no need to fetch employee list here.
+      // Load relief officers dynamically from employees API
+        // Relief officer selection removed for HR; no need to load employee list here.
 
       const leaveForm = document.getElementById('leaveAppForm');
       const formLeaveType = document.getElementById('form-leave-type');
@@ -209,7 +186,7 @@ if ($user_email) {
 
       formLeaveType.textContent = leaveType;
       currentLeaveType.textContent = leaveType;
-      formDescription.textContent = `Fill the required fields below to apply for ${leaveType}.`;
+      formDescription.textContent = `Fill the required fields below to apply for ${leaveType} (HR submission will be routed to Municipal Admin).`;
 
       // Auto-compute duration
       document.getElementById('startDate').addEventListener('change', computeDuration);
@@ -225,7 +202,7 @@ if ($user_email) {
         }
       }
 
-      // Section 6.B dynamic fields
+      // Section 6.B dynamic fields (same as dept_head implementation)
       const detailsDiv = document.getElementById('detailsOfLeave');
       if (leaveType === 'Vacation Leave' || leaveType === 'Special Privilege Leave') {
         detailsDiv.innerHTML = `
@@ -266,7 +243,6 @@ if ($user_email) {
 
       // Prefill some fields from server-side variables
       if (serverUserEmail) {
-        // Fill name, department and position if available via server-side
         document.getElementById('salaryInput').value = document.getElementById('salaryInput').value || '';
       }
 
@@ -274,20 +250,17 @@ if ($user_email) {
       document.getElementById('leaveAppForm').onsubmit = function(e) {
         e.preventDefault();
 
-        // simple helper to mark field invalid
         function markInvalid(el) {
           if (!el) return;
           el.classList.add('border-red-500');
           el.focus();
         }
 
-        // Clear previous invalid styles
         ['vl_location_specify','sl_illness','study_other','signature'].forEach(id => {
           const el = document.getElementById(id);
           if (el) el.classList.remove('border-red-500');
         });
 
-        // Validate dependent 'specify' inputs
         if (leaveType === 'Vacation Leave' || leaveType === 'Special Privilege Leave') {
           const loc = document.getElementById('vl_location') ? document.getElementById('vl_location').value : '';
           const specify = document.getElementById('vl_location_specify') ? document.getElementById('vl_location_specify').value.trim() : '';
@@ -318,31 +291,16 @@ if ($user_email) {
           }
         }
 
-        // Ensure dept head selected
-        const deptHeadSelectEl = document.getElementById('dept_head_select');
-        const deptHead = deptHeadSelectEl.value || '';
-        if (!deptHead) { alert('Please select a Department Head.'); deptHeadSelectEl.focus(); return false; }
+        // Dept Head validation skipped (removed for HR)
 
-        // Validate selected dept head belongs to same department as the applicant
-        try {
-          const selectedDept = deptHeadSelectEl.options[deptHeadSelectEl.selectedIndex]?.dataset?.department || '';
-          if (serverUserDepartment && selectedDept && serverUserDepartment !== selectedDept) {
-            showFormAlert('You may only select a Department Head from your own department.');
-            return false;
-          }
-        } catch(e) { /* non-blocking */ }
-
-        // Ensure signature file selected unless an existing signature is on file
         const sigInput = document.getElementById('signature');
         const hasFile = sigInput && sigInput.files && sigInput.files[0];
-        // We allow skipping upload if server already has a saved signature; this was checked on load and 'required' removed.
         if (sigInput && sigInput.hasAttribute('required') && !hasFile) {
           alert('Please upload your e-signature.');
           markInvalid(sigInput);
           return false;
         }
 
-        // If there's a saved server signature and no new file chosen, confirm reuse
         if (!hasFile && hasServerSignature) {
           const okReuse = confirm('A saved e-signature was found. Do you want to use your saved signature for this application?');
           if (!okReuse) {
@@ -353,11 +311,10 @@ if ($user_email) {
         }
 
         const details = {
-          leave_types: [leaveType], // main selected leave type
+          leave_types: [leaveType],
           section6b: {}
         };
 
-        // populate 6.B fields depending on type
         if (leaveType === 'Vacation Leave' || leaveType === 'Special Privilege Leave') {
           details.section6b.vl = {
             location: document.getElementById('vl_location') ? document.getElementById('vl_location').value : '',
@@ -379,11 +336,10 @@ if ($user_email) {
           };
         }
 
-        // common fields
         details.dates = (document.getElementById('startDate').value || '') + ' - ' + (document.getElementById('endDate').value || '');
         details.duration = document.getElementById('duration').value || '';
         details.commutation = document.querySelector('input[name="commutation"]:checked').value || 'Not Requested';
-  details.reliefOfficer = ''; // Relief officer removed
+    details.reliefOfficer = ''; // Relief officer removed for HR submissions - leave empty
         details.salary = document.getElementById('salaryInput').value || '';
 
         function showFormAlert(msg) {
@@ -396,7 +352,6 @@ if ($user_email) {
             if (container) container.parentNode.insertBefore(alert, container);
           }
           alert.textContent = msg;
-          // scroll into view
           alert.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
@@ -409,77 +364,44 @@ if ($user_email) {
             localStorage.setItem('leaveDuration', details.duration);
             localStorage.setItem('leaveReason', document.getElementById('reason').value);
             localStorage.setItem('leaveCommutation', details.commutation);
-            // Relief officer removed; do not store
+            // Relief officer removed for HR submissions; skip storing it
             localStorage.setItem('leaveSalary', details.salary);
-            localStorage.setItem('dept_head_email', deptHead);
+            // Flag that this was submitted from HR so the civil form/submitter can route to Municipal Admin
+            localStorage.setItem('submit_to_municipal', '1');
             if (serverUserEmail) localStorage.setItem('userEmail', serverUserEmail);
             if (signatureDataUri) localStorage.setItem('leaveSignatureData', signatureDataUri);
-            // forward any return param so the civil form can redirect back appropriately
             const returnParam = urlParams.get('return') || '';
             if (returnParam) {
               try { localStorage.setItem('leave_return_to', returnParam); } catch(e) {}
             }
           } catch(e) {}
-            // append return param in URL if present so the civil form can pick it up
-            const civilUrl = 'civil form.html' + (urlParams.get('return') ? ('?return=' + encodeURIComponent(urlParams.get('return'))) : '');
+            // Redirect HR flow to the HR Civil Service Form (not the employee version)
+            const civilUrl = './civil_form.html' + (urlParams.get('return') ? ('?return=' + encodeURIComponent(urlParams.get('return'))) : '');
             window.location.href = civilUrl;
         }
 
-        // Check available credits before proceeding
         (function checkCreditsAndProceed() {
           const dur = parseInt(details.duration, 10) || 0;
           const userEmailForCheck = serverUserEmail || localStorage.getItem('userEmail') || '';
-          if (!userEmailForCheck) {
-            // cannot validate without user email; proceed anyway
-            finalizeProceed();
-            return;
-          }
+          if (!userEmailForCheck) { finalizeProceed(); return; }
 
           const creditsApi = `../api/employee_leave_credits.php?email=${encodeURIComponent(userEmailForCheck)}`;
-
-          function normalizeKey(s) {
-            return (s || '').toString().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-          }
 
           fetch(creditsApi)
             .then(r => r.json())
             .then(js => {
-              if (!js || !js.success || !Array.isArray(js.data)) {
-                finalizeProceed(); // allow when API doesn't provide data
-                return;
-              }
+              if (!js || !js.success || !Array.isArray(js.data)) { finalizeProceed(); return; }
               const items = js.data;
-              const normTarget = normalizeKey(leaveType);
-              let matched = items.find(it => normalizeKey(it.type) === normTarget);
-              if (!matched) {
-                // try contains match
-                matched = items.find(it => normalizeKey(it.type).includes(normTarget) || normTarget.includes(normalizeKey(it.type)));
-              }
-
-              if (!matched) {
-                finalizeProceed();
-                return;
-              }
-
+              const normTarget = (leaveType || '').toString().toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+              let matched = items.find(it => (it.type || '').toString().toLowerCase().replace(/[^a-z0-9]+/g,' ').trim() === normTarget);
+              if (!matched) matched = items.find(it => (it.type||'').toString().toLowerCase().includes(normTarget) || normTarget.includes((it.type||'').toString().toLowerCase()));
+              if (!matched) { finalizeProceed(); return; }
               const avail = Number(matched.available || 0);
-              if (dur <= 0) {
-                showFormAlert('Please select valid start and end dates to compute duration.');
-                return;
-              }
-
-              if (dur > avail) {
-                showFormAlert(`Insufficient balance: requested ${dur} day(s) but only ${avail} available for ${matched.type}.`);
-                return;
-              }
-
-              // enough balance
+              if (dur <= 0) { showFormAlert('Please select valid start and end dates to compute duration.'); return; }
+              if (dur > avail) { showFormAlert(`Insufficient balance: requested ${dur} day(s) but only ${avail} available for ${matched.type}.`); return; }
               finalizeProceed();
             })
-            .catch(err => {
-              console.error('Failed to validate leave credits', err);
-              // on failure, allow proceed to keep UX resilient
-              finalizeProceed();
-            });
+            .catch(err => { console.error('Failed to validate leave credits', err); finalizeProceed(); });
 
           function finalizeProceed() {
             if (hasFile) {

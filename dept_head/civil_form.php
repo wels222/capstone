@@ -142,6 +142,17 @@ foreach ($possibleDeptHeadFields as $f) {
           break;
         }
       } catch (PDOException $e) { /* ignore */ }
+      // Fallback: if user table has no signature, try employee_signatures table
+      if (!$deptHeadSig) {
+        try {
+          $stEmpSig = $pdo->prepare('SELECT file_path FROM employee_signatures WHERE employee_email = ? LIMIT 1');
+          $stEmpSig->execute([$val]);
+          $sigRow = $stEmpSig->fetch(PDO::FETCH_ASSOC);
+          if ($sigRow && !empty($sigRow['file_path'])) {
+            $deptHeadSig = $sigRow['file_path'];
+          }
+        } catch (PDOException $e) { /* ignore */ }
+      }
     }
     // If it's not an email but looks like a name, use it directly
     // NOTE: avoid treating raw email strings as names — require the value
@@ -202,6 +213,17 @@ if ($deptHeadName === 'Department Head') {
         if (!empty($me['signature_path'])) $deptHeadSig = $me['signature_path'];
         elseif (!empty($me['signature'])) $deptHeadSig = $me['signature'];
         elseif (!empty($me['sig_path'])) $deptHeadSig = $me['sig_path'];
+        // Extra fallback: try employee_signatures table for the logged-in dept head
+        if (!$deptHeadSig && $sessEmail) {
+          try {
+            $stEmpSig = $pdo->prepare('SELECT file_path FROM employee_signatures WHERE employee_email = ? LIMIT 1');
+            $stEmpSig->execute([$sessEmail]);
+            $sigRow = $stEmpSig->fetch(PDO::FETCH_ASSOC);
+            if ($sigRow && !empty($sigRow['file_path'])) {
+              $deptHeadSig = $sigRow['file_path'];
+            }
+          } catch (PDOException $e) { /* ignore */ }
+        }
         $resolved = true;
       }
     } catch (PDOException $e) { /* ignore */ }
@@ -290,6 +312,17 @@ try {
       if (!empty($fe['signature_path'])) $deptHeadSig = $fe['signature_path'];
       elseif (!empty($fe['signature'])) $deptHeadSig = $fe['signature'];
       elseif (!empty($fe['sig_path'])) $deptHeadSig = $fe['sig_path'];
+      // Fallback to employee_signatures if still missing
+      if (!$deptHeadSig && !empty($leave['dept_head_email'])) {
+        try {
+          $stEmpSig = $pdo->prepare('SELECT file_path FROM employee_signatures WHERE employee_email = ? LIMIT 1');
+          $stEmpSig->execute([$leave['dept_head_email']]);
+          $sigRow = $stEmpSig->fetch(PDO::FETCH_ASSOC);
+          if ($sigRow && !empty($sigRow['file_path'])) {
+            $deptHeadSig = $sigRow['file_path'];
+          }
+        } catch (PDOException $e) { /* ignore */ }
+      }
     }
   }
   // Also handle the case where the leave stored a numeric user id for the dept head
@@ -988,17 +1021,20 @@ if (isset($leave['disapproval_reason3']) && $leave['disapproval_reason3'] !== ''
             <div class="mt-12 text-center text-xs font-semibold pt-2">
               <div style="position:relative; min-height:56px;">
                   <?php
-                    // Prefer a signature attached to the resolved dept head, otherwise fall back to HR-provided 7B signature
-                    $deptSigToShow = '';
-                    if (!empty($deptHeadSig)) $deptSigToShow = $deptHeadSig;
-                    elseif (!empty($hsigs['7b'])) $deptSigToShow = $hsigs['7b'];
+                    // Show Dept Head signature ONLY if it was saved for this specific request (7B)
+                    $deptSigToShow = $hsigs['7b'] ?? '';
+                    // Show Dept Head name ONLY if it was explicitly saved for this request under authorized_officer_7b
+                    $deptHeadNameFor7B = '';
+                    if (!empty($s['authorized_officer_7b'])) {
+                      $deptHeadNameFor7B = mb_strtoupper(trim($s['authorized_officer_7b']), 'UTF-8');
+                    }
                   ?>
                   <?php if (!empty($deptSigToShow)): ?>
                     <img src="../<?= ltrim($deptSigToShow, '/') ?>" alt="7B sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
                   <?php endif; ?>
-                  <input type="text" class="signature-name" value="<?= htmlspecialchars($deptHeadName) ?>" readonly />
+                  <input type="text" class="signature-name" value="<?= htmlspecialchars($deptHeadNameFor7B) ?>" readonly />
                 </div>
-              <p class="mt-0.5 font-normal">Department Head</p>
+              <p class="mt-0.5 font-normal"></p>
             </div>
           </div>
         </div>

@@ -755,20 +755,8 @@
             </div>
 
             <div class="mt-12 text-center text-xs font-semibold pt-2">
-              <div style="position: relative; min-height: 56px">
-                <div
-                  id="dept_head_sig_container"
-                  style="text-align: center"
-                ></div>
-                <input
-                  type="text"
-                  id="dept_head_name"
-                  class="signature-name"
-                  value=""
-                  readonly
-                />
-              </div>
-              <p class="mt-0.5 font-normal">Department Head</p>
+              <!-- Department Head signature removed per request -->
+              <!-- If backend requires an approving authority placeholder, add hidden input or adjust API schema. -->
             </div>
           </div>
         </div>
@@ -837,41 +825,7 @@
         </div>
       </div>
 
-      <!-- Routing and sender info (print-hidden) -->
-      <div id="routing-controls" class="mt-4 bg-white rounded-xl shadow p-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-          <div>
-            <label
-              for="dept_head_select"
-              class="block text-sm font-semibold text-gray-800"
-              >Send to Department Head</label
-            >
-            <select
-              id="dept_head_select"
-              class="mt-1 w-full border rounded p-2 text-sm"
-            >
-              <option value="">Loading department heads...</option>
-            </select>
-            <p class="text-xxs text-gray-500 mt-1">
-              All filled-in data will be sent exactly as shown.
-            </p>
-          </div>
-          <div>
-            <label class="block text-sm font-semibold text-gray-800"
-              >Employee Email</label
-            >
-            <input
-              id="employee_email"
-              type="email"
-              class="mt-1 w-full border rounded p-2 text-sm"
-              placeholder="you@domain.com"
-            />
-            <p class="text-xxs text-gray-500 mt-1">
-              Auto-filled from session; you can adjust if needed.
-            </p>
-          </div>
-        </div>
-      </div>
+      <!-- Routing and sender info removed for HR: requests go directly to Municipal Admin -->
 
       <!-- Submit Button -->
       <div class="mt-4 text-center">
@@ -1028,74 +982,7 @@
           })
           .catch(() => {});
 
-        // Fetch Dept Heads for dropdown (PHP endpoint)
-        fetch("../api/dept_heads.php")
-          .then((res) => res.json())
-          .then((heads) => {
-            const select = document.getElementById("dept_head_select");
-            if (select) {
-              const savedDH = localStorage.getItem("dept_head_email") || "";
-              select.innerHTML =
-                '<option value="">-- Select Department Head --</option>';
-              heads.forEach((h) => {
-                const opt = document.createElement("option");
-                opt.value = h.email;
-                opt.textContent = h.department + " (" + h.name + ")";
-                // store the plain name for easy access later
-                opt.dataset.name = h.name;
-                opt.dataset.department = h.department;
-                select.appendChild(opt);
-              });
-              if (savedDH) {
-                select.value = savedDH;
-                // trigger change so name/signature are populated
-                try {
-                  select.dispatchEvent(new Event("change"));
-                } catch (e) {}
-              }
-
-              // When the selected head changes, populate the signature/name placeholders
-              select.addEventListener("change", function () {
-                const sel = select.options[select.selectedIndex];
-                const nameField = document.getElementById("dept_head_name");
-                const sigContainer = document.getElementById(
-                  "dept_head_sig_container"
-                );
-                if (!sel || !nameField || !sigContainer) return;
-                const name = sel.dataset.name || "";
-                nameField.value = name;
-                const email = sel.value;
-                // Clear current signature
-                sigContainer.innerHTML = "";
-                if (!email) return;
-                // Ask API for signature for that email
-                fetch(
-                  "../api/get_user_signature.php?email=" +
-                    encodeURIComponent(email)
-                )
-                  .then((r) => r.json())
-                  .then((s) => {
-                    if (s && s.success && s.hasSignature && s.url) {
-                      const wrapper = document.createElement("div");
-                      wrapper.style.width = "100%";
-                      wrapper.style.height = "70px";
-                      wrapper.style.display = "flex";
-                      wrapper.style.alignItems = "center";
-                      wrapper.style.justifyContent = "center";
-                      const img = document.createElement("img");
-                      img.alt = "Signature";
-                      img.style.maxHeight = "60px";
-                      img.style.objectFit = "contain";
-                      img.style.display = "block";
-                      img.src = s.url;
-                      wrapper.appendChild(img);
-                      sigContainer.appendChild(wrapper);
-                    }
-                  })
-                  .catch(() => {});
-              });
-            }
-          });
+        // Dept Head routing UI is intentionally removed for HR flow.
 
         // Auto-check leave type
         const leaveTypeMap = {
@@ -1566,18 +1453,9 @@
               leave_type: leave_type_csv,
               dates: structured.inclusive_dates,
               reason: "",
-              employee_email:
-                document.getElementById("employee_email")?.value ||
-                localStorage.getItem("userEmail") ||
-                "",
-              dept_head_email:
-                document.getElementById("dept_head_select")?.value ||
-                document.getElementById("dept_head_email")?.value ||
-                "",
-              deptHead:
-                document.getElementById("dept_head_select")?.value ||
-                document.getElementById("dept_head_email")?.value ||
-                "",
+              // Resolve employee email from localStorage/session context
+              employee_email: localStorage.getItem("userEmail") || "",
+              // Dept head email removed; ensure API no longer requires dept_head_email.
               details: {
                 section6b: structured.details6b,
                 num_working_days: structured.num_working_days,
@@ -1590,20 +1468,9 @@
               signature_data_uri:
                 localStorage.getItem("leaveSignatureData") || null,
               // If present, this signals the submitter wants the Municipal Admin to receive the request
-              submit_to_municipal:
-                localStorage.getItem("submit_to_municipal") || null,
+              submit_to_municipal: "1",
               request_token: getOrCreateToken(),
             };
-
-            // Remember chosen dept head
-            if (formData.dept_head_email) {
-              try {
-                localStorage.setItem(
-                  "dept_head_email",
-                  formData.dept_head_email
-                );
-              } catch (e) {}
-            }
 
             console.log("Submitting form data:", formData);
 
@@ -1612,8 +1479,6 @@
             // Validate required fields before POST. If missing and no existing
             // submission id available, show a helpful message and abort.
             if (
-              !formData.employee_email ||
-              !formData.dept_head_email ||
               !formData.leave_type ||
               (Array.isArray(formData.leave_type) &&
                 formData.leave_type.length === 0)
@@ -1625,7 +1490,7 @@
               isSubmitting = false;
               btn.disabled = false;
               alert(
-                "Required submission data is missing on this page. Please submit from the Leave Form page first."
+                "Required leave type is missing. Please select a leave type and try again."
               );
               return;
             }
@@ -1650,20 +1515,20 @@
                 sessionStorage.removeItem(tokenKey);
               } catch (e) {}
 
-              alert("Leave application submitted successfully!");
-              // show the animation a bit then redirect to the appropriate dashboard
+              alert(
+                "Leave application submitted successfully! Redirecting you back to HR Dashboard."
+              );
+              // HR flow: submission is routed to Municipal Admin, but user returns to HR dashboard
               setTimeout(() => {
                 try {
                   if (animationDiv && animationDiv.parentNode)
                     body.removeChild(animationDiv);
                 } catch (e) {}
-                // After submission always redirect the employee back to their dashboard.
-                // (Do not redirect to dept head pages from this form.)
                 try {
-                  window.location.href = "/capstone/employee/dashboard.php";
+                  window.location.href = "/capstone/hr/dashboard.php";
                 } catch (e) {
                   // Fallback in the unlikely event assignment throws
-                  location.assign("/capstone/employee/dashboard.php");
+                  location.assign("/capstone/hr/dashboard.php");
                 }
               }, 1200);
             } else {
