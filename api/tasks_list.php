@@ -41,6 +41,19 @@ try {
 		if (!in_array('adjustment_note', $cols)) {
 			try { $pdo->exec("ALTER TABLE tasks ADD COLUMN adjustment_note TEXT DEFAULT NULL"); } catch (PDOException $__e) { /* ignore */ }
 		}
+		// ensure archive columns exist
+		$lowerCols = array_map('strtolower', $cols);
+		if (!in_array('is_archived', $lowerCols)) {
+			try { $pdo->exec("ALTER TABLE tasks ADD COLUMN is_archived TINYINT(1) NOT NULL DEFAULT 0"); } catch (PDOException $__e) { /* ignore */ }
+		}
+		// refresh cols list to check archived_at too
+		try {
+			$colStmt->execute();
+			$cols2 = array_map(function($r){ return strtolower($r['column_name']); }, $colStmt->fetchAll(PDO::FETCH_ASSOC));
+			if (!in_array('archived_at', $cols2)) {
+				try { $pdo->exec("ALTER TABLE tasks ADD COLUMN archived_at DATETIME NULL DEFAULT NULL"); } catch (PDOException $__e) { /* ignore */ }
+			}
+		} catch (PDOException $__e) { /* ignore */ }
 	} catch (PDOException $ie) { /* ignore to not block listing */ }
 } catch (PDOException $e) {
 	http_response_code(500);
@@ -85,33 +98,33 @@ try {
 	// belongs to the same department. Otherwise fall back to the previous behavior.
 	if ($userDept) {
 		if ($status) {
-			$sql = "SELECT t.id, t.title, t.description, t.due_date, t.status, t.assigned_to_email, t.assigned_by_email, t.attachment_path, t.submission_file_path, t.submission_note, t.adjustment_note, t.completed_at, t.created_at
+			$sql = "SELECT t.id, t.title, t.description, t.due_date, t.status, t.assigned_to_email, t.assigned_by_email, t.attachment_path, t.submission_file_path, t.submission_note, t.adjustment_note, t.completed_at, t.is_archived, t.archived_at, t.created_at
 				FROM tasks t
 				WHERE t.status = ? AND (
 					EXISTS (SELECT 1 FROM users u WHERE u.email = t.assigned_to_email AND u.department = ?)
 					OR EXISTS (SELECT 1 FROM users u2 WHERE u2.email = t.assigned_by_email AND u2.department = ?)
 				)
-				ORDER BY due_date IS NULL, due_date ASC, t.id DESC";
+				ORDER BY t.is_archived ASC, due_date IS NULL, due_date ASC, t.id DESC";
 			$stmt = $pdo->prepare($sql);
 			$stmt->execute([$status, $userDept, $userDept]);
 		} else {
-			$sql = "SELECT t.id, t.title, t.description, t.due_date, t.status, t.assigned_to_email, t.assigned_by_email, t.attachment_path, t.submission_file_path, t.submission_note, t.adjustment_note, t.completed_at, t.created_at
+			$sql = "SELECT t.id, t.title, t.description, t.due_date, t.status, t.assigned_to_email, t.assigned_by_email, t.attachment_path, t.submission_file_path, t.submission_note, t.adjustment_note, t.completed_at, t.is_archived, t.archived_at, t.created_at
 				FROM tasks t
 				WHERE (
 					EXISTS (SELECT 1 FROM users u WHERE u.email = t.assigned_to_email AND u.department = ?)
 					OR EXISTS (SELECT 1 FROM users u2 WHERE u2.email = t.assigned_by_email AND u2.department = ?)
 				)
-				ORDER BY due_date IS NULL, due_date ASC, t.id DESC";
+				ORDER BY t.is_archived ASC, due_date IS NULL, due_date ASC, t.id DESC";
 			$stmt = $pdo->prepare($sql);
 			$stmt->execute([$userDept, $userDept]);
 		}
 	} else {
 		// Return all tasks regardless of who is logged in. Keep status filter if provided.
 		if ($status) {
-			$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks WHERE status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
+			$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, is_archived, archived_at, created_at FROM tasks WHERE status = ? ORDER BY is_archived ASC, due_date IS NULL, due_date ASC, id DESC');
 			$stmt->execute([$status]);
 		} else {
-			$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, created_at FROM tasks ORDER BY due_date IS NULL, due_date ASC, id DESC');
+			$stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, adjustment_note, completed_at, is_archived, archived_at, created_at FROM tasks ORDER BY is_archived ASC, due_date IS NULL, due_date ASC, id DESC');
 			$stmt->execute();
 		}
 	}

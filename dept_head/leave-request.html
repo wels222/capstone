@@ -991,26 +991,6 @@
         <span class="header-text">Bayan ng Mabini</span>
       </div>
       <div class="header-profile">
-        <a
-          href="apply_leave.html"
-          title="Apply for Leave"
-          class="apply-leave-btn"
-          style="
-            margin-left: 0.75rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.375rem 0.75rem;
-            background: #2563eb;
-            color: #fff;
-            border-radius: 0.5rem;
-            text-decoration: none;
-            font-weight: 600;
-          "
-        >
-          <i class="fas fa-calendar-plus" style="font-size: 0.9rem"></i>
-          <span style="font-size: 0.9rem">Apply for Leave</span>
-        </a>
         <img src="../assets/logo.png" alt="Profile" class="profile-image" />
       </div>
     </header>
@@ -1060,9 +1040,6 @@
               <button class="tab-button active" data-tab="leave-request">
                 Leave Request
               </button>
-              <button class="tab-button" data-tab="leave-recall">
-                Leave Recall
-              </button>
               <button class="tab-button" data-tab="leave-history">
                 Leave History
               </button>
@@ -1071,10 +1048,23 @@
             <div id="leave-request" class="tab-content active">
               <div class="table-container">
                 <div class="table-header-controls">
-                  <i class="fas fa-filter filter-icon"></i>
-                  <button class="export-button">
-                    Export &nbsp;<i class="fas fa-download"></i>
-                  </button>
+                  <a
+                    href="apply_leave.html"
+                    class="export-button"
+                    style="
+                      background-color: #3b82f6;
+                      color: #fff;
+                      margin-left: 0.5rem;
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 0.5rem;
+                      padding: 0.5rem 0.75rem;
+                      border-radius: 0.375rem;
+                      text-decoration: none;
+                    "
+                  >
+                    <i class="fas fa-plus"></i> Apply Leave
+                  </a>
                 </div>
                 <table class="min-w-full border border-gray-300">
                   <thead>
@@ -1158,12 +1148,6 @@
 
             <div id="leave-history" class="tab-content">
               <div class="table-container">
-                <div class="table-header-controls">
-                  <i class="fas fa-filter filter-icon"></i>
-                  <button class="export-button">
-                    Export &nbsp;<i class="fas fa-download"></i>
-                  </button>
-                </div>
                 <table class="min-w-full border border-gray-300">
                   <thead>
                     <tr>
@@ -1193,100 +1177,6 @@
           </section>
         </div>
       </main>
-    </div>
-
-    <div id="leave-recall-modal" class="modal-overlay leave-recall-modal">
-      <div class="modal-content">
-        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
-        <h3 class="text-center font-bold">Leave Recall</h3>
-        <p class="text-center text-sm text-gray-500 mb-6">
-          Fill in the required details to recall this employee
-        </p>
-        <form id="leave-recall-form" class="space-y-4">
-          <div class="form-group">
-            <label for="recall-employee-name">Employee Name</label>
-            <input
-              type="text"
-              id="recall-employee-name"
-              name="employee-name"
-              value="aman bey"
-              readonly
-            />
-          </div>
-          <div class="form-group">
-            <label for="recall-reason">Reason</label>
-            <input
-              type="text"
-              id="recall-reason"
-              name="reason"
-              value="need immediate meeting"
-            />
-          </div>
-          <div class="form-row">
-            <div class="form-group w-1/2">
-              <label for="recall-start-date">Start Date</label>
-              <input
-                type="date"
-                id="recall-start-date"
-                name="start-date"
-                value="2022-04-22"
-                required
-              />
-            </div>
-            <div class="form-group w-1/2">
-              <label for="recall-end-date">End Date</label>
-              <input
-                type="date"
-                id="recall-end-date"
-                name="end-date"
-                value="2022-04-22"
-                required
-              />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group w-1/2">
-              <label for="recall-days-remaining">Days Remaining</label>
-              <input
-                type="number"
-                id="recall-days-remaining"
-                name="days-remaining"
-                value="3"
-                required
-              />
-            </div>
-            <div class="form-group w-1/2">
-              <label for="recall-new-resumption-date"
-                >New Resumption Date</label
-              >
-              <input
-                type="date"
-                id="recall-new-resumption-date"
-                name="new-resumption-date"
-                required
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="recall-relief-officer">Relief Officer(s)</label>
-            <select id="recall-relief-officer" name="relief-officer">
-              <option value="">Select Relief Officer</option>
-            </select>
-          </div>
-          <div class="form-buttons">
-            <button
-              type="submit"
-              class="initiate-button"
-              id="initiate-recall-btn"
-            >
-              Initiate Recall
-            </button>
-            <button type="button" class="cancel-button" onclick="closeModal()">
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
 
     <!-- Decline Reason Modal -->
@@ -1325,6 +1215,9 @@
     </div>
 
     <script>
+      // Global toggle: show archived items in Leave History (default hidden)
+      window.__showArchivedHistory = false;
+
       document.addEventListener("DOMContentLoaded", () => {
         // Leave details modal removed
 
@@ -1356,6 +1249,42 @@
           });
         });
 
+        // Inject a prominent "Show archived" toggle into Leave History controls
+        try {
+          const histContainer = document.querySelector(
+            "#leave-history .table-container"
+          );
+          if (
+            histContainer &&
+            !document.getElementById("history-archive-toggle")
+          ) {
+            histContainer.insertAdjacentHTML(
+              "afterbegin",
+              `
+              <div id="history-archive-toggle" class="mb-3">
+                <div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 shadow-sm">
+                  <i class="fas fa-archive"></i>
+                  <label class="inline-flex items-center gap-2 font-semibold" title="Show archived leave requests in history">
+                    <input type="checkbox" id="cbShowArchivedHistory" class="w-4 h-4 accent-amber-600">
+                    <span>Show archived</span>
+                  </label>
+                  <span class="text-xs text-amber-700">(Archived items are hidden by default across the system)</span>
+                </div>
+              </div>
+            `
+            );
+            const cb = document.getElementById("cbShowArchivedHistory");
+            if (cb) {
+              cb.addEventListener("change", function () {
+                window.__showArchivedHistory = !!this.checked;
+                fetchLeaveRequests();
+              });
+            }
+          }
+        } catch (e) {
+          /* ignore UI injection errors */
+        }
+
         // Dropdown functionality for "Actions" button in Leave History
         document.querySelectorAll(".table-actions").forEach((actionDiv) => {
           const button = actionDiv.querySelector(".actions-button");
@@ -1384,14 +1313,16 @@
             });
         });
 
-        // Modal functionality for Leave Recall
+        // Modal functionality for Leave Recall (disabled if modal removed)
         const recallModal = document.getElementById("leave-recall-modal");
-        window.showModal = function () {
-          recallModal.classList.add("show");
-        };
-        window.closeModal = function () {
-          recallModal.classList.remove("show");
-        };
+        if (recallModal) {
+          window.showModal = function () {
+            recallModal.classList.add("show");
+          };
+          window.closeModal = function () {
+            recallModal.classList.remove("show");
+          };
+        }
         // Use event delegation for recall buttons
         document
           .querySelector("#leave-recall tbody")
@@ -1476,8 +1407,11 @@
 
       async function fetchLeaveRequests() {
         try {
+          const url = window.__showArchivedHistory
+            ? "../api/get_leave_requests.php?include_archived=1"
+            : "../api/get_leave_requests.php";
           const [resReq, resUser] = await Promise.all([
-            fetch("../api/get_leave_requests.php"),
+            fetch(url),
             fetch("../api/current_user.php"),
           ]);
           const reqJson = await resReq.json();
@@ -1556,32 +1490,47 @@
 
             // Leave History Table (approved/declined/recall)
             if (["approved", "declined", "recall"].includes(request.status)) {
-              const historyRow = document.createElement("tr");
-              historyRow.innerHTML = `
-                    <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
-                    <td class="border border-gray-300 px-4 py-2 text-left">${
-                      request.leave_type || ""
-                    }</td>
-                    <td class="border border-gray-300 px-4 py-2 text-left">${
-                      request.dates || ""
-                    }</td>
-                    <td class="border border-gray-300 px-4 py-2 text-center">
-                      <button class="bg-blue-500 text-white px-2 py-1 rounded view-button" onclick="viewForm('${
-                        request.id
-                      }')">View</button>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-2 text-center">${
-                      request.status.charAt(0).toUpperCase() +
-                      request.status.slice(1)
-                    }</td>
-                  `;
-              tbodyHistory.appendChild(historyRow);
+              const archived = Number(request.is_archived || 0) === 1;
+              if (!window.__showArchivedHistory && archived) {
+                // Hide archived items by default
+              } else {
+                const historyRow = document.createElement("tr");
+                if (archived) historyRow.classList.add("opacity-70");
+                const statusLabel =
+                  request.status.charAt(0).toUpperCase() +
+                  request.status.slice(1);
+                const archiveBtns = archived
+                  ? `<span class=\"text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 mr-2\">Archived</span>
+                     <button class=\"bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded\" onclick=\"restoreLeave(${request.id})\">Restore</button>`
+                  : `<button class=\"bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded\" onclick=\"archiveLeave(${request.id})\">Archive</button>`;
+                historyRow.innerHTML = `
+                      <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
+                      <td class="border border-gray-300 px-4 py-2 text-left">${
+                        request.leave_type || ""
+                      }</td>
+                      <td class="border border-gray-300 px-4 py-2 text-left">${
+                        request.dates || ""
+                      }</td>
+                      <td class="border border-gray-300 px-4 py-2 text-center">
+                        <button class="bg-blue-500 text-white px-2 py-1 rounded view-button mr-2" onclick="viewForm('${
+                          request.id
+                        }')">View</button>
+                        ${archiveBtns}
+                      </td>
+                      <td class="border border-gray-300 px-4 py-2 text-center">${statusLabel}</td>
+                    `;
+                tbodyHistory.appendChild(historyRow);
+              }
             }
 
             // Only add to recall table if approved (not declined)
             if (request.status === "approved") {
-              const recallRow = document.createElement("tr");
-              recallRow.innerHTML = `
+              const archived = Number(request.is_archived || 0) === 1;
+              if (!window.__showArchivedHistory && archived) {
+                // Hide archived items by default in recall tab too
+              } else {
+                const recallRow = document.createElement("tr");
+                recallRow.innerHTML = `
                     <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
                     <td class="border border-gray-300 px-4 py-2 text-left">${
                       request.leave_type || ""
@@ -1600,7 +1549,8 @@
                       )})">Recall</button>
                     </td>
                   `;
-              tbodyRecall.appendChild(recallRow);
+                tbodyRecall.appendChild(recallRow);
+              }
             }
           });
 
@@ -1757,9 +1707,51 @@
         }
       }
 
+      // Archive / Restore handlers for Leave History
+      async function archiveLeave(id) {
+        if (!confirm("Archive this leave record?")) return;
+        try {
+          const res = await fetch("../api/leave_archive.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+          });
+          const data = await res.json();
+          if (!data || !data.success) {
+            alert(data && data.error ? data.error : "Failed to archive");
+            return;
+          }
+          fetchLeaveRequests();
+        } catch (e) {
+          alert("Network error");
+        }
+      }
+
+      async function restoreLeave(id) {
+        try {
+          const res = await fetch("../api/leave_restore.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+          });
+          const data = await res.json();
+          if (!data || !data.success) {
+            alert(data && data.error ? data.error : "Failed to restore");
+            return;
+          }
+          fetchLeaveRequests();
+        } catch (e) {
+          alert("Network error");
+        }
+      }
+
       // Open recall modal with real-time info
       function openRecallModal(request) {
         const modal = document.getElementById("leave-recall-modal");
+        if (!modal) {
+          alert("Leave recall modal is disabled.");
+          return;
+        }
         modal.classList.add("show");
         document.getElementById("recall-employee-name").value = (
           (request.firstname || "") +
@@ -1848,9 +1840,8 @@
                 });
               }
               alert("Leave request recalled successfully!");
-              document
-                .getElementById("leave-recall-modal")
-                .classList.remove("show");
+              const m = document.getElementById("leave-recall-modal");
+              if (m) m.classList.remove("show");
               fetchLeaveRequests();
             } else {
               alert("Failed to recall leave request.");

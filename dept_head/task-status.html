@@ -907,7 +907,15 @@
                 // Show department-head-only adjustment note if present, otherwise show submission_note
                 const note=(t.adjustment_note && t.adjustment_note.toString()) ? t.adjustment_note.toString() : (t.submission_note||'').toString();
                 const noteEsc=note?note.replace(/"/g,'&quot;') : '';
-                return `<tr class="border-b hover:bg-gray-50"><td class="py-3 px-4 font-medium">${escapeHtml(t.title)}</td><td class="py-3 px-4">${escapeHtml(assignee)}</td><td class="py-3 px-4"><div class="flex items-center space-x-2"><svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v-4"></path></svg><div class="flex flex-col"><span>${fmtDateTime(t.due_date)}</span><span class="text-xs text-gray-400">${timeAgo(t.due_date)}</span></div></div></td><td class="py-3 px-4">${t.submission_file_path?`<a class="text-blue-600" href="../${t.submission_file_path}" target="_blank">View file</a>`:'-'}</td><td class="py-3 px-4" title="${noteEsc}">${note?truncate(note,80):'-'}</td><td class="py-3 px-4"><span class="status-badge ${statusClass}">${escapeHtml(displayStatus)}</span></td><td class="py-3 px-4"><div class="flex gap-2"><button class="px-2 py-1 bg-yellow-200 text-yellow-900 rounded" onclick="editTask(${t.id})">Edit</button><button class="px-2 py-1 bg-red-200 text-red-900 rounded" onclick="deleteTask(${t.id})">Delete</button></div></td></tr>`;
+                                const archived = Number(t.is_archived||0)===1;
+                                const canArchive = (String(t.status||'').toLowerCase()==='completed') || !!t.isMissed;
+                                const actionBtns = archived
+                                    ? `<span class=\"text-xs px-2 py-1 rounded bg-gray-200 text-gray-700\">Archived</span><button class=\"px-2 py-1 bg-green-200 text-green-900 rounded\" onclick=\"restoreTask(${t.id})\">Restore</button><button class=\"px-2 py-1 bg-red-200 text-red-900 rounded\" onclick=\"deleteTaskPermanent(${t.id})\">Delete</button>`
+                                    : `<button class=\"px-2 py-1 bg-yellow-200 text-yellow-900 rounded\" onclick=\"editTask(${t.id})\">Edit</button>` + (canArchive
+                                        ? ` <button class=\"px-2 py-1 bg-amber-200 text-amber-900 rounded\" onclick=\"archiveTask(${t.id})\">Archive</button>`
+                                        : ` <button class=\"px-2 py-1 bg-amber-100 text-amber-400 rounded cursor-not-allowed\" title=\"Only completed or missed tasks can be archived\" disabled>Archive</button>`);
+                                const rowClass = archived ? 'opacity-70' : '';
+                                return `<tr class="border-b hover:bg-gray-50 ${rowClass}"><td class="py-3 px-4 font-medium">${escapeHtml(t.title)}</td><td class="py-3 px-4">${escapeHtml(assignee)}</td><td class="py-3 px-4"><div class="flex items-center space-x-2"><svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z\"></path><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 14v-4\"></path></svg><div class="flex flex-col"><span>${fmtDateTime(t.due_date)}</span><span class="text-xs text-gray-400">${timeAgo(t.due_date)}</span></div></div></td><td class="py-3 px-4">${t.submission_file_path?`<a class=\"text-blue-600\" href=\"../${t.submission_file_path}\" target=\"_blank\">View file</a>`:'-'}</td><td class="py-3 px-4" title="${noteEsc}">${note?truncate(note,80):'-'}</td><td class="py-3 px-4"><span class="status-badge ${statusClass}">${escapeHtml(displayStatus)}</span></td><td class="py-3 px-4"><div class="flex gap-2">${actionBtns}</div></td></tr>`;
             }).join('');
             tasksTbody.innerHTML = rows || '<tr><td colspan="7" class="py-4 text-gray-500">No tasks yet.</td></tr>';
         }catch(err){ tasksTbody.innerHTML='<tr><td colspan="7" class="py-4 text-red-600">Error loading tasks</td></tr>'; }
@@ -936,7 +944,27 @@
         if(editModal) editModal.classList.add('show');
     }
 
-    window.deleteTask = async function(id){ if(!confirm('Are you sure you want to delete this task?')) return; try{ const res = await fetch('../api/tasks_delete.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) , credentials:'include' }); const data = await res.json(); if(!data.success){ alert(data.error||'Failed'); return; } await loadTasks(); }catch(e){ alert('Network error'); } }
+    window.archiveTask = async function(id){
+        const t = findTaskById(id);
+        if(!t){ alert('Task not found'); return; }
+        const status = String(t.status||'').toLowerCase();
+        const canArchive = status==='completed' || !!t.isMissed;
+        if(!canArchive){
+            alert('Only completed or missed tasks can be archived.');
+            return;
+        }
+        if(!confirm('Archive this task?')) return;
+        try{
+            const res = await fetch('../api/tasks_delete.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) , credentials:'include' });
+            const data = await res.json();
+            if(!data.success){ alert(data.error||'Failed'); return; }
+            await loadTasks();
+        }catch(e){ alert('Network error'); }
+    }
+
+    window.restoreTask = async function(id){ try{ const res = await fetch('../api/tasks_restore.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }), credentials:'include' }); const data = await res.json(); if(!data.success){ alert(data.error||'Failed'); return; } await loadTasks(); }catch(e){ alert('Network error'); } }
+
+    window.deleteTaskPermanent = async function(id){ if(!confirm('Permanently delete this task? This cannot be undone.')) return; try{ const res = await fetch('../api/tasks_delete_permanent.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }), credentials:'include' }); const data = await res.json(); if(!data.success){ alert(data.error||'Failed'); return; } await loadTasks(); }catch(e){ alert('Network error'); } }
 
     // Edit deadline modal handlers
     const editDeadlineModal = document.getElementById('editDeadlineModal');

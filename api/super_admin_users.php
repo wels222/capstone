@@ -50,10 +50,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$stmt->execute($params);
 		echo json_encode(['success' => true]);
 		exit;
-	} elseif ($action === 'delete') {
+	} elseif ($action === 'archive') {
+		// Ensure columns exist
+		try {
+			$cols = $pdo->query("SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users'")->fetchAll(PDO::FETCH_COLUMN);
+			$lower = array_map('strtolower', $cols ?: []);
+			if (!in_array('is_archived', $lower)) { $pdo->exec("ALTER TABLE users ADD COLUMN is_archived TINYINT(1) NOT NULL DEFAULT 0"); }
+			if (!in_array('archived_at', $lower)) { $pdo->exec("ALTER TABLE users ADD COLUMN archived_at DATETIME NULL DEFAULT NULL"); }
+		} catch (Throwable $__e) { /* ignore */ }
+		$stmt = $pdo->prepare('UPDATE users SET is_archived = 1, archived_at = NOW() WHERE id = ?');
+		$stmt->execute([$data['id']]);
+		echo json_encode(['success' => true, 'archived' => true]);
+		exit;
+	} elseif ($action === 'restore') {
+		$stmt = $pdo->prepare('UPDATE users SET is_archived = 0, archived_at = NULL WHERE id = ?');
+		$stmt->execute([$data['id']]);
+		echo json_encode(['success' => true, 'restored' => true]);
+		exit;
+	} elseif ($action === 'delete_permanent') {
 		$stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
 		$stmt->execute([$data['id']]);
-		echo json_encode(['success' => true]);
+		echo json_encode(['success' => true, 'deleted' => true]);
 		exit;
 	} elseif ($action === 'approve') {
 		$stmt = $pdo->prepare('UPDATE users SET status = "approved" WHERE id = ?');
@@ -68,6 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		exit;
 	}
 }
-// Default: GET all users
-$users = $pdo->query('SELECT * FROM users')->fetchAll();
+// Default: GET all users (including archived) so admin can manage restore/delete.
+$users = $pdo->query('SELECT * FROM users ORDER BY id DESC')->fetchAll();
 echo json_encode($users);

@@ -37,12 +37,20 @@ try {
     } catch (PDOException $__e) { }
     try { $pdo->exec("ALTER TABLE tasks MODIFY COLUMN status ENUM('pending','in_progress','completed','missed') NOT NULL DEFAULT 'pending'"); } catch (PDOException $__e) {}
 
+    // Ensure archive columns exist
+    try {
+        $cols = $pdo->query("SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'tasks'")->fetchAll(PDO::FETCH_COLUMN);
+        $lower = array_map('strtolower', $cols ?: []);
+        if (!in_array('is_archived', $lower)) { $pdo->exec("ALTER TABLE tasks ADD COLUMN is_archived TINYINT(1) NOT NULL DEFAULT 0"); }
+        if (!in_array('archived_at', $lower)) { $pdo->exec("ALTER TABLE tasks ADD COLUMN archived_at DATETIME NULL DEFAULT NULL"); }
+    } catch (Throwable $__e) { }
+
     if ($status) {
-           $stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, created_at FROM tasks WHERE assigned_to_email = ? AND status = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
-           $stmt->execute([$email, $status]);
+        $stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, is_archived, archived_at, created_at FROM tasks WHERE assigned_to_email = ? AND status = ? AND (is_archived = 0 OR is_archived IS NULL) ORDER BY due_date IS NULL, due_date ASC, id DESC');
+        $stmt->execute([$email, $status]);
     } else {
-           $stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, created_at FROM tasks WHERE assigned_to_email = ? ORDER BY due_date IS NULL, due_date ASC, id DESC');
-           $stmt->execute([$email]);
+        $stmt = $pdo->prepare('SELECT id, title, description, due_date, status, assigned_to_email, assigned_by_email, attachment_path, submission_file_path, submission_note, completed_at, is_archived, archived_at, created_at FROM tasks WHERE assigned_to_email = ? AND (is_archived = 0 OR is_archived IS NULL) ORDER BY due_date IS NULL, due_date ASC, id DESC');
+        $stmt->execute([$email]);
     }
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode(['success' => true, 'tasks' => $tasks]);

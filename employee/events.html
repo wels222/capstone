@@ -261,6 +261,10 @@
             return response.json();
           })
           .then((events) => {
+            // Hide archived events on employee view
+            events = (events || []).filter(
+              (e) => !(Number(e.is_archived || 0) === 1)
+            );
             eventsContainer.innerHTML = "";
             if (events && events.length > 0) {
               events.forEach((event) => {

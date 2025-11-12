@@ -1214,6 +1214,7 @@ try {
             fetch('../api/get_events.php')
                 .then(response => response.json())
                 .then(data => {
+                    data = (data || []).filter(e => !(Number(e.is_archived||0)===1));
                     const eventsList = document.getElementById('events-list');
                     eventsList.innerHTML = '';
                     if (data && data.length > 0) {

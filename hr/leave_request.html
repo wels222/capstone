@@ -1107,9 +1107,6 @@
             <div id="leave-request" class="tab-content active">
               <div class="table-container">
                 <div class="table-header-controls">
-                  <i class="fas fa-filter filter-icon"></i>
-                  <button class="export-button">
-                    Export &nbsp;<i class="fas fa-download"></i>
                   </button>
                   <!-- Apply Leave button for HR -->
                   <a
@@ -1163,10 +1160,6 @@
             <div id="leave-history" class="tab-content">
               <div class="table-container">
                 <div class="table-header-controls">
-                  <i class="fas fa-filter filter-icon"></i>
-                  <button class="export-button">
-                    Export &nbsp;<i class="fas fa-download"></i>
-                  </button>
                 </div>
                 <table class="min-w-full border border-gray-300">
                   <thead>
@@ -1535,52 +1528,69 @@
                   });
               });
 
-              // Fetch all leave requests for history and recall
-              fetch("../api/get_leave_requests.php")
+              // Ensure prominent Show Archived toggle exists above HR Leave History
+              (function ensureArchiveToggle(){
+                const histContainer = document.querySelector('#leave-history .table-container');
+                if (histContainer && !document.getElementById('hr-history-archive-toggle')) {
+                  histContainer.insertAdjacentHTML('afterbegin', `
+                    <div id="hr-history-archive-toggle" class="mb-3">
+                      <div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 shadow-sm">
+                        <i class="fas fa-archive"></i>
+                        <label class="inline-flex items-center gap-2 font-semibold" title="Show archived leave requests in HR history">
+                          <input type="checkbox" id="cbHRShowArchivedHistory" class="w-4 h-4 accent-amber-600">
+                          <span>Show archived</span>
+                        </label>
+                        <span class="text-xs text-amber-700">(Archived items are hidden by default)</span>
+                      </div>
+                    </div>`);
+                  const cb = document.getElementById('cbHRShowArchivedHistory');
+                  if (cb) {
+                    cb.addEventListener('change', function(){
+                      window.__hrShowArchivedHistory = !!this.checked;
+                      fetchLeaveRequests();
+                    });
+                  }
+                }
+              })();
+
+              // Fetch all leave requests for history, include archived if toggle is on
+              const urlAll = window.__hrShowArchivedHistory ? "../api/get_leave_requests.php?include_archived=1" : "../api/get_leave_requests.php";
+              fetch(urlAll)
                 .then((response) => response.json())
                 .then((allData) => {
                   if (allData.success) {
-                    allData.data.forEach((request) => {
-                      const name =
-                        (request.firstname ? request.firstname : "") +
-                        (request.lastname ? " " + request.lastname : "");
-
-                      // Leave History Table (HR approved/declined)
-                      if (
-                        (request.status === "approved" &&
-                          request.approved_by_hr) ||
-                        request.status === "declined"
-                      ) {
-                        const historyRow = document.createElement("tr");
-                        let statusBadge = "";
-                        if (
-                          request.status === "approved" &&
-                          request.approved_by_hr
-                        ) {
-                          statusBadge =
-                            '<span class="status-badge approve">Approved by HR</span>';
-                        } else if (request.status === "declined") {
-                          statusBadge =
-                            '<span class="status-badge decline">Declined</span>';
-                        }
-                        historyRow.innerHTML = `
-                          <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
-                          <td class="border border-gray-300 px-4 py-2 text-left">${
-                            request.leave_type || ""
-                          }</td>
-                          <td class="border border-gray-300 px-4 py-2 text-left">${
-                            request.dates || ""
-                          }</td>
-                          <td class="border border-gray-300 px-4 py-2 text-center">
-                            <button class="bg-blue-500 text-white px-2 py-1 rounded view-button" onclick="viewForm('${
-                              request.id
-                            }')">View</button>
-                          </td>
-                          <td class="border border-gray-300 px-4 py-2 text-center">${statusBadge}</td>
-                        `;
-                        tbodyHistory.appendChild(historyRow);
-                      }
-                    });
+                    const tbodyHistory = document.querySelector('#hr-leave-history');
+                    tbodyHistory.innerHTML = '';
+                    const rows = (allData.data || [])
+                      .filter((r) => String(r.approved_by_hr || '0') === '1')
+                      .map((request) => {
+                        const name = `${request.firstname ? request.firstname : ''}${request.lastname ? ' ' + request.lastname : ''}`;
+                        const archived = Number(request.is_archived || 0) === 1;
+                        if (!window.__hrShowArchivedHistory && archived) return null;
+                        const statusBadge = (request.status === 'approved' && request.approved_by_hr)
+                          ? '<span class="status-badge approve">Approved by HR</span>'
+                          : (request.status === 'declined' ? '<span class="status-badge decline">Declined</span>' : '');
+                        const actionBtns = archived
+                          ? `<span class=\"text-xs px-2 py-1 rounded bg-gray-200 text-gray-700 mr-2\">Archived</span>
+                             <button class=\"bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded mr-2\" onclick=\"restoreLeave(${request.id})\">Restore</button>
+                             <button class=\"bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded\" onclick=\"deleteLeave(${request.id})\">Delete</button>`
+                          : `<button class=\"bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded\" onclick=\"archiveLeave(${request.id})\">Archive</button>`;
+                        const trClass = archived ? 'opacity-70' : '';
+                        return `
+                          <tr class="${trClass}">
+                            <td class="border border-gray-300 px-4 py-2 text-left">${name}</td>
+                            <td class="border border-gray-300 px-4 py-2 text-left">${request.leave_type || ''}</td>
+                            <td class="border border-gray-300 px-4 py-2 text-left">${request.dates || ''}</td>
+                            <td class="border border-gray-300 px-4 py-2 text-center">
+                              <button class="bg-blue-500 text-white px-2 py-1 rounded mr-2" onclick="viewForm('${request.id}')">View</button>
+                              ${actionBtns}
+                            </td>
+                            <td class="border border-gray-300 px-4 py-2 text-center">${statusBadge}</td>
+                          </tr>`;
+                      })
+                      .filter(Boolean)
+                      .join('');
+                    tbodyHistory.innerHTML = rows || '<tr><td colspan="5" class="text-center text-gray-500 py-3">No history yet.</td></tr>';
                   }
                 });
             } else {
@@ -1595,6 +1605,31 @@
       // View form function
       function viewForm(id) {
         window.location.href = `../dept_head/civil_form.php?id=${id}`;
+      }
+
+      // HR Archive / Restore / Delete handlers
+      async function archiveLeave(id){
+        if(!confirm('Archive this leave record?')) return;
+        try{
+          const res = await fetch('../api/leave_archive.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id}) });
+          const js = await res.json(); if(!js.success){ alert(js.error||'Failed to archive'); return; }
+          fetchLeaveRequests();
+        }catch(e){ alert('Network error'); }
+      }
+      async function restoreLeave(id){
+        try{
+          const res = await fetch('../api/leave_restore.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id}) });
+          const js = await res.json(); if(!js.success){ alert(js.error||'Failed to restore'); return; }
+          fetchLeaveRequests();
+        }catch(e){ alert('Network error'); }
+      }
+      async function deleteLeave(id){
+        if(!confirm('Permanently delete this leave request? This cannot be undone.')) return;
+        try{
+          const res = await fetch('../api/leave_delete_permanent.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id}) });
+          const js = await res.json(); if(!js.success){ alert(js.error||'Failed to delete'); return; }
+          fetchLeaveRequests();
+        }catch(e){ alert('Network error'); }
       }
 
       // Handle HR approve/decline action
