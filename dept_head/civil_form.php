@@ -49,6 +49,25 @@ if (!empty($details['snapshot']['salary']['value'])) {
   // Fallback to DB salary if nothing was supplied in the form
   $displaySalary = $user['salary'];
 }
+
+// Helper: format name as "firstname MI. lastname" (uppercase)
+function format_dept_head_name($firstname, $mi, $lastname) {
+  $firstname = trim((string)$firstname);
+  $mi = trim((string)$mi);
+  $lastname = trim((string)$lastname);
+  
+  $parts = [];
+  if ($firstname !== '') $parts[] = $firstname;
+  if ($mi !== '') {
+    // Take first character and add dot
+    $parts[] = strtoupper(mb_substr($mi, 0, 1, 'UTF-8')) . '.';
+  }
+  if ($lastname !== '') $parts[] = $lastname;
+  
+  $name = implode(' ', $parts);
+  return mb_strtoupper($name, 'UTF-8');
+}
+
 // Hardcoded signatories and department head resolution
 $adminAideName = 'ALMA D. ILAO';
 $municipalAdminName = 'ATTY. MARIA CONCEPCION R. HERNANDEZ-BELOSO';
@@ -71,7 +90,7 @@ foreach ($possibleDeptHeadFields as $f) {
         $stmtAssigned->execute([$val]);
         $assigned = $stmtAssigned->fetch(PDO::FETCH_ASSOC);
         if ($assigned) {
-          $deptHeadName = trim(($assigned['firstname'] ?? '') . ' ' . (!empty($assigned['mi']) ? ($assigned['mi'] . ' ') : '') . ($assigned['lastname'] ?? ''));
+          $deptHeadName = format_dept_head_name($assigned['firstname'] ?? '', $assigned['mi'] ?? '', $assigned['lastname'] ?? '');
           if (!empty($assigned['signature_path'])) $deptHeadSig = $assigned['signature_path'];
           elseif (!empty($assigned['signature'])) $deptHeadSig = $assigned['signature'];
           elseif (!empty($assigned['sig_path'])) $deptHeadSig = $assigned['sig_path'];
@@ -99,7 +118,7 @@ if ($deptHeadName === 'Department Head' && !empty($user['department'])) {
     $stmtDH->execute([$user['department']]);
     $dh = $stmtDH->fetch(PDO::FETCH_ASSOC);
     if ($dh) {
-      $deptHeadName = trim(($dh['firstname'] ?? '') . ' ' . (!empty($dh['mi']) ? ($dh['mi'] . ' ') : '') . ($dh['lastname'] ?? ''));
+      $deptHeadName = format_dept_head_name($dh['firstname'] ?? '', $dh['mi'] ?? '', $dh['lastname'] ?? '');
       if (!empty($dh['signature_path'])) $deptHeadSig = $dh['signature_path'];
       elseif (!empty($dh['signature'])) $deptHeadSig = $dh['signature'];
       elseif (!empty($dh['sig_path'])) $deptHeadSig = $dh['sig_path'];
@@ -109,7 +128,7 @@ if ($deptHeadName === 'Department Head' && !empty($user['department'])) {
       $stmtDH2->execute([$user['department']]);
       $dh2 = $stmtDH2->fetch(PDO::FETCH_ASSOC);
       if ($dh2) {
-        $deptHeadName = trim(($dh2['firstname'] ?? '') . ' ' . (!empty($dh2['mi']) ? ($dh2['mi'] . ' ') : '') . ($dh2['lastname'] ?? ''));
+        $deptHeadName = format_dept_head_name($dh2['firstname'] ?? '', $dh2['mi'] ?? '', $dh2['lastname'] ?? '');
         if (!empty($dh2['signature_path'])) $deptHeadSig = $dh2['signature_path'];
         elseif (!empty($dh2['signature'])) $deptHeadSig = $dh2['signature'];
         elseif (!empty($dh2['sig_path'])) $deptHeadSig = $dh2['sig_path'];
@@ -135,7 +154,7 @@ if ($deptHeadName === 'Department Head') {
       }
       $me = $stMe->fetch(PDO::FETCH_ASSOC);
       if ($me) {
-        $deptHeadName = trim(($me['firstname'] ?? '') . ' ' . (!empty($me['mi']) ? ($me['mi'] . ' ') : '') . ($me['lastname'] ?? ''));
+        $deptHeadName = format_dept_head_name($me['firstname'] ?? '', $me['mi'] ?? '', $me['lastname'] ?? '');
         if (!empty($me['signature_path'])) $deptHeadSig = $me['signature_path'];
         elseif (!empty($me['signature'])) $deptHeadSig = $me['signature'];
         elseif (!empty($me['sig_path'])) $deptHeadSig = $me['sig_path'];
@@ -173,7 +192,7 @@ if ($deptHeadName === 'Department Head') {
       $st->execute([$dept]);
       $found = $st->fetch(PDO::FETCH_ASSOC);
       if ($found) {
-        $deptHeadName = trim(($found['firstname'] ?? '') . ' ' . (!empty($found['mi']) ? ($found['mi'] . ' ') : '') . ($found['lastname'] ?? ''));
+        $deptHeadName = format_dept_head_name($found['firstname'] ?? '', $found['mi'] ?? '', $found['lastname'] ?? '');
         if (!empty($found['signature_path'])) $deptHeadSig = $found['signature_path'];
         elseif (!empty($found['signature'])) $deptHeadSig = $found['signature'];
         elseif (!empty($found['sig_path'])) $deptHeadSig = $found['sig_path'];
@@ -193,7 +212,7 @@ if ($deptHeadName === 'Department Head') {
       $st->execute([$forcedEmail]);
       $f = $st->fetch(PDO::FETCH_ASSOC);
       if ($f) {
-        $deptHeadName = trim(($f['firstname'] ?? '') . ' ' . (!empty($f['mi']) ? ($f['mi'] . ' ') : '') . ($f['lastname'] ?? ''));
+        $deptHeadName = format_dept_head_name($f['firstname'] ?? '', $f['mi'] ?? '', $f['lastname'] ?? '');
         if (!empty($f['signature_path'])) $deptHeadSig = $f['signature_path'];
         elseif (!empty($f['signature'])) $deptHeadSig = $f['signature'];
         elseif (!empty($f['sig_path'])) $deptHeadSig = $f['sig_path'];
@@ -205,7 +224,7 @@ if ($deptHeadName === 'Department Head') {
       $st2->execute([$forcedDept]);
       $f2 = $st2->fetch(PDO::FETCH_ASSOC);
       if ($f2) {
-        $deptHeadName = trim(($f2['firstname'] ?? '') . ' ' . (!empty($f2['mi']) ? ($f2['mi'] . ' ') : '') . ($f2['lastname'] ?? ''));
+        $deptHeadName = format_dept_head_name($f2['firstname'] ?? '', $f2['mi'] ?? '', $f2['lastname'] ?? '');
         if (!empty($f2['signature_path'])) $deptHeadSig = $f2['signature_path'];
         elseif (!empty($f2['signature'])) $deptHeadSig = $f2['signature'];
         elseif (!empty($f2['sig_path'])) $deptHeadSig = $f2['sig_path'];
@@ -223,7 +242,7 @@ try {
     $stEmail->execute([$deptHeadName]);
     $fe = $stEmail->fetch(PDO::FETCH_ASSOC);
     if ($fe) {
-      $deptHeadName = trim(($fe['firstname'] ?? '') . ' ' . (!empty($fe['mi']) ? ($fe['mi'] . ' ') : '') . ($fe['lastname'] ?? ''));
+      $deptHeadName = format_dept_head_name($fe['firstname'] ?? '', $fe['mi'] ?? '', $fe['lastname'] ?? '');
       if (!empty($fe['signature_path'])) $deptHeadSig = $fe['signature_path'];
       elseif (!empty($fe['signature'])) $deptHeadSig = $fe['signature'];
       elseif (!empty($fe['sig_path'])) $deptHeadSig = $fe['sig_path'];
@@ -243,7 +262,7 @@ try {
     $stId->execute([$maybeId]);
     $fi = $stId->fetch(PDO::FETCH_ASSOC);
     if ($fi) {
-      $deptHeadName = trim(($fi['firstname'] ?? '') . ' ' . (!empty($fi['mi']) ? ($fi['mi'] . ' ') : '') . ($fi['lastname'] ?? ''));
+      $deptHeadName = format_dept_head_name($fi['firstname'] ?? '', $fi['mi'] ?? '', $fi['lastname'] ?? '');
       if (!empty($fi['signature_path'])) $deptHeadSig = $fi['signature_path'];
       elseif (!empty($fi['signature'])) $deptHeadSig = $fi['signature'];
       elseif (!empty($fi['sig_path'])) $deptHeadSig = $fi['sig_path'];
@@ -954,10 +973,23 @@ $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
           </div>
         </div>
         <div class="mt-4 text-center text-xs font-semibold p-2">
-          <?php $finalSig = $hsigs['final'] ?? ($hsigs['authorized'] ?? null); ?>
+          <?php 
+          // Check if municipal admin has signed (approved_by_municipal = 1)
+          $municipalSig = null;
+          if (!empty($leave['approved_by_municipal']) && $leave['approved_by_municipal'] == 1) {
+            // Try to get from details JSON first
+            if (!empty($details['municipal']['signature'])) {
+              $municipalSig = $details['municipal']['signature'];
+            }
+          }
+          // Fallback to HR final signature if no municipal signature
+          if (!$municipalSig) {
+            $municipalSig = $hsigs['final'] ?? ($hsigs['authorized'] ?? null);
+          }
+          ?>
           <div style="position:relative; min-height:56px;">
-            <?php if (!empty($finalSig)): ?>
-              <img src="../<?= ltrim($finalSig, '/') ?>" alt="final sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+            <?php if (!empty($municipalSig)): ?>
+              <img src="../<?= ltrim($municipalSig, '/') ?>" alt="municipal admin sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
             <?php endif; ?>
             <input type="text" class="signature-name" value="<?= htmlspecialchars($s['final_official'] ?? $leave['authorized_official'] ?? 'ATTY. MARIA CONCEPCION R. HERNANDEZ-BELOSO') ?>" readonly />
           </div>

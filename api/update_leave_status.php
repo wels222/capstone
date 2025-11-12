@@ -16,13 +16,18 @@ try {
     if ($status === 'approved' && isset($data['approved_by_hr']) && $data['approved_by_hr']) {
         $stmt = $pdo->prepare("UPDATE leave_requests SET status = :status, approved_by_hr = 1, updated_at = NOW() WHERE id = :id");
         $stmt->execute([':status' => $status, ':id' => $id]);
-        // notify the employee that HR approved their leave
+        
+        // Notify municipal admin that a leave request is ready for final approval
         try {
-            $r = $pdo->prepare('SELECT employee_email FROM leave_requests WHERE id = ? LIMIT 1');
+            $r = $pdo->prepare('SELECT lr.employee_email, lr.leave_type, lr.dates, u.firstname, u.lastname FROM leave_requests lr JOIN users u ON lr.employee_email = u.email WHERE lr.id = ? LIMIT 1');
             $r->execute([$id]);
             $row = $r->fetch(PDO::FETCH_ASSOC);
-            if ($row && !empty($row['employee_email'])) {
-                $emp = $row['employee_email'];
+            if ($row) {
+                $empEmail = $row['employee_email'];
+                $fullname = trim(($row['firstname'] ?? '') . ' ' . ($row['lastname'] ?? '')) ?: $empEmail;
+                $leaveType = $row['leave_type'] ?? 'Leave';
+                $dates = $row['dates'] ?? '';
+                
                 $pdo->exec("CREATE TABLE IF NOT EXISTS notifications (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     recipient_email VARCHAR(150),
@@ -32,9 +37,16 @@ try {
                     is_read TINYINT(1) DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )");
-                $msg = 'Your leave request has been approved by HR.';
+                
+                // Notify municipal admin
+                $msg = sprintf('New leave request ready for final approval — Employee: %s; Type: %s; Dates: %s', $fullname, $leaveType, $dates);
                 $ins = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
-                $ins->execute([$emp, null, $msg, 'leave_approved_by_hr']);
+                $ins->execute(['municipaladmin@gmail.com', null, $msg, 'leave_pending_municipal']);
+                
+                // Notify employee that HR approved (but not final yet)
+                $empMsg = 'Your leave request has been approved by HR. Pending final approval from Municipal Admin.';
+                $ins2 = $pdo->prepare('INSERT INTO notifications (recipient_email, recipient_role, message, type) VALUES (?, ?, ?, ?)');
+                $ins2->execute([$empEmail, null, $empMsg, 'leave_approved_by_hr']);
             }
         } catch (PDOException $e) { /* ignore */ }
     } else if ($status === 'approved') {

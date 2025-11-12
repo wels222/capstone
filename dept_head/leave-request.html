@@ -945,6 +945,41 @@
           font-size: 0.85rem;
         }
       }
+      
+      /* Enhanced checkbox visibility in dept head modal */
+      #dept7b-modal input[type="checkbox"] {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border: 2px solid #000;
+        display: inline-block;
+        position: relative;
+        vertical-align: middle;
+        background: transparent;
+        margin-top: 0.1rem;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      
+      #dept7b-modal input[type="checkbox"]:checked::after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        top: 1px;
+        width: 6px;
+        height: 11px;
+        border: solid #000;
+        border-width: 0 3px 3px 0;
+        transform: rotate(45deg);
+      }
+      
+      /* Make sure modal textarea wraps properly */
+      #dept_disapproval_reason_modal {
+        font-family: inherit;
+        line-height: 1.5;
+      }
     </style>
   </head>
   <body>
@@ -1824,30 +1859,64 @@
       (function insertDept7BModal() {
         const tpl = `
         <div id="dept7b-modal" class="modal-overlay">
-          <div class="modal-content">
+          <div class="modal-content" style="max-width: 700px;">
             <button class="modal-close-btn" id="dept7b-modal-close">&times;</button>
             <div class="modal-profile-header">
               <h4 id="dept7b-modal-title">Edit 7.B — Recommendation (Dept Head)</h4>
-              <div class="employee-details text-sm text-gray-500" id="dept7b-current-name">Uploading as: </div>
+              <div class="employee-details text-sm text-gray-500" id="dept7b-current-name">Fill out the recommendation and upload your signature.</div>
             </div>
             <div class="modal-leave-credits">
-              <div class="form-group mt-3">
+              <!-- 7.B RECOMMENDATION Section -->
+              <div class="form-group mt-4">
+                <label class="font-semibold text-base mb-2 block">7.B RECOMMENDATION</label>
+                <div class="space-y-3">
+                  <label class="flex items-start">
+                    <input type="checkbox" id="dept_rec_appr_modal" name="dept_recommendation_modal" value="For approval" class="mt-1" style="min-width: 18px; min-height: 18px; border: 2px solid #000; cursor: pointer;" />
+                    <span class="ml-2 text-sm">For approval</span>
+                  </label>
+                  <label class="flex items-start">
+                    <input type="checkbox" id="dept_rec_disappr_modal" name="dept_recommendation_modal" value="For disapproval" class="mt-1" style="min-width: 18px; min-height: 18px; border: 2px solid #000; cursor: pointer;" />
+                    <span class="ml-2 text-sm">For disapproval due to</span>
+                  </label>
+                </div>
+                
+                <div class="mt-3">
+                  <label class="text-sm font-medium mb-1 block">Reason for disapproval (if applicable):</label>
+                  <textarea 
+                    id="dept_disapproval_reason_modal" 
+                    rows="4" 
+                    class="w-full p-2 border border-gray-300 rounded text-sm"
+                    placeholder="Enter reason for disapproval here. The text will automatically wrap to new lines."
+                    style="resize: vertical; min-height: 80px; word-wrap: break-word; white-space: pre-wrap;"
+                  ></textarea>
+                  <p class="text-xs text-gray-500 mt-1">Note: Text will wrap automatically and be split into 3 lines on the form.</p>
+                </div>
+              </div>
+
+              <div class="form-group mt-4">
                 <div class="mt-1">
-                  <p class="text-sm text-gray-600">Upload your e-signature below. Your name will be auto-filled and saved with the signature so HR can verify it later.</p>
+                  <p class="text-sm text-gray-600">Your signature will be saved and reused for future requests. Upload once and it will be stored in your account.</p>
                 </div>
                 <div class="mt-3">
-                  <label class="text-sm">Signed by (auto-filled)</label>
-                  <input id="dept7b_name" type="text" class="form-underline w-full mt-1 p-1" readonly />
+                  <label class="text-sm font-medium">Signed by (auto-filled)</label>
+                  <input id="dept7b_name" type="text" class="w-full mt-1 p-2 border border-gray-300 rounded text-sm" readonly />
                 </div>
+                
                 <div class="mt-3">
-                  <label class="text-sm">Upload Dept Head E-Signature</label>
-                  <input id="dept7b_sig" type="file" accept="image/*" class="mt-2" />
+                  <label class="text-sm font-medium">Upload Department Head E-Signature</label>
+                  <div id="existing_signature_preview" class="mt-2 mb-2" style="display:none;">
+                    <p class="text-xs text-green-600 mb-1">✓ You have an existing signature on file</p>
+                    <img id="existing_sig_img" src="" alt="Existing signature" style="max-width: 200px; max-height: 60px; border: 1px solid #ccc; padding: 4px; background: white;" />
+                    <p class="text-xs text-gray-500 mt-1">Upload a new file below to replace it (old signature will be deleted)</p>
+                  </div>
+                  <input id="dept7b_sig" type="file" accept="image/*" class="mt-2 w-full" />
+                  <p class="text-xs text-gray-500 mt-1">Upload once and it will be saved to your account for future use</p>
                 </div>
               </div>
             </div>
-            <div class="form-buttons" style="margin-top:1rem;">
-              <button id="dept7b-save-btn" class="initiate-button" style="background-color:#10b981;">Save</button>
-              <button id="dept7b-cancel-btn" class="cancel-button" style="background-color:#6b7280; margin-left:0.5rem;">Cancel</button>
+            <div class="form-buttons" style="margin-top:1.5rem;">
+              <button id="dept7b-save-btn" class="initiate-button" style="background-color:#10b981; padding: 0.75rem 1.5rem;">Save & Preview Form</button>
+              <button id="dept7b-cancel-btn" class="cancel-button" style="background-color:#6b7280; margin-left:0.5rem; padding: 0.75rem 1.5rem;">Cancel</button>
             </div>
           </div>
         </div>`;
@@ -1862,6 +1931,17 @@
         document
           .getElementById("dept7b-save-btn")
           .addEventListener("click", saveDept7B);
+        // Handle mutually exclusive checkboxes for recommendation
+        document.getElementById('dept_rec_appr_modal').addEventListener('change', function() {
+          if (this.checked) {
+            document.getElementById('dept_rec_disappr_modal').checked = false;
+          }
+        });
+        document.getElementById('dept_rec_disappr_modal').addEventListener('change', function() {
+          if (this.checked) {
+            document.getElementById('dept_rec_appr_modal').checked = false;
+          }
+        });
       })();
 
       function openDept7BModal(id) {
@@ -1870,6 +1950,34 @@
         // clear inputs
         const fi = document.getElementById("dept7b_sig");
         if (fi) fi.value = null;
+        
+        // Clear and reset recommendation checkboxes
+        document.getElementById('dept_rec_appr_modal').checked = false;
+        document.getElementById('dept_rec_disappr_modal').checked = false;
+        document.getElementById('dept_disapproval_reason_modal').value = '';
+        
+        // Try to prefill from loaded requests data
+        try {
+          const req = window._leaveRequests.find(r => String(r.id) === String(id));
+          if (req) {
+            // Prefill recommendation if exists
+            if (req.recommendation === 'For approval') {
+              document.getElementById('dept_rec_appr_modal').checked = true;
+            } else if (req.recommendation === 'For disapproval') {
+              document.getElementById('dept_rec_disappr_modal').checked = true;
+            }
+            
+            // Prefill disapproval reasons
+            const reasons = [];
+            if (req.disapproval_reason1) reasons.push(req.disapproval_reason1);
+            if (req.disapproval_reason2) reasons.push(req.disapproval_reason2);
+            if (req.disapproval_reason3) reasons.push(req.disapproval_reason3);
+            if (reasons.length > 0) {
+              document.getElementById('dept_disapproval_reason_modal').value = reasons.join('\n');
+            }
+          }
+        } catch(e) { console.error(e); }
+        
         // auto-fill name from current_user
         fetch("../api/current_user.php")
           .then((r) => r.json())
@@ -1878,16 +1986,39 @@
             if (!js) return;
             if (js.user) u = js.user;
             else if (js.logged_in || js.firstname) u = js;
-            // Use First Middle Last format per requirement
-            const name = u
-              ? [u.firstname || "", u.mi || "", u.lastname || ""]
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-                  .join(" ")
-              : "";
+            // Use First MI. Last format per requirement (uppercase)
+            let name = "";
+            if (u) {
+              const parts = [];
+              if (u.firstname && u.firstname.trim()) parts.push(u.firstname.trim());
+              if (u.mi && u.mi.trim()) {
+                parts.push(u.mi.trim().charAt(0).toUpperCase() + ".");
+              }
+              if (u.lastname && u.lastname.trim()) parts.push(u.lastname.trim());
+              name = parts.join(" ").toUpperCase();
+            }
             document.getElementById("dept7b_name").value = name;
+            
             const hdr = document.getElementById("dept7b-current-name");
-            if (hdr) hdr.textContent = "Uploading as: " + (name || "");
+            if (hdr) hdr.textContent = "Fill out the recommendation and upload your signature. Uploading as: " + (name || "");
+            
+            // Check for existing signature
+            if (u && u.email) {
+              fetch(`../api/get_user_signature.php?email=${encodeURIComponent(u.email)}`)
+                .then(r => r.json())
+                .then(sigData => {
+                  if (sigData.success && sigData.hasSignature && sigData.url) {
+                    // Show existing signature preview
+                    document.getElementById('existing_signature_preview').style.display = 'block';
+                    document.getElementById('existing_sig_img').src = sigData.url;
+                  } else {
+                    document.getElementById('existing_signature_preview').style.display = 'none';
+                  }
+                })
+                .catch(() => {
+                  document.getElementById('existing_signature_preview').style.display = 'none';
+                });
+            }
           })
           .catch(() => {});
         modal.classList.add("show");
@@ -1902,8 +2033,79 @@
       async function saveDept7B() {
         const id = window._editingDept7BId;
         if (!id) return alert("No request selected");
+        
+        // Get recommendation values
+        const recAppr = document.getElementById('dept_rec_appr_modal').checked;
+        const recDisappr = document.getElementById('dept_rec_disappr_modal').checked;
+        const disapprovalText = document.getElementById('dept_disapproval_reason_modal').value.trim();
+        
+        // Validate: must select one recommendation
+        if (!recAppr && !recDisappr) {
+          return alert('Please select a recommendation (For approval or For disapproval)');
+        }
+        
+        // If both are checked, show error
+        if (recAppr && recDisappr) {
+          return alert('Please select only one recommendation option');
+        }
+        
+        const recommendation = recAppr ? 'For approval' : 'For disapproval';
+        
+        // Split disapproval reason into 3 lines (max ~55 chars per line)
+        const splitTextIntoLines = (text, maxCharsPerLine = 55) => {
+          if (!text) return ['', '', ''];
+          
+          const words = text.split(/\s+/);
+          const lines = ['', '', ''];
+          let currentLine = 0;
+          
+          for (const word of words) {
+            // Check if we need to move to next line
+            const currentText = lines[currentLine];
+            const testLine = currentText ? currentText + ' ' + word : word;
+            
+            if (testLine.length <= maxCharsPerLine) {
+              // Word fits on current line
+              lines[currentLine] = testLine;
+            } else {
+              // Word doesn't fit, move to next line
+              if (currentLine < 2) {
+                // Move to next line
+                currentLine++;
+                lines[currentLine] = word;
+              } else {
+                // Already on line 3, force add with space if it fits within reasonable limit
+                if (currentText.length + word.length + 1 <= maxCharsPerLine + 10) {
+                  lines[currentLine] = currentText + ' ' + word;
+                } else {
+                  // Truncate with ellipsis
+                  lines[currentLine] = currentText + '...';
+                  break;
+                }
+              }
+            }
+          }
+          
+          return lines;
+        };
+        
+        const [reason1, reason2, reason3] = splitTextIntoLines(disapprovalText, 55);
+        
         const name = document.getElementById("dept7b_name").value || "";
-        // convert file to dataURI
+        
+        // Get current user email for signature storage
+        let userEmail = null;
+        try {
+          const userResp = await fetch("../api/current_user.php");
+          const userJson = await userResp.json();
+          if (userJson && (userJson.email || (userJson.user && userJson.user.email))) {
+            userEmail = userJson.email || userJson.user.email;
+          }
+        } catch(e) {
+          console.error('Error fetching user email:', e);
+        }
+        
+        // convert file to dataURI and save to employee_signatures table
         const fi = document.getElementById("dept7b_sig");
         const toDataURI = (file) =>
           new Promise((res, rej) => {
@@ -1912,16 +2114,91 @@
             r.onerror = () => rej();
             r.readAsDataURL(file);
           });
+        
         const sigs = [];
+        let signatureUploaded = false;
+        
         if (fi && fi.files && fi.files[0]) {
           try {
             const dataUri = await toDataURI(fi.files[0]);
-            sigs.push({ key: "7b", data_uri: dataUri });
-          } catch (e) {}
+            
+            // Save signature to employee_signatures table if we have user email
+            if (userEmail) {
+              try {
+                const sigResp = await fetch('../api/save_signature.php', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    employee_email: userEmail,
+                    signature_data_uri: dataUri
+                  })
+                });
+                const sigJson = await sigResp.json();
+                if (sigJson.success) {
+                  console.log('Signature saved to employee_signatures table');
+                  signatureUploaded = true;
+                  // Use the saved path from employee_signatures for this request
+                  sigs.push({ key: "7b", data_uri: dataUri });
+                } else {
+                  console.error('Failed to save signature:', sigJson.error);
+                  // Still try to save with the request
+                  sigs.push({ key: "7b", data_uri: dataUri });
+                  signatureUploaded = true;
+                }
+              } catch(e) {
+                console.error('Error saving signature:', e);
+                // Still try to save with the request
+                sigs.push({ key: "7b", data_uri: dataUri });
+                signatureUploaded = true;
+              }
+            } else {
+              // No email, just save with request
+              sigs.push({ key: "7b", data_uri: dataUri });
+              signatureUploaded = true;
+            }
+          } catch (e) {
+            console.error('Error converting file to data URI:', e);
+          }
+        } else if (userEmail) {
+          // No new file uploaded, try to use existing signature from employee_signatures
+          try {
+            const existingSigResp = await fetch(`../api/get_user_signature.php?email=${encodeURIComponent(userEmail)}`);
+            const existingSigJson = await existingSigResp.json();
+            if (existingSigJson.success && existingSigJson.hasSignature && existingSigJson.url) {
+              console.log('Using existing signature from employee_signatures table');
+              // Fetch the existing signature as blob and convert to data URI
+              const imgResp = await fetch(existingSigJson.url);
+              const blob = await imgResp.blob();
+              const existingDataUri = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+              });
+              sigs.push({ key: "7b", data_uri: existingDataUri });
+              signatureUploaded = true;
+            }
+          } catch(e) {
+            console.error('Error fetching existing signature:', e);
+          }
         }
-        // build section7 object with authorized_officer_7b only (no recommendation control here)
+        
+        // Validate that signature is provided (either new upload or existing)
+        if (!signatureUploaded) {
+          return alert('Please upload your signature or ensure you have an existing signature on file.');
+        }
+        
+        // build section7 object with authorized_officer_7b
         const section7 = { authorized_officer_7b: name };
-        const payload = { id, section7, signatures: sigs };
+        const payload = { 
+          id, 
+          section7, 
+          signatures: sigs,
+          recommendation,
+          disapproval_reason1: reason1,
+          disapproval_reason2: reason2,
+          disapproval_reason3: reason3
+        };
+        
         try {
           const resp = await fetch("../api/update_hr_section7.php", {
             method: "POST",
@@ -1934,12 +2211,22 @@
             const previewUrl = `civil_form.php?id=${id}&live=1&from=dept7b`;
             window.open(previewUrl, "_blank");
             alert(
-              "Signature saved. A preview has been opened so you can verify the form."
+              "Recommendation and signature saved. Your signature has been stored and will be reused for future requests. A preview has been opened so you can verify the form before finalizing."
             );
             closeDept7BModal();
             fetchLeaveRequests();
           } else {
-            alert("Failed to save: " + (js.error || "unknown"));
+            const errorMsg = js.error || "unknown";
+            if (errorMsg.includes("DB error") || errorMsg.includes("Unknown column")) {
+              alert("Database Error: Missing columns detected.\n\n" +
+                    "Please run the database migration:\n" +
+                    "1. Open: http://localhost/capstone/run_migration.php\n" +
+                    "2. Wait for success message\n" +
+                    "3. Try saving again\n\n" +
+                    "Error details: " + errorMsg);
+            } else {
+              alert("Failed to save: " + errorMsg);
+            }
           }
         } catch (e) {
           console.error(e);

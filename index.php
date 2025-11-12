@@ -94,6 +94,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
+    
+    // Municipal Admin bypass: direct access to municipal portal
+    if ($email === 'municipaladmin@gmail.com' && $password === 'MunicipalAdmin') {
+        $_SESSION['municipal_logged_in'] = true;
+        $_SESSION['municipal_email'] = $email;
+        header('Location: municipal/approved_leaves.php');
+        exit();
+    }
+    
     // Super admin bypass: no DB check needed
     if ($email === 'mabiniadmin@gmail.com' && $password === 'MabiniAdminOfficial') {
         $_SESSION['user_id'] = 'superadmin';

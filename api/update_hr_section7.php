@@ -7,6 +7,11 @@ $data = json_decode(file_get_contents('php://input'), true) ?: [];
 $id = $data['id'] ?? null;
 $section7 = $data['section7'] ?? null; // free text or structured (prefer structured array/object)
 $signatures = $data['signatures'] ?? []; // array of either dataURI strings or {key, data_uri}
+$recommendation = $data['recommendation'] ?? null; // 'For approval' or 'For disapproval'
+$disapproval_reason1 = $data['disapproval_reason1'] ?? '';
+$disapproval_reason2 = $data['disapproval_reason2'] ?? '';
+$disapproval_reason3 = $data['disapproval_reason3'] ?? '';
+$leave_credits = $data['leave_credits'] ?? null; // Leave credits data from HR
 
 if (!$id) { http_response_code(400); echo json_encode(['success'=>false,'error'=>'Missing id']); exit; }
 
@@ -37,6 +42,31 @@ try {
   // Save any provided signature data URIs as files. Support both plain dataURI strings (append)
   // and objects with { key: '7a', data_uri: 'data:image/...' } to map per-officer.
   if (!isset($details['hr']['signatures']) || !is_array($details['hr']['signatures'])) $details['hr']['signatures'] = [];
+  
+  // Check if new signatures are being uploaded
+  $hasNewSignature = false;
+  foreach ($signatures as $sig) {
+    if (is_string($sig) && strpos($sig, 'data:image/') === 0) {
+      $hasNewSignature = true;
+      break;
+    } elseif (is_array($sig) && !empty($sig['data_uri'])) {
+      $hasNewSignature = true;
+      break;
+    }
+  }
+  
+  // Only delete old signatures if new ones are being uploaded
+  if ($hasNewSignature) {
+    // Delete old HR signature files before saving new ones
+    foreach ($details['hr']['signatures'] as $oldSigKey => $oldSigPath) {
+      if (is_string($oldSigPath) && file_exists(__DIR__ . '/../' . $oldSigPath)) {
+        @unlink(__DIR__ . '/../' . $oldSigPath);
+      }
+    }
+    // Clear old signatures array
+    $details['hr']['signatures'] = [];
+  }
+  
   foreach ($signatures as $idx => $sig) {
     $key = null; $dataUri = null;
     if (is_string($sig) && strpos($sig, 'data:image/') === 0) {
@@ -73,12 +103,113 @@ try {
       $savedPaths[] = $relPath;
     }
   }
+  
+  // If no new signature provided, try to use saved HR signature from hr_signatures table
+  if (!$hasNewSignature && empty($details['hr']['signatures']['certifier'])) {
+    try {
+      $hr_email = $_SESSION['email'] ?? null;
+      if ($hr_email) {
+        $stmt = $pdo->prepare('SELECT file_path FROM hr_signatures WHERE email = ? LIMIT 1');
+        $stmt->execute([$hr_email]);
+        $savedSigPath = $stmt->fetchColumn();
+        if ($savedSigPath) {
+          $details['hr']['signatures']['certifier'] = $savedSigPath;
+        }
+      }
+    } catch (PDOException $e) {
+      // Non-fatal, continue without saved signature
+    }
+  }
 
   $detailsJson = json_encode($details);
-  $up = $pdo->prepare('UPDATE leave_requests SET details = ? , updated_at = NOW() WHERE id = ?');
-  $up->execute([$detailsJson, $id]);
+  
+  // Build UPDATE query dynamically based on available columns
+  $updateFields = ['details = ?', 'updated_at = NOW()'];
+  $updateParams = [$detailsJson];
+  
+  // Check if recommendation columns exist in the table
+  try {
+    $checkColumns = $pdo->query("SHOW COLUMNS FROM leave_requests LIKE 'recommendation'");
+    $hasRecommendation = $checkColumns->rowCount() > 0;
+  } catch (PDOException $e) {
+    $hasRecommendation = false;
+  }
+  
+  if ($hasRecommendation) {
+    if ($recommendation !== null) {
+      $updateFields[] = 'recommendation = ?';
+      $updateParams[] = $recommendation;
+    }
+    
+    if ($disapproval_reason1 !== null) {
+      $updateFields[] = 'disapproval_reason1 = ?';
+      $updateParams[] = $disapproval_reason1;
+    }
+    
+    if ($disapproval_reason2 !== null) {
+      $updateFields[] = 'disapproval_reason2 = ?';
+      $updateParams[] = $disapproval_reason2;
+    }
+    
+    if ($disapproval_reason3 !== null) {
+      $updateFields[] = 'disapproval_reason3 = ?';
+      $updateParams[] = $disapproval_reason3;
+    }
+    
+    // Add leave credits fields if provided
+    if ($leave_credits && is_array($leave_credits)) {
+      if (!empty($leave_credits['certification_date'])) {
+        $updateFields[] = 'certification_date = ?';
+        $updateParams[] = $leave_credits['certification_date'];
+      }
+      if (isset($leave_credits['vl_total_earned']) && $leave_credits['vl_total_earned'] !== '') {
+        $updateFields[] = 'vl_total_earned = ?';
+        $updateParams[] = $leave_credits['vl_total_earned'];
+      }
+      if (isset($leave_credits['vl_less_this_application']) && $leave_credits['vl_less_this_application'] !== '') {
+        $updateFields[] = 'vl_less_this_application = ?';
+        $updateParams[] = $leave_credits['vl_less_this_application'];
+      }
+      if (isset($leave_credits['vl_balance']) && $leave_credits['vl_balance'] !== '') {
+        $updateFields[] = 'vl_balance = ?';
+        $updateParams[] = $leave_credits['vl_balance'];
+      }
+      if (isset($leave_credits['sl_total_earned']) && $leave_credits['sl_total_earned'] !== '') {
+        $updateFields[] = 'sl_total_earned = ?';
+        $updateParams[] = $leave_credits['sl_total_earned'];
+      }
+      if (isset($leave_credits['sl_less_this_application']) && $leave_credits['sl_less_this_application'] !== '') {
+        $updateFields[] = 'sl_less_this_application = ?';
+        $updateParams[] = $leave_credits['sl_less_this_application'];
+      }
+      if (isset($leave_credits['sl_balance']) && $leave_credits['sl_balance'] !== '') {
+        $updateFields[] = 'sl_balance = ?';
+        $updateParams[] = $leave_credits['sl_balance'];
+      }
+    }
+  } else {
+    // Columns don't exist - store in details JSON as fallback
+    if ($recommendation !== null || $disapproval_reason1 || $disapproval_reason2 || $disapproval_reason3 || $leave_credits) {
+      if (!isset($details['recommendation_fallback'])) $details['recommendation_fallback'] = [];
+      $details['recommendation_fallback']['recommendation'] = $recommendation;
+      $details['recommendation_fallback']['disapproval_reason1'] = $disapproval_reason1;
+      $details['recommendation_fallback']['disapproval_reason2'] = $disapproval_reason2;
+      $details['recommendation_fallback']['disapproval_reason3'] = $disapproval_reason3;
+      if ($leave_credits) {
+        $details['recommendation_fallback']['leave_credits'] = $leave_credits;
+      }
+      $detailsJson = json_encode($details);
+      $updateParams[0] = $detailsJson; // Update the details param
+    }
+  }
+  
+  $updateParams[] = $id;
+  
+  $sql = 'UPDATE leave_requests SET ' . implode(', ', $updateFields) . ' WHERE id = ?';
+  $up = $pdo->prepare($sql);
+  $up->execute($updateParams);
 
-  echo json_encode(['success'=>true,'saved'=>$savedPaths,'details'=>$details]);
+  echo json_encode(['success'=>true,'saved'=>$savedPaths,'details'=>$details,'hasRecommendationColumns'=>$hasRecommendation]);
 } catch (PDOException $e) {
   http_response_code(500);
   echo json_encode(['success'=>false,'error'=>'DB error','details'=>$e->getMessage()]);

@@ -42,6 +42,22 @@ try {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
 } catch (PDOException $e) { /* non-blocking */ }
 
+// Check if there's an existing signature for this user and delete the old file
+$oldFilePath = null;
+try {
+  $stmt = $pdo->prepare('SELECT file_path FROM employee_signatures WHERE employee_email = ? LIMIT 1');
+  $stmt->execute([$employee_email]);
+  $oldFilePath = $stmt->fetchColumn();
+  
+  if ($oldFilePath) {
+    // Delete the old signature file
+    $oldAbsPath = __DIR__ . '/../' . $oldFilePath;
+    if (file_exists($oldAbsPath)) {
+      @unlink($oldAbsPath);
+    }
+  }
+} catch (PDOException $e) { /* non-blocking */ }
+
 // compute deterministic filename per employee
 $emailKey = strtolower(trim($employee_email));
 $hash = sha1($emailKey);
@@ -56,11 +72,12 @@ if ($ok === false) { http_response_code(500); echo json_encode(['success'=>false
 
 // update DB mapping
 try {
-  $ins = $pdo->prepare('INSERT INTO employee_signatures (employee_email, file_path) VALUES (?, ?) ON DUPLICATE KEY UPDATE file_path = VALUES(file_path)');
+  $ins = $pdo->prepare('INSERT INTO employee_signatures (employee_email, file_path) VALUES (?, ?) ON DUPLICATE KEY UPDATE file_path = VALUES(file_path), updated_at = NOW()');
   $ins->execute([$employee_email, $relPath]);
 } catch (PDOException $e) {
   // non-fatal for file save
 }
 
 $url = '../' . ltrim($relPath, '/');
-echo json_encode(['success'=>true, 'file_path'=>$relPath, 'url'=>$url]);
+echo json_encode(['success'=>true, 'file_path'=>$relPath, 'url'=>$url, 'old_file_deleted'=>($oldFilePath ? true : false)]);
+

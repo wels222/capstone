@@ -6,6 +6,25 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 require_once '../db.php';
+
+// Helper: format name as "firstname MI. lastname" (uppercase)
+function format_dept_head_name($firstname, $mi, $lastname) {
+  $firstname = trim((string)$firstname);
+  $mi = trim((string)$mi);
+  $lastname = trim((string)$lastname);
+  
+  $parts = [];
+  if ($firstname !== '') $parts[] = $firstname;
+  if ($mi !== '') {
+    // Take first character and add dot
+    $parts[] = strtoupper(mb_substr($mi, 0, 1, 'UTF-8')) . '.';
+  }
+  if ($lastname !== '') $parts[] = $lastname;
+  
+  $name = implode(' ', $parts);
+  return mb_strtoupper($name, 'UTF-8');
+}
+
 // Auto-mark absent at 17:00 if not already run today (runs for all approved users)
 date_default_timezone_set('Asia/Manila');
 $nowH = (int)date('H');
@@ -38,7 +57,7 @@ $stmt = $pdo->prepare('SELECT firstname, lastname, mi, position, profile_picture
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 if ($user) {
-    $fullName = $user['firstname'] . ' ' . ($user['mi'] ? $user['mi'] . '. ' : '') . $user['lastname'];
+    $fullName = format_dept_head_name($user['firstname'], $user['mi'] ?? '', $user['lastname']);
     $position = $user['position'];
     $profilePicture = $user['profile_picture'] ?? '';
     $userEmail = $user['email'] ?? '';

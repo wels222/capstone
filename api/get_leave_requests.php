@@ -2,6 +2,16 @@
 header('Content-Type: application/json');
 require_once '../db.php';
 
+// Ensure approved_by_municipal column exists (silent check)
+try {
+    $checkCol = $pdo->query("SHOW COLUMNS FROM leave_requests LIKE 'approved_by_municipal'");
+    if ($checkCol->rowCount() === 0) {
+        $pdo->exec("ALTER TABLE leave_requests ADD COLUMN approved_by_municipal TINYINT(1) NOT NULL DEFAULT 0");
+    }
+} catch (PDOException $e) {
+    // Silently fail - will be caught by main query if still broken
+}
+
 try {
     // Optional filters for performance: status, month, year (based on applied_at)
     $status = isset($_GET['status']) ? trim($_GET['status']) : null;

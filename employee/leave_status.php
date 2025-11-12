@@ -183,17 +183,37 @@ if ($user_id) {
                 requests.forEach(req => {
                     let statusLabel = 'Pending';
                     let statusColor = 'bg-yellow-100 text-yellow-800';
-                    // Only HR can approve: show 'Approved' only if req.status === 'approved' and req.approved_by_hr === '1' or true
-                    if (req.status === 'approved' && req.approved_by_hr) {
-                        statusLabel = 'Approved';
-                        statusColor = 'bg-green-100 text-green-800';
-                    } else if (req.status === 'declined') {
+                    
+                    // New logic: 3-tier approval system
+                    // 1. Pending dept head
+                    // 2. Approved by dept head, pending HR (status=approved, approved_by_hr=0)
+                    // 3. Approved by HR, pending municipal (status=approved, approved_by_hr=1, approved_by_municipal=0)
+                    // 4. Final approved by municipal (status=approved, approved_by_hr=1, approved_by_municipal=1)
+                    // 5. Declined at any stage
+                    
+                    if (req.status === 'declined') {
                         statusLabel = 'Declined';
                         statusColor = 'bg-red-100 text-red-800';
+                    } else if (req.status === 'approved') {
+                        if (req.approved_by_municipal == 1) {
+                            // Final approval - credits deducted
+                            statusLabel = 'Approved';
+                            statusColor = 'bg-green-100 text-green-800';
+                        } else if (req.approved_by_hr == 1) {
+                            // HR approved, waiting for municipal
+                            statusLabel = 'Pending Municipal Admin';
+                            statusColor = 'bg-blue-100 text-blue-800';
+                        } else {
+                            // Dept head approved, waiting for HR
+                            statusLabel = 'Pending HR';
+                            statusColor = 'bg-purple-100 text-purple-800';
+                        }
                     } else {
-                        statusLabel = 'Pending';
+                        // Initial pending (waiting for dept head)
+                        statusLabel = 'Pending Department Head';
                         statusColor = 'bg-yellow-100 text-yellow-800';
                     }
+                    
                     // Get start and end date from req.dates
                     let startDate = '';
                     let endDate = '';
@@ -315,25 +335,42 @@ if ($user_id) {
                                     const req = data.data.find(r => r.id == requestId);
                                     if (!req) return;
                                     const content = document.getElementById('leave-details-content');
-                                    // Only HR can approve
+                                    
+                                    // Determine status label with 3-tier approval
                                     let statusLabel = 'Pending';
-                                    if (req.status === 'approved' && req.approved_by_hr) {
-                                        statusLabel = 'Approved by HR';
-                                    } else if (req.status === 'declined') {
-                                        // Real-time: use approved_by_hr only
-                                        let declinedBy = (req.approved_by_hr == 1 || req.approved_by_hr === '1') ? 'HR' : 'Department Head';
+                                    if (req.status === 'declined') {
+                                        let declinedBy = 'Department Head';
+                                        if (req.approved_by_hr == 1) {
+                                            declinedBy = 'Municipal Admin';
+                                        } else if (req.approved_by_hr == 0 && req.status === 'declined') {
+                                            // Could be HR or dept head
+                                            declinedBy = 'HR or Department Head';
+                                        }
                                         statusLabel = `Declined by ${declinedBy}`;
+                                    } else if (req.status === 'approved') {
+                                        if (req.approved_by_municipal == 1) {
+                                            statusLabel = 'Approved by Municipal Admin (Final)';
+                                        } else if (req.approved_by_hr == 1) {
+                                            statusLabel = 'Approved by HR - Pending Municipal Admin';
+                                        } else {
+                                            statusLabel = 'Approved by Department Head - Pending HR';
+                                        }
                                     } else {
-                                        statusLabel = 'Pending';
+                                        statusLabel = 'Pending Department Head Approval';
                                     }
+                                    
                                     // Show all fields from database for the selected request only
                                     let noteText = '';
                                     if (req.status === 'declined' && req.decline_reason) {
                                         noteText = req.decline_reason;
                                     } else if (req.status === 'pending') {
-                                        noteText = 'Pending';
-                                    } else if (req.status === 'approved' && req.approved_by_hr) {
-                                        noteText = 'Congratulations!';
+                                        noteText = 'Your leave request is being reviewed.';
+                                    } else if (req.status === 'approved' && req.approved_by_municipal == 1) {
+                                        noteText = 'Congratulations! Your leave has been fully approved.';
+                                    } else if (req.status === 'approved' && req.approved_by_hr == 1) {
+                                        noteText = 'Your leave has been approved by HR. Awaiting final approval from Municipal Admin.';
+                                    } else if (req.status === 'approved') {
+                                        noteText = 'Your leave has been approved by your Department Head. Awaiting HR approval.';
                                     } else {
                                         noteText = '';
                                     }

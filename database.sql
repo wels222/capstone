@@ -2,7 +2,7 @@
 CREATE DATABASE IF NOT EXISTS `capstone` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `capstone`;
 
--- users table: includes role, contact number, normalized status, and employee_id
+-- users table: includes role, contact number, normalized status, employee_id, and leave credits
 CREATE TABLE IF NOT EXISTS users (
 	id INT AUTO_INCREMENT PRIMARY KEY,
 	lastname VARCHAR(100) NOT NULL,
@@ -17,9 +17,11 @@ CREATE TABLE IF NOT EXISTS users (
 	password VARCHAR(255) NOT NULL,
 	profile_picture MEDIUMTEXT,
 	employee_id VARCHAR(100) DEFAULT NULL UNIQUE,
+	vacation_leave DECIMAL(10,2) DEFAULT 15.00 COMMENT 'Vacation leave credits',
+	sick_leave DECIMAL(10,2) DEFAULT 15.00 COMMENT 'Sick leave credits',
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -27,8 +29,10 @@ CREATE TABLE IF NOT EXISTS events (
     date DATE NOT NULL,
     time VARCHAR(50),
     location VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL
-);
+    description TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Persist leave requests
 CREATE TABLE IF NOT EXISTS leave_requests (
@@ -39,15 +43,38 @@ CREATE TABLE IF NOT EXISTS leave_requests (
 	dates VARCHAR(255) NOT NULL,
 	reason TEXT,
 	signature_path VARCHAR(255) DEFAULT NULL,
-	details LONGTEXT DEFAULT NULL,
+	details LONGTEXT DEFAULT NULL COMMENT 'JSON field for dept head and HR signatures, sections, etc.',
 	request_token VARCHAR(100) NULL,
-	status ENUM('pending','approved','declined') NOT NULL DEFAULT 'pending',
+	status ENUM('pending','approved','declined','recall') NOT NULL DEFAULT 'pending',
 	decline_reason TEXT DEFAULT NULL,
-	approved_by_hr TINYINT(1) NOT NULL DEFAULT 0,
+	approved_by_dept_head TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Department Head approval: 0=pending, 1=approved',
+	approved_by_hr TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'HR approval: 0=pending, 1=approved',
+	approved_by_municipal TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Municipal Admin approval: 0=pending, 1=approved, 2=declined',
+	municipal_approval_date DATETIME NULL DEFAULT NULL COMMENT 'Date when municipal admin approved/declined',
+	recommendation VARCHAR(50) DEFAULT NULL,
+	disapproval_reason1 VARCHAR(255) DEFAULT NULL,
+	disapproval_reason2 VARCHAR(255) DEFAULT NULL,
+	disapproval_reason3 VARCHAR(255) DEFAULT NULL,
+	certification_date DATE DEFAULT NULL COMMENT 'As of date for leave credits certification',
+	vl_total_earned DECIMAL(10,2) DEFAULT NULL COMMENT 'Display only: Total VL earned',
+	vl_less_this_application DECIMAL(10,2) DEFAULT NULL COMMENT 'Display only: VL days requested',
+	vl_balance DECIMAL(10,2) DEFAULT NULL COMMENT 'Display only: Calculated VL balance',
+	sl_total_earned DECIMAL(10,2) DEFAULT NULL COMMENT 'Display only: Total SL earned',
+	sl_less_this_application DECIMAL(10,2) DEFAULT NULL COMMENT 'Display only: SL days requested',
+	sl_balance DECIMAL(10,2) DEFAULT NULL COMMENT 'Display only: Calculated SL balance',
+	approved_days_with_pay VARCHAR(50) DEFAULT NULL,
+	approved_days_without_pay VARCHAR(50) DEFAULT NULL,
+	approved_others VARCHAR(255) DEFAULT NULL,
+	disapproved_reason VARCHAR(255) DEFAULT NULL,
+	authorized_official VARCHAR(255) DEFAULT NULL,
 	applied_at DATETIME NOT NULL,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-	UNIQUE KEY uq_request_token (request_token)
-);
+	UNIQUE KEY uq_request_token (request_token),
+	INDEX idx_employee_email (employee_email),
+	INDEX idx_status (status),
+	INDEX idx_approved_by_hr (approved_by_hr),
+	INDEX idx_approved_by_municipal (approved_by_municipal)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Persist employee signature for reuse
 CREATE TABLE IF NOT EXISTS employee_signatures (
@@ -56,7 +83,34 @@ CREATE TABLE IF NOT EXISTS employee_signatures (
 	file_path VARCHAR(255) NOT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Persist department head signature for reuse
+CREATE TABLE IF NOT EXISTS dept_head_signatures (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	email VARCHAR(100) NOT NULL UNIQUE,
+	file_path VARCHAR(255) NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Persist HR signature for reuse
+CREATE TABLE IF NOT EXISTS hr_signatures (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	email VARCHAR(100) NOT NULL UNIQUE,
+	file_path VARCHAR(255) NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Persist municipal admin signature for reuse
+CREATE TABLE IF NOT EXISTS municipal_signatures (
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	email VARCHAR(100) NOT NULL UNIQUE,
+	file_path VARCHAR(255) NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS notifications (
 	id INT AUTO_INCREMENT PRIMARY KEY,
@@ -66,7 +120,7 @@ CREATE TABLE IF NOT EXISTS notifications (
 	type VARCHAR(50) DEFAULT 'recall',
 	is_read TINYINT(1) DEFAULT 0,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tasks assigned by department heads to employees
 CREATE TABLE IF NOT EXISTS tasks (
@@ -84,8 +138,11 @@ CREATE TABLE IF NOT EXISTS tasks (
 	ack_note TEXT DEFAULT NULL,
 	ack_at DATETIME DEFAULT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
-);
+	updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+	INDEX idx_assigned_to (assigned_to_email),
+	INDEX idx_assigned_by (assigned_by_email),
+	INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Attendance table (standalone; users.employee_id already present above)
 CREATE TABLE IF NOT EXISTS attendance (
@@ -105,4 +162,23 @@ CREATE TABLE IF NOT EXISTS attendance (
     INDEX idx_status (status),
     UNIQUE KEY unique_attendance (employee_id, date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Department heads table (for managing department head assignments)
+CREATE TABLE IF NOT EXISTS department_heads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    department VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_department (department)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert default municipal admin account
+-- Password: MunicipalAdmin (hashed with PHP password_hash)
+INSERT INTO users (lastname, firstname, mi, department, position, role, status, email, password, vacation_leave, sick_leave)
+VALUES 
+('Municipal', 'Admin', NULL, 'Municipal Office', 'Permanent', 'hr', 'approved', 'municipaladmin@gmail.com', '$2y$10$8K9vZ4lGfY.QXn5YvX5zK.qZ4fMxE5qG8P3hN1jU0fKvL6wJ2Y.0e', 0.00, 0.00)
+ON DUPLICATE KEY UPDATE email = email;
+
+-- Note: To create additional HR or Super Admin accounts, use the register page or insert them manually with role='hr'
 
