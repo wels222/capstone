@@ -114,8 +114,26 @@ try {
     $used = [];
     foreach ($ENTITLEMENTS as $k => $v) { $used[$k] = 0; }
 
-    // Fetch leave requests that are approved by HR only (only these affect credits)
-    $stmt = $pdo->prepare("SELECT leave_type, dates, details, status FROM leave_requests WHERE employee_email = ? AND status = 'approved' AND approved_by_hr = 1");
+    // Decide which approvals to count:
+    // - Prefer municipal approvals (approved_by_municipal = 1) when the column exists (final deduction happens on municipal approval)
+    // - Fallback to the older behavior (approved_by_hr = 1) when the municipal column doesn't exist yet to avoid SQL errors on older DB schemas
+    $useMunicipalFilter = false;
+    try {
+        $colCheck = $pdo->query("SHOW COLUMNS FROM leave_requests LIKE 'approved_by_municipal'");
+        if ($colCheck && $colCheck->rowCount() > 0) {
+            $useMunicipalFilter = true;
+        }
+    } catch (PDOException $e) {
+        // If SHOW COLUMNS fails for some reason, fall back to HR-approved behavior
+        $useMunicipalFilter = false;
+    }
+
+    if ($useMunicipalFilter) {
+        $stmt = $pdo->prepare("SELECT leave_type, dates, details, status FROM leave_requests WHERE employee_email = ? AND status = 'approved' AND approved_by_municipal = 1");
+    } else {
+        // Backward-compatible: count HR-approved leaves if municipal approval column is not present
+        $stmt = $pdo->prepare("SELECT leave_type, dates, details, status FROM leave_requests WHERE employee_email = ? AND status = 'approved' AND approved_by_hr = 1");
+    }
     $stmt->execute([$email]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

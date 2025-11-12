@@ -5,13 +5,16 @@
 All leave and civil form files have been updated to work in both local (XAMPP) and hosted environments. The main issue was hardcoded `/capstone/` paths that won't work when hosted on different domains or subdirectories.
 
 ### Employee Files Fixed
+
 1. **employee/civil form.html**
+
    - Changed all `/capstone/api/` to `../api/`
    - Updated dashboard redirect from `/capstone/employee/dashboard.php` to `dashboard.php`
    - Fixed signature loading to work with relative paths
    - Updated current_user, employee_info, dept_heads, employee_signature, and submit_leave endpoints
 
 2. **employee/apply_leave.html**
+
    - Fixed employee_leave_history API call
    - Updated current_user endpoint for user email resolution
    - Fixed employee_leave_credits API endpoint
@@ -20,7 +23,9 @@ All leave and civil form files have been updated to work in both local (XAMPP) a
    - Updated employee_leave_history API endpoint to use relative path
 
 ### HR Files Fixed
+
 1. **hr/civil_form.php**
+
    - Fixed employee_signature API loading
    - Updated save_signature API endpoint
    - Fixed signature usage endpoint
@@ -35,6 +40,7 @@ All leave and civil form files have been updated to work in both local (XAMPP) a
    - Updated civil_form preview URL to use relative path
 
 ### Department Head Files Fixed
+
 1. **dept_head/leave-request.html**
    - Fixed get_leave_requests and current_user endpoints
    - Updated get_users endpoint for relief officer dropdown
@@ -48,25 +54,33 @@ All leave and civil form files have been updated to work in both local (XAMPP) a
 ## Changes Made
 
 ### API Path Pattern
+
 - **Before:** `/capstone/api/endpoint.php`
 - **After:** `../api/endpoint.php`
 
 ### Dashboard/Form Redirects
+
 - **Before:** `/capstone/employee/dashboard.php`
 - **After:** `dashboard.php` (relative to current directory)
 
 - **Before:** `/capstone/dept_head/civil_form.php?id=123`
 - **After:** `civil_form.php?id=123` OR `../dept_head/civil_form.php?id=123`
 
+### Leave credit deduction behavior
+
+- Credits are now deducted only when the Municipal Admin performs the final approval. The API `api/municipal_update_leave.php` performs the actual deduction on municipal approval. The reporting endpoint `api/employee_leave_credits.php` was updated to count only leaves that have `approved_by_municipal = 1`, so HR approvals no longer reduce leave balances.
+
 ## Why This Works
 
 Relative paths (`../api/`) work in both scenarios:
 
 1. **Local XAMPP:**
+
    - URL: `http://localhost/capstone/employee/civil%20form.html`
    - `../api/current_user.php` resolves to `http://localhost/capstone/api/current_user.php` ✓
 
 2. **Hosted (example.com/capstone/):**
+
    - URL: `https://example.com/capstone/employee/civil%20form.html`
    - `../api/current_user.php` resolves to `https://example.com/capstone/api/current_user.php` ✓
 
@@ -77,6 +91,7 @@ Relative paths (`../api/`) work in both scenarios:
 ## Browser Compatibility
 
 All changes use standard fetch API and relative URLs, which are supported by:
+
 - ✅ Chrome 42+
 - ✅ Firefox 39+
 - ✅ Edge 14+
@@ -87,6 +102,7 @@ All changes use standard fetch API and relative URLs, which are supported by:
 ## Testing Checklist
 
 ### Local Testing (XAMPP)
+
 - [ ] Employee civil form loads user data correctly
 - [ ] Employee can submit leave applications
 - [ ] Employee leave history displays correctly
@@ -98,6 +114,7 @@ All changes use standard fetch API and relative URLs, which are supported by:
 - [ ] All forms display signature images correctly
 
 ### Hosted Testing
+
 - [ ] Upload all files to hosting server
 - [ ] Ensure directory structure matches: `/api/`, `/employee/`, `/hr/`, `/dept_head/`
 - [ ] Test same checklist as local
@@ -109,6 +126,7 @@ All changes use standard fetch API and relative URLs, which are supported by:
 All these endpoints now use relative paths and work in any environment:
 
 ### Employee APIs
+
 - `../api/current_user.php` - Get logged-in user data
 - `../api/employee_info.php` - Get employee information
 - `../api/employee_leave_credits.php` - Get leave credit balances
@@ -119,6 +137,7 @@ All these endpoints now use relative paths and work in any environment:
 - `../api/save_signature.php` - Save e-signature
 
 ### HR APIs
+
 - `../api/get_hr_leave_requests.php` - Get leaves pending HR approval
 - `../api/get_leave_requests.php` - Get all leave requests
 - `../api/update_leave_status.php` - Approve/decline leaves
@@ -126,6 +145,7 @@ All these endpoints now use relative paths and work in any environment:
 - `../api/update_hr_section7.php` - Update HR section & signatures
 
 ### Department Head APIs
+
 - `../api/get_leave_requests.php` - Get leave requests for dept
 - `../api/current_user.php` - Get dept head info
 - `../api/get_users.php` - Get users for relief officer selection
@@ -135,19 +155,25 @@ All these endpoints now use relative paths and work in any environment:
 ## Common Issues & Solutions
 
 ### Issue: "Failed to fetch" errors
+
 **Solution:** Ensure the `api/` directory exists at the same level as `employee/`, `hr/`, and `dept_head/`
 
 ### Issue: Signature images not loading
+
 **Solution:** Check that `uploads/signatures/` directory has proper read permissions (755)
 
 ### Issue: Data not loading on hosted server
-**Solution:** 
+
+**Solution:**
+
 1. Check `db.php` connection settings
 2. Verify PHP session is enabled on hosting
 3. Check PHP error logs for specific errors
 
 ### Issue: Cross-Origin (CORS) errors
+
 **Solution:** If hosting API separately, add CORS headers to PHP files:
+
 ```php
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
@@ -157,6 +183,7 @@ header('Access-Control-Allow-Headers: Content-Type');
 ## Database Considerations
 
 The API endpoints (`api/employee_leave_history.php`, etc.) remain unchanged and work correctly because:
+
 1. They use session data to identify users
 2. They return data in JSON format
 3. No hardcoded paths in SQL queries or PHP logic
@@ -164,6 +191,7 @@ The API endpoints (`api/employee_leave_history.php`, etc.) remain unchanged and 
 ## Files NOT Modified
 
 These files don't need changes as they don't make API calls:
+
 - Database SQL files
 - Pure backend PHP files without fetch calls
 - Image/asset files
@@ -179,6 +207,7 @@ These files don't need changes as they don't make API calls:
 ## Support
 
 If you encounter issues:
+
 1. Check browser console (F12) for JavaScript errors
 2. Check PHP error logs on server
 3. Verify all API endpoints return valid JSON

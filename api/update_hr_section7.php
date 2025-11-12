@@ -38,6 +38,18 @@ try {
     $details['hr']['section7'] = $section7;
   }
 
+  // Mirror recommendation and disapproval reasons into hr.section7 so that
+  // Dept Head, HR and Municipal views can read a single canonical place.
+  if (!isset($details['hr']['section7']) || !is_array($details['hr']['section7'])) $details['hr']['section7'] = is_array($details['hr']['section7']) ? $details['hr']['section7'] : [];
+  if ($recommendation !== null) $details['hr']['section7']['recommendation'] = $recommendation;
+  if ($disapproval_reason1 !== null) $details['hr']['section7']['disapproval_reason1'] = $disapproval_reason1;
+  if ($disapproval_reason2 !== null) $details['hr']['section7']['disapproval_reason2'] = $disapproval_reason2;
+  if ($disapproval_reason3 !== null) $details['hr']['section7']['disapproval_reason3'] = $disapproval_reason3;
+  // Also mirror leave credits into hr.section7 for visibility
+  if ($leave_credits && is_array($leave_credits)) {
+    $details['hr']['section7']['leave_credits'] = $leave_credits;
+  }
+
   $savedPaths = [];
   // Save any provided signature data URIs as files. Support both plain dataURI strings (append)
   // and objects with { key: '7a', data_uri: 'data:image/...' } to map per-officer.

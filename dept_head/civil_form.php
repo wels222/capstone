@@ -37,6 +37,50 @@ if (!empty($leave['details'])) {
   $d = json_decode($leave['details'], true);
   if (is_array($d)) $details = $d;
 }
+
+// Resolve leave credit display values using multiple fallbacks so that
+// values stored either in top-level columns or inside the details JSON
+// (including recommendation_fallback or hr.section7) will be shown.
+$certification_date_display = '';
+$vl_total_earned_display = '';
+$vl_less_display = '';
+$vl_balance_display = '';
+$sl_total_display = '';
+$sl_less_display = '';
+$sl_balance_display = '';
+
+// Helper to read a nested key from possible places
+$readFromDetails = function($keys) use ($leave, $details) {
+  // 1) top-level $leave (use isset/array_key_exists to avoid PHP notices)
+  foreach ($keys as $k) {
+    if (isset($leave[$k]) && ($leave[$k] !== '' || $leave[$k] === '0' || $leave[$k] === 0)) {
+      return $leave[$k];
+    }
+  }
+  // 2) recommendation_fallback -> leave_credits (safely check existence)
+  if (isset($details['recommendation_fallback']) && isset($details['recommendation_fallback']['leave_credits']) && is_array($details['recommendation_fallback']['leave_credits'])) {
+    $lc = $details['recommendation_fallback']['leave_credits'];
+    foreach ($keys as $k) {
+      if (isset($lc[$k]) && ($lc[$k] !== '')) return $lc[$k];
+    }
+  }
+  // 3) hr.section7 (safely check existence)
+  if (isset($details['hr']) && isset($details['hr']['section7']) && is_array($details['hr']['section7'])) {
+    $s7 = $details['hr']['section7'];
+    foreach ($keys as $k) {
+      if (isset($s7[$k]) && ($s7[$k] !== '')) return $s7[$k];
+    }
+  }
+  return '';
+};
+
+$certification_date_display = $readFromDetails(['certification_date', 'certificationDate', 'certification_date']);
+$vl_total_earned_display = $readFromDetails(['vl_total_earned', 'vl_total_earned']);
+$vl_less_display = $readFromDetails(['vl_less_this_application', 'vl_less_this_application']);
+$vl_balance_display = $readFromDetails(['vl_balance', 'vl_balance']);
+$sl_total_display = $readFromDetails(['sl_total_earned', 'sl_total_earned']);
+$sl_less_display = $readFromDetails(['sl_less_this_application', 'sl_less_this_application']);
+$sl_balance_display = $readFromDetails(['sl_balance', 'sl_balance']);
 // Prefer the salary the employee actually entered on the form
 $displaySalary = '';
 // Prefer exactly what the employee typed.
@@ -281,6 +325,49 @@ if ($deptHeadName === 'Department Head') {
 
 // Ensure the department head name is uppercase like the other signatories
 $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
+
+// Resolve recommendation and disapproval reasons using fallbacks so that values
+// saved either in top-level columns or in details JSON are shown here.
+$recommendation_display = '';
+$disapproval_reason1_display = '';
+$disapproval_reason2_display = '';
+$disapproval_reason3_display = '';
+
+// Top-level recommendation
+if (!empty($leave['recommendation'])) {
+  $recommendation_display = $leave['recommendation'];
+} elseif (isset($details['recommendation_fallback']) && !empty($details['recommendation_fallback']['recommendation'])) {
+  $recommendation_display = $details['recommendation_fallback']['recommendation'];
+} elseif (!empty($details['recommendation'])) {
+  $recommendation_display = $details['recommendation'];
+} elseif (!empty($details['hr']['section7']['recommendation'])) {
+  $recommendation_display = $details['hr']['section7']['recommendation'];
+}
+
+// Disapproval reasons: prefer top-level columns, then recommendation_fallback, then hr.section7
+if (isset($leave['disapproval_reason1']) && $leave['disapproval_reason1'] !== '') {
+  $disapproval_reason1_display = $leave['disapproval_reason1'];
+} elseif (isset($details['recommendation_fallback']['disapproval_reason1'])) {
+  $disapproval_reason1_display = $details['recommendation_fallback']['disapproval_reason1'];
+} elseif (!empty($details['hr']['section7']['disapproval_reason1'])) {
+  $disapproval_reason1_display = $details['hr']['section7']['disapproval_reason1'];
+}
+
+if (isset($leave['disapproval_reason2']) && $leave['disapproval_reason2'] !== '') {
+  $disapproval_reason2_display = $leave['disapproval_reason2'];
+} elseif (isset($details['recommendation_fallback']['disapproval_reason2'])) {
+  $disapproval_reason2_display = $details['recommendation_fallback']['disapproval_reason2'];
+} elseif (!empty($details['hr']['section7']['disapproval_reason2'])) {
+  $disapproval_reason2_display = $details['hr']['section7']['disapproval_reason2'];
+}
+
+if (isset($leave['disapproval_reason3']) && $leave['disapproval_reason3'] !== '') {
+  $disapproval_reason3_display = $leave['disapproval_reason3'];
+} elseif (isset($details['recommendation_fallback']['disapproval_reason3'])) {
+  $disapproval_reason3_display = $details['recommendation_fallback']['disapproval_reason3'];
+} elseif (!empty($details['hr']['section7']['disapproval_reason3'])) {
+  $disapproval_reason3_display = $details['hr']['section7']['disapproval_reason3'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -761,7 +848,7 @@ $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
               <input
                 type="text"
                 class="form-underline inline-block w-2/5 text-center p-0 h-4 ml-1"
-                value="<?= htmlspecialchars($leave['certification_date'] ?? '') ?>"
+                value="<?= htmlspecialchars($certification_date_display ?? '') ?>"
               />
             </p>
 
@@ -787,13 +874,13 @@ $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
                 <input
                   type="text"
                   class="w-1/3 p-1 text-center border-r border-black"
-                  value="<?= htmlspecialchars($leave['vl_total_earned'] ?? '') ?>"
+                  value="<?= htmlspecialchars($vl_total_earned_display ?? '') ?>"
                 />
                 <input
                   type="text"
                   class="w-1/3 p-1 text-center"
                   style="border: none; outline: none; padding: 1px"
-                  value="<?= htmlspecialchars($leave['sl_total_earned'] ?? '') ?>"
+                  value="<?= htmlspecialchars($sl_total_display ?? '') ?>"
                 />
               </div>
               <!-- Less this application Row -->
@@ -806,13 +893,13 @@ $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
                 <input
                   type="text"
                   class="w-1/3 p-1 text-center border-r border-black"
-                  value="<?= htmlspecialchars($leave['vl_less_this_application'] ?? '') ?>"
+                  value="<?= htmlspecialchars($vl_less_display ?? '') ?>"
                 />
                 <input
                   type="text"
                   class="w-1/3 p-1 text-center"
                   style="border: none; outline: none; padding: 1px"
-                  value="<?= htmlspecialchars($leave['sl_less_this_application'] ?? '') ?>"
+                  value="<?= htmlspecialchars($sl_less_display ?? '') ?>"
                 />
               </div>
               <!-- Balance Row -->
@@ -825,13 +912,13 @@ $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
                 <input
                   type="text"
                   class="w-1/3 p-1 text-center border-r border-black"
-                  value="<?= htmlspecialchars($leave['vl_balance'] ?? '') ?>"
+                  value="<?= htmlspecialchars($vl_balance_display ?? '') ?>"
                 />
                 <input
                   type="text"
                   class="w-1/3 p-1 text-center"
                   style="border: none; outline: none; padding: 1px"
-                  value="<?= htmlspecialchars($leave['sl_balance'] ?? '') ?>"
+                  value="<?= htmlspecialchars($sl_balance_display ?? '') ?>"
                 />
               </div>
             </div>
@@ -863,7 +950,7 @@ $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
                   type="checkbox"
                   id="rec_appr"
                   name="recommendation"
-                  <?= (field($leave, 'recommendation') == 'For approval' ? 'checked' : '') ?> disabled
+                  <?= ($recommendation_display === 'For approval' ? 'checked' : '') ?> disabled
                 /><span class="ml-1">For approval</span>
               </label>
               <label class="checkbox-label" for="rec_disappr">
@@ -872,7 +959,7 @@ $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
                   id="rec_disappr"
                   name="recommendation"
                   class="mt-0.5"
-                  <?= (field($leave, 'recommendation') == 'For disapproval' ? 'checked' : '') ?> disabled
+                  <?= ($recommendation_display === 'For disapproval' ? 'checked' : '') ?> disabled
                 /><span class="ml-1">For disapproval due to</span>
               </label>
             </div>
@@ -882,19 +969,19 @@ $deptHeadName = mb_strtoupper($deptHeadName, 'UTF-8');
                 type="text"
                 class="form-underline w-full p-0 text-xs"
                 placeholder=""
-                value="<?= htmlspecialchars($leave['disapproval_reason1'] ?? '') ?>"
+                value="<?= htmlspecialchars($disapproval_reason1_display ?? '') ?>"
               />
               <input
                 type="text"
                 class="form-underline w-full p-0 text-xs"
                 placeholder=""
-                value="<?= htmlspecialchars($leave['disapproval_reason2'] ?? '') ?>"
+                value="<?= htmlspecialchars($disapproval_reason2_display ?? '') ?>"
               />
               <input
                 type="text"
                 class="form-underline w-full p-0 text-xs"
                 placeholder=""
-                value="<?= htmlspecialchars($leave['disapproval_reason3'] ?? '') ?>"
+                value="<?= htmlspecialchars($disapproval_reason3_display ?? '') ?>"
               />
             </div>
 

@@ -945,7 +945,7 @@
           font-size: 0.85rem;
         }
       }
-      
+
       /* Enhanced checkbox visibility in dept head modal */
       #dept7b-modal input[type="checkbox"] {
         -webkit-appearance: none;
@@ -962,7 +962,7 @@
         border-radius: 3px;
         cursor: pointer;
       }
-      
+
       #dept7b-modal input[type="checkbox"]:checked::after {
         content: "";
         position: absolute;
@@ -974,7 +974,7 @@
         border-width: 0 3px 3px 0;
         transform: rotate(45deg);
       }
-      
+
       /* Make sure modal textarea wraps properly */
       #dept_disapproval_reason_modal {
         font-family: inherit;
@@ -1932,16 +1932,20 @@
           .getElementById("dept7b-save-btn")
           .addEventListener("click", saveDept7B);
         // Handle mutually exclusive checkboxes for recommendation
-        document.getElementById('dept_rec_appr_modal').addEventListener('change', function() {
-          if (this.checked) {
-            document.getElementById('dept_rec_disappr_modal').checked = false;
-          }
-        });
-        document.getElementById('dept_rec_disappr_modal').addEventListener('change', function() {
-          if (this.checked) {
-            document.getElementById('dept_rec_appr_modal').checked = false;
-          }
-        });
+        document
+          .getElementById("dept_rec_appr_modal")
+          .addEventListener("change", function () {
+            if (this.checked) {
+              document.getElementById("dept_rec_disappr_modal").checked = false;
+            }
+          });
+        document
+          .getElementById("dept_rec_disappr_modal")
+          .addEventListener("change", function () {
+            if (this.checked) {
+              document.getElementById("dept_rec_appr_modal").checked = false;
+            }
+          });
       })();
 
       function openDept7BModal(id) {
@@ -1950,34 +1954,114 @@
         // clear inputs
         const fi = document.getElementById("dept7b_sig");
         if (fi) fi.value = null;
-        
+
         // Clear and reset recommendation checkboxes
-        document.getElementById('dept_rec_appr_modal').checked = false;
-        document.getElementById('dept_rec_disappr_modal').checked = false;
-        document.getElementById('dept_disapproval_reason_modal').value = '';
-        
+        document.getElementById("dept_rec_appr_modal").checked = false;
+        document.getElementById("dept_rec_disappr_modal").checked = false;
+        document.getElementById("dept_disapproval_reason_modal").value = "";
+
         // Try to prefill from loaded requests data
         try {
-          const req = window._leaveRequests.find(r => String(r.id) === String(id));
+          const req = window._leaveRequests.find(
+            (r) => String(r.id) === String(id)
+          );
           if (req) {
-            // Prefill recommendation if exists
-            if (req.recommendation === 'For approval') {
-              document.getElementById('dept_rec_appr_modal').checked = true;
-            } else if (req.recommendation === 'For disapproval') {
-              document.getElementById('dept_rec_disappr_modal').checked = true;
+            // 1) Prefill from top-level fields if present
+            if (req.recommendation === "For approval") {
+              document.getElementById("dept_rec_appr_modal").checked = true;
+            } else if (req.recommendation === "For disapproval") {
+              document.getElementById("dept_rec_disappr_modal").checked = true;
             }
-            
-            // Prefill disapproval reasons
-            const reasons = [];
-            if (req.disapproval_reason1) reasons.push(req.disapproval_reason1);
-            if (req.disapproval_reason2) reasons.push(req.disapproval_reason2);
-            if (req.disapproval_reason3) reasons.push(req.disapproval_reason3);
+
+            // Collect disapproval reasons preferring top-level columns
+            const reasonsTop = [];
+            if (req.disapproval_reason1)
+              reasonsTop.push(req.disapproval_reason1);
+            if (req.disapproval_reason2)
+              reasonsTop.push(req.disapproval_reason2);
+            if (req.disapproval_reason3)
+              reasonsTop.push(req.disapproval_reason3);
+
+            // 2) If no top-level values, try to parse details JSON for fallback storage
+            let detailsObj = null;
+            try {
+              detailsObj =
+                typeof req.details === "string"
+                  ? JSON.parse(req.details)
+                  : req.details;
+            } catch (e) {
+              detailsObj = null;
+            }
+
+            // If recommendation wasn't set from top-level, check fallback locations
+            if (
+              !document.getElementById("dept_rec_appr_modal").checked &&
+              !document.getElementById("dept_rec_disappr_modal").checked
+            ) {
+              if (detailsObj) {
+                // recommendation_fallback is used when DB columns are missing
+                const rf = detailsObj.recommendation_fallback || {};
+                if (
+                  rf.recommendation === "For approval" ||
+                  rf.recommendation === "For disapproval"
+                ) {
+                  if (rf.recommendation === "For approval")
+                    document.getElementById(
+                      "dept_rec_appr_modal"
+                    ).checked = true;
+                  else
+                    document.getElementById(
+                      "dept_rec_disappr_modal"
+                    ).checked = true;
+                }
+                // Also check older/alternate locations
+                if (
+                  !document.getElementById("dept_rec_appr_modal").checked &&
+                  !document.getElementById("dept_rec_disappr_modal").checked
+                ) {
+                  if (detailsObj.recommendation === "For approval")
+                    document.getElementById(
+                      "dept_rec_appr_modal"
+                    ).checked = true;
+                  else if (detailsObj.recommendation === "For disapproval")
+                    document.getElementById(
+                      "dept_rec_disappr_modal"
+                    ).checked = true;
+                }
+              }
+            }
+
+            // Determine disapproval reason lines: prefer top-level, then recommendation_fallback
+            let reasons = reasonsTop.slice();
+            if (reasons.length === 0 && detailsObj) {
+              const rf = detailsObj.recommendation_fallback || {};
+              if (rf.disapproval_reason1) reasons.push(rf.disapproval_reason1);
+              if (rf.disapproval_reason2) reasons.push(rf.disapproval_reason2);
+              if (rf.disapproval_reason3) reasons.push(rf.disapproval_reason3);
+            }
+
+            // As another fallback, some code stores reasons under details.hr.section7 (legacy/alternate)
+            if (
+              reasons.length === 0 &&
+              detailsObj &&
+              detailsObj.hr &&
+              detailsObj.hr.section7
+            ) {
+              const s7 = detailsObj.hr.section7;
+              if (s7.disapproval_reason1) reasons.push(s7.disapproval_reason1);
+              if (s7.disapproval_reason2) reasons.push(s7.disapproval_reason2);
+              if (s7.disapproval_reason3) reasons.push(s7.disapproval_reason3);
+            }
+
             if (reasons.length > 0) {
-              document.getElementById('dept_disapproval_reason_modal').value = reasons.join('\n');
+              document.getElementById("dept_disapproval_reason_modal").value =
+                reasons.join("\n");
             }
           }
-        } catch(e) { console.error(e); }
-        
+        } catch (e) {
+          console.error(e);
+        }
+
         // auto-fill name from current_user
         fetch("../api/current_user.php")
           .then((r) => r.json())
@@ -1990,33 +2074,49 @@
             let name = "";
             if (u) {
               const parts = [];
-              if (u.firstname && u.firstname.trim()) parts.push(u.firstname.trim());
+              if (u.firstname && u.firstname.trim())
+                parts.push(u.firstname.trim());
               if (u.mi && u.mi.trim()) {
                 parts.push(u.mi.trim().charAt(0).toUpperCase() + ".");
               }
-              if (u.lastname && u.lastname.trim()) parts.push(u.lastname.trim());
+              if (u.lastname && u.lastname.trim())
+                parts.push(u.lastname.trim());
               name = parts.join(" ").toUpperCase();
             }
             document.getElementById("dept7b_name").value = name;
-            
+
             const hdr = document.getElementById("dept7b-current-name");
-            if (hdr) hdr.textContent = "Fill out the recommendation and upload your signature. Uploading as: " + (name || "");
-            
+            if (hdr)
+              hdr.textContent =
+                "Fill out the recommendation and upload your signature. Uploading as: " +
+                (name || "");
+
             // Check for existing signature
             if (u && u.email) {
-              fetch(`../api/get_user_signature.php?email=${encodeURIComponent(u.email)}`)
-                .then(r => r.json())
-                .then(sigData => {
+              fetch(
+                `../api/get_user_signature.php?email=${encodeURIComponent(
+                  u.email
+                )}`
+              )
+                .then((r) => r.json())
+                .then((sigData) => {
                   if (sigData.success && sigData.hasSignature && sigData.url) {
                     // Show existing signature preview
-                    document.getElementById('existing_signature_preview').style.display = 'block';
-                    document.getElementById('existing_sig_img').src = sigData.url;
+                    document.getElementById(
+                      "existing_signature_preview"
+                    ).style.display = "block";
+                    document.getElementById("existing_sig_img").src =
+                      sigData.url;
                   } else {
-                    document.getElementById('existing_signature_preview').style.display = 'none';
+                    document.getElementById(
+                      "existing_signature_preview"
+                    ).style.display = "none";
                   }
                 })
                 .catch(() => {
-                  document.getElementById('existing_signature_preview').style.display = 'none';
+                  document.getElementById(
+                    "existing_signature_preview"
+                  ).style.display = "none";
                 });
             }
           })
@@ -2033,37 +2133,43 @@
       async function saveDept7B() {
         const id = window._editingDept7BId;
         if (!id) return alert("No request selected");
-        
+
         // Get recommendation values
-        const recAppr = document.getElementById('dept_rec_appr_modal').checked;
-        const recDisappr = document.getElementById('dept_rec_disappr_modal').checked;
-        const disapprovalText = document.getElementById('dept_disapproval_reason_modal').value.trim();
-        
+        const recAppr = document.getElementById("dept_rec_appr_modal").checked;
+        const recDisappr = document.getElementById(
+          "dept_rec_disappr_modal"
+        ).checked;
+        const disapprovalText = document
+          .getElementById("dept_disapproval_reason_modal")
+          .value.trim();
+
         // Validate: must select one recommendation
         if (!recAppr && !recDisappr) {
-          return alert('Please select a recommendation (For approval or For disapproval)');
+          return alert(
+            "Please select a recommendation (For approval or For disapproval)"
+          );
         }
-        
+
         // If both are checked, show error
         if (recAppr && recDisappr) {
-          return alert('Please select only one recommendation option');
+          return alert("Please select only one recommendation option");
         }
-        
-        const recommendation = recAppr ? 'For approval' : 'For disapproval';
-        
+
+        const recommendation = recAppr ? "For approval" : "For disapproval";
+
         // Split disapproval reason into 3 lines (max ~55 chars per line)
         const splitTextIntoLines = (text, maxCharsPerLine = 55) => {
-          if (!text) return ['', '', ''];
-          
+          if (!text) return ["", "", ""];
+
           const words = text.split(/\s+/);
-          const lines = ['', '', ''];
+          const lines = ["", "", ""];
           let currentLine = 0;
-          
+
           for (const word of words) {
             // Check if we need to move to next line
             const currentText = lines[currentLine];
-            const testLine = currentText ? currentText + ' ' + word : word;
-            
+            const testLine = currentText ? currentText + " " + word : word;
+
             if (testLine.length <= maxCharsPerLine) {
               // Word fits on current line
               lines[currentLine] = testLine;
@@ -2075,36 +2181,45 @@
                 lines[currentLine] = word;
               } else {
                 // Already on line 3, force add with space if it fits within reasonable limit
-                if (currentText.length + word.length + 1 <= maxCharsPerLine + 10) {
-                  lines[currentLine] = currentText + ' ' + word;
+                if (
+                  currentText.length + word.length + 1 <=
+                  maxCharsPerLine + 10
+                ) {
+                  lines[currentLine] = currentText + " " + word;
                 } else {
                   // Truncate with ellipsis
-                  lines[currentLine] = currentText + '...';
+                  lines[currentLine] = currentText + "...";
                   break;
                 }
               }
             }
           }
-          
+
           return lines;
         };
-        
-        const [reason1, reason2, reason3] = splitTextIntoLines(disapprovalText, 55);
-        
+
+        const [reason1, reason2, reason3] = splitTextIntoLines(
+          disapprovalText,
+          55
+        );
+
         const name = document.getElementById("dept7b_name").value || "";
-        
+
         // Get current user email for signature storage
         let userEmail = null;
         try {
           const userResp = await fetch("../api/current_user.php");
           const userJson = await userResp.json();
-          if (userJson && (userJson.email || (userJson.user && userJson.user.email))) {
+          if (
+            userJson &&
+            (userJson.email || (userJson.user && userJson.user.email))
+          ) {
             userEmail = userJson.email || userJson.user.email;
           }
-        } catch(e) {
-          console.error('Error fetching user email:', e);
+        } catch (e) {
+          console.error("Error fetching user email:", e);
         }
-        
+
         // convert file to dataURI and save to employee_signatures table
         const fi = document.getElementById("dept7b_sig");
         const toDataURI = (file) =>
@@ -2114,39 +2229,39 @@
             r.onerror = () => rej();
             r.readAsDataURL(file);
           });
-        
+
         const sigs = [];
         let signatureUploaded = false;
-        
+
         if (fi && fi.files && fi.files[0]) {
           try {
             const dataUri = await toDataURI(fi.files[0]);
-            
+
             // Save signature to employee_signatures table if we have user email
             if (userEmail) {
               try {
-                const sigResp = await fetch('../api/save_signature.php', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                const sigResp = await fetch("../api/save_signature.php", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     employee_email: userEmail,
-                    signature_data_uri: dataUri
-                  })
+                    signature_data_uri: dataUri,
+                  }),
                 });
                 const sigJson = await sigResp.json();
                 if (sigJson.success) {
-                  console.log('Signature saved to employee_signatures table');
+                  console.log("Signature saved to employee_signatures table");
                   signatureUploaded = true;
                   // Use the saved path from employee_signatures for this request
                   sigs.push({ key: "7b", data_uri: dataUri });
                 } else {
-                  console.error('Failed to save signature:', sigJson.error);
+                  console.error("Failed to save signature:", sigJson.error);
                   // Still try to save with the request
                   sigs.push({ key: "7b", data_uri: dataUri });
                   signatureUploaded = true;
                 }
-              } catch(e) {
-                console.error('Error saving signature:', e);
+              } catch (e) {
+                console.error("Error saving signature:", e);
                 // Still try to save with the request
                 sigs.push({ key: "7b", data_uri: dataUri });
                 signatureUploaded = true;
@@ -2157,15 +2272,25 @@
               signatureUploaded = true;
             }
           } catch (e) {
-            console.error('Error converting file to data URI:', e);
+            console.error("Error converting file to data URI:", e);
           }
         } else if (userEmail) {
           // No new file uploaded, try to use existing signature from employee_signatures
           try {
-            const existingSigResp = await fetch(`../api/get_user_signature.php?email=${encodeURIComponent(userEmail)}`);
+            const existingSigResp = await fetch(
+              `../api/get_user_signature.php?email=${encodeURIComponent(
+                userEmail
+              )}`
+            );
             const existingSigJson = await existingSigResp.json();
-            if (existingSigJson.success && existingSigJson.hasSignature && existingSigJson.url) {
-              console.log('Using existing signature from employee_signatures table');
+            if (
+              existingSigJson.success &&
+              existingSigJson.hasSignature &&
+              existingSigJson.url
+            ) {
+              console.log(
+                "Using existing signature from employee_signatures table"
+              );
               // Fetch the existing signature as blob and convert to data URI
               const imgResp = await fetch(existingSigJson.url);
               const blob = await imgResp.blob();
@@ -2177,28 +2302,30 @@
               sigs.push({ key: "7b", data_uri: existingDataUri });
               signatureUploaded = true;
             }
-          } catch(e) {
-            console.error('Error fetching existing signature:', e);
+          } catch (e) {
+            console.error("Error fetching existing signature:", e);
           }
         }
-        
+
         // Validate that signature is provided (either new upload or existing)
         if (!signatureUploaded) {
-          return alert('Please upload your signature or ensure you have an existing signature on file.');
+          return alert(
+            "Please upload your signature or ensure you have an existing signature on file."
+          );
         }
-        
+
         // build section7 object with authorized_officer_7b
         const section7 = { authorized_officer_7b: name };
-        const payload = { 
-          id, 
-          section7, 
+        const payload = {
+          id,
+          section7,
           signatures: sigs,
           recommendation,
           disapproval_reason1: reason1,
           disapproval_reason2: reason2,
-          disapproval_reason3: reason3
+          disapproval_reason3: reason3,
         };
-        
+
         try {
           const resp = await fetch("../api/update_hr_section7.php", {
             method: "POST",
@@ -2217,13 +2344,19 @@
             fetchLeaveRequests();
           } else {
             const errorMsg = js.error || "unknown";
-            if (errorMsg.includes("DB error") || errorMsg.includes("Unknown column")) {
-              alert("Database Error: Missing columns detected.\n\n" +
-                    "Please run the database migration:\n" +
-                    "1. Open: http://localhost/capstone/run_migration.php\n" +
-                    "2. Wait for success message\n" +
-                    "3. Try saving again\n\n" +
-                    "Error details: " + errorMsg);
+            if (
+              errorMsg.includes("DB error") ||
+              errorMsg.includes("Unknown column")
+            ) {
+              alert(
+                "Database Error: Missing columns detected.\n\n" +
+                  "Please run the database migration:\n" +
+                  "1. Open: http://localhost/capstone/run_migration.php\n" +
+                  "2. Wait for success message\n" +
+                  "3. Try saving again\n\n" +
+                  "Error details: " +
+                  errorMsg
+              );
             } else {
               alert("Failed to save: " + errorMsg);
             }
