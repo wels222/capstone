@@ -422,7 +422,7 @@ if (isset($leave['disapproval_reason3']) && $leave['disapproval_reason3'] !== ''
        so long names are visible and the underline aligns with the displayed name. */
     .signature-name {
       border-bottom: 1px solid #000;
-      padding-top: 28px; /* same vertical spacing used by the signature img positioning */
+      padding-top: 24px; /* same vertical spacing used by the signature img positioning */
       padding-bottom: 2px;
       display: block;
       margin: 0 auto;
@@ -488,10 +488,159 @@ if (isset($leave['disapproval_reason3']) && $leave['disapproval_reason3'] !== ''
       input[readonly], input[disabled], textarea[readonly], textarea[disabled], select[readonly], select[disabled] { color: #000 !important; opacity: 1 !important; }
     }
     @media print {
-      @page { size: A4 portrait; margin: 12mm; }
-      html, body { width: 210mm; background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .form-container { width: 186mm !important; max-width: 186mm !important; margin: 0 auto !important; box-shadow: none !important; background: #fff !important; padding: 6mm; min-height: auto !important; }
+      @page { 
+        size: A4 portrait; 
+        margin: 6mm 8mm; 
+      }
+      html, body { 
+        width: 210mm; 
+        height: 297mm;
+        background: #fff !important; 
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden;
+      }
+      .form-container { 
+        width: 194mm !important; 
+        max-width: 194mm !important; 
+        margin: 0 auto !important; 
+        box-shadow: none !important; 
+        background: #fff !important; 
+        padding: 2mm 3mm !important;
+        min-height: auto !important;
+        page-break-inside: avoid;
+        transform: scale(0.95);
+        transform-origin: top center;
+      }
       .no-print { display: none !important; }
+      
+      /* Aggressive spacing reduction for print */
+      header { 
+        margin-bottom: 0.25rem !important; 
+        font-size: 0.7rem !important;
+      }
+      header img { 
+        height: 32px !important; 
+        width: auto !important; 
+      }
+      header h1 { 
+        font-size: 1rem !important; 
+        margin-top: 0.25rem !important; 
+        margin-bottom: 0.25rem !important;
+      }
+      
+      .form-box { 
+        margin-top: 0.25rem !important; 
+      }
+      .text-xs { font-size: 0.65rem !important; }
+      .text-sm { font-size: 0.7rem !important; }
+      .text-xxs { font-size: 0.55rem !important; }
+      .text-lg { font-size: 0.9rem !important; }
+      
+      .mt-1 { margin-top: 0.15rem !important; }
+      .mt-2 { margin-top: 0.25rem !important; }
+      .mt-3 { margin-top: 0.3rem !important; }
+      .mt-4 { margin-top: 0.4rem !important; }
+      .mt-6 { margin-top: 0.6rem !important; }
+      .mt-8 { margin-top: 0.8rem !important; }
+      .mt-12 { margin-top: 1rem !important; }
+      
+      .mb-1 { margin-bottom: 0.15rem !important; }
+      .mb-2 { margin-bottom: 0.25rem !important; }
+      .mb-3 { margin-bottom: 0.3rem !important; }
+      .mb-4 { margin-bottom: 0.4rem !important; }
+      
+      .p-1 { padding: 0.15rem !important; }
+      .p-2 { padding: 0.25rem !important; }
+      .pt-1 { padding-top: 0.15rem !important; }
+      .pt-2 { padding-top: 0.25rem !important; }
+      .pb-1 { padding-bottom: 0.15rem !important; }
+      
+      .space-y-1 > * + * { margin-top: 0.15rem !important; }
+      .space-y-2 > * + * { margin-top: 0.25rem !important; }
+      
+      /* Reduce checkbox/radio sizes */
+      input[type="checkbox"], input[type="radio"] {
+        width: 0.85rem !important;
+        height: 0.85rem !important;
+        min-width: 0.85rem !important;
+        min-height: 0.85rem !important;
+      }
+      
+      /* Reduce signature area padding */
+      .signature-name {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+        font-size: 0.75rem !important;
+      }
+      
+      /* Signature container spacing */
+      div[style*="padding-top:30px"] {
+        padding-top: 28px !important;
+        min-height: 40px !important;
+      }
+      
+      /* Control signature image size for print */
+      img[alt*="sig"], img[alt*="Signature"], img[src*="signature"] {
+        max-height: 30px !important;
+        max-width: 100px !important;
+        height: auto !important;
+        width: auto !important;
+        object-fit: contain !important;
+      }
+      
+      /* Fix signature container heights */
+      div[style*="position:relative"] {
+        min-height: 40px !important;
+        max-height: 40px !important;
+        overflow: visible !important;
+        margin-bottom: 0.2rem !important;
+      }
+      
+      /* Fix table in section 7.A */
+      .border.border-black {
+        border-collapse: collapse !important;
+      }
+      
+      .border.border-black .flex {
+        display: flex !important;
+        border: 1px solid #000 !important;
+      }
+      
+      .border-l.border-black,
+      .border-r.border-black,
+      .border-t.border-black {
+        border-color: #000 !important;
+      }
+      
+      /* Ensure content doesn't overflow */
+      * {
+        box-sizing: border-box !important;
+      }
+      
+      /* Prevent page breaks */
+      .form-box, .flex {
+        page-break-inside: avoid !important;
+      }
+      
+      /* Reduce table spacing */
+      .border.border-black.mt-2 {
+        margin-top: 0.25rem !important;
+      }
+      
+      /* Compact input heights */
+      .form-input, input, textarea {
+        line-height: 1.1 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
+      
+      /* Fix spacing after signatures */
+      .mt-0\.5 {
+        margin-top: 0.1rem !important;
+      }
     }
   </style>
 </head>
@@ -964,11 +1113,11 @@ if (isset($leave['disapproval_reason3']) && $leave['disapproval_reason3'] !== ''
             ?>
             <div class="mt-8 text-center text-xxs font-semibold pt-2">
               <?php $certSig = $hsigs['certifier'] ?? ($hsigs['7a'] ?? null); ?>
-                <div style="position:relative; min-height:56px;">
+                <div style="position:relative; min-height:45px; padding-top:30px;">
                   <?php if (!empty($certSig)): ?>
-                    <img src="../<?= ltrim($certSig, '/') ?>" alt="Certifier sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+                    <img src="../<?= ltrim($certSig, '/') ?>" alt="Certifier sig" style="position:absolute; left:50%; transform:translateX(-50%); top:0; max-height:28px; max-width:100px; object-fit:contain; pointer-events:none; z-index:1;" />
                   <?php endif; ?>
-                  <input type="text" class="signature-name" value="<?= htmlspecialchars($adminAideName) ?>" readonly />
+                  <input type="text" class="signature-name" style="padding-top:0; margin-top:0;" value="<?= htmlspecialchars($adminAideName) ?>" readonly />
                 </div>
               <p class="mt-0.5 font-normal">Administrative Aide II</p>
             </div>
@@ -1019,7 +1168,7 @@ if (isset($leave['disapproval_reason3']) && $leave['disapproval_reason3'] !== ''
             </div>
 
             <div class="mt-12 text-center text-xs font-semibold pt-2">
-              <div style="position:relative; min-height:56px;">
+              <div style="position:relative; min-height:45px; padding-top:30px;">
                   <?php
                     // Show Dept Head signature ONLY if it was saved for this specific request (7B)
                     $deptSigToShow = $hsigs['7b'] ?? '';
@@ -1030,9 +1179,9 @@ if (isset($leave['disapproval_reason3']) && $leave['disapproval_reason3'] !== ''
                     }
                   ?>
                   <?php if (!empty($deptSigToShow)): ?>
-                    <img src="../<?= ltrim($deptSigToShow, '/') ?>" alt="7B sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+                    <img src="../<?= ltrim($deptSigToShow, '/') ?>" alt="7B sig" style="position:absolute; left:50%; transform:translateX(-50%); top:0; max-height:28px; max-width:100px; object-fit:contain; pointer-events:none; z-index:1;" />
                   <?php endif; ?>
-                  <input type="text" class="signature-name" value="<?= htmlspecialchars($deptHeadNameFor7B) ?>" readonly />
+                  <input type="text" class="signature-name" style="padding-top:0; margin-top:0;" value="<?= htmlspecialchars($deptHeadNameFor7B) ?>" readonly />
                 </div>
               <p class="mt-0.5 font-normal"></p>
             </div>
@@ -1110,11 +1259,11 @@ if (isset($leave['disapproval_reason3']) && $leave['disapproval_reason3'] !== ''
             $municipalSig = $hsigs['final'] ?? ($hsigs['authorized'] ?? null);
           }
           ?>
-          <div style="position:relative; min-height:56px;">
+          <div style="position:relative; min-height:45px; padding-top:30px;">
             <?php if (!empty($municipalSig)): ?>
-              <img src="../<?= ltrim($municipalSig, '/') ?>" alt="municipal admin sig" style="position:absolute; left:50%; transform:translateX(-50%); bottom:28px; max-height:40px; pointer-events:none; z-index:2;" />
+              <img src="../<?= ltrim($municipalSig, '/') ?>" alt="municipal admin sig" style="position:absolute; left:50%; transform:translateX(-50%); top:0; max-height:28px; max-width:100px; object-fit:contain; pointer-events:none; z-index:1;" />
             <?php endif; ?>
-            <input type="text" class="signature-name" value="<?= htmlspecialchars($s['final_official'] ?? $leave['authorized_official'] ?? 'ATTY. MARIA CONCEPCION R. HERNANDEZ-BELOSO') ?>" readonly />
+            <input type="text" class="signature-name" style="padding-top:0; margin-top:0;" value="<?= htmlspecialchars($s['final_official'] ?? $leave['authorized_official'] ?? 'ATTY. MARIA CONCEPCION R. HERNANDEZ-BELOSO') ?>" readonly />
           </div>
           <p class="mt-0.5 font-normal">Municipal Administrator</p>
         </div>
