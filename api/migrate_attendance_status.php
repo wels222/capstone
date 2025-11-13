@@ -8,12 +8,12 @@ require_once __DIR__ . '/../db.php';
 header('Content-Type: application/json');
 
 try {
-    // Update time_in_status ENUM to include 'Present', 'Late', 'Absent'
-    $sql1 = "ALTER TABLE attendance MODIFY COLUMN time_in_status ENUM('Present', 'Late', 'Absent', 'on_time', 'late', 'absent') DEFAULT NULL";
+    // Update time_in_status ENUM to include 'Present', 'Late', 'Undertime', 'Absent'
+    $sql1 = "ALTER TABLE attendance MODIFY COLUMN time_in_status ENUM('Present', 'Late', 'Undertime', 'Absent', 'on_time', 'late', 'absent') DEFAULT NULL";
     $pdo->exec($sql1);
     
-    // Update time_out_status ENUM to include 'On-time', 'Undertime', 'Overtime'
-    $sql2 = "ALTER TABLE attendance MODIFY COLUMN time_out_status ENUM('On-time', 'Undertime', 'Overtime', 'on_time', 'early', 'absent') DEFAULT NULL";
+    // Update time_out_status ENUM to include 'Out', 'On-time', 'Undertime', 'Overtime' (keep On-time for backward compat)
+    $sql2 = "ALTER TABLE attendance MODIFY COLUMN time_out_status ENUM('Out', 'On-time', 'Undertime', 'Overtime', 'on_time', 'early', 'absent') DEFAULT NULL";
     $pdo->exec($sql2);
     
     // Migrate existing data
@@ -27,11 +27,14 @@ try {
     $pdo->exec("UPDATE attendance SET time_out_status = 'Undertime' WHERE time_out_status = 'early'");
     
     // Now remove old ENUM values (optional - keeps backward compatibility if commented out)
-    $sql3 = "ALTER TABLE attendance MODIFY COLUMN time_in_status ENUM('Present', 'Late', 'Absent') DEFAULT NULL";
+    $sql3 = "ALTER TABLE attendance MODIFY COLUMN time_in_status ENUM('Present', 'Late', 'Undertime', 'Absent') DEFAULT NULL";
     $pdo->exec($sql3);
     
-    $sql4 = "ALTER TABLE attendance MODIFY COLUMN time_out_status ENUM('On-time', 'Undertime', 'Overtime') DEFAULT NULL";
+    $sql4 = "ALTER TABLE attendance MODIFY COLUMN time_out_status ENUM('Out', 'On-time', 'Undertime', 'Overtime') DEFAULT NULL";
     $pdo->exec($sql4);
+
+    // Optionally convert existing 'On-time' to 'Out'
+    $pdo->exec("UPDATE attendance SET time_out_status = 'Out' WHERE time_out_status = 'On-time'");
     
     echo json_encode([
         'success' => true,

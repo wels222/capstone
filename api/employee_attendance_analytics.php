@@ -87,9 +87,10 @@ try {
             
             $present = ($record && $record['time_in_status'] === 'Present') ? 1 : 0;
             $late = ($record && $record['time_in_status'] === 'Late') ? 1 : 0;
+            $timeinUndertime = ($record && $record['time_in_status'] === 'Undertime') ? 1 : 0;
             $undertime = ($record && $record['time_out_status'] === 'Undertime') ? 1 : 0;
             $overtime = ($record && $record['time_out_status'] === 'Overtime') ? 1 : 0;
-            $absent = (!$record || (!$present && !$late)) ? 1 : 0;
+            $absent = (!$record || (!$present && !$late && !$timeinUndertime)) ? 1 : 0;
             
             $totalPresent += $present;
             $totalLate += $late;
@@ -130,6 +131,10 @@ try {
                 }
                 if ($r['time_in_status'] === 'Late') {
                     $counts['late']++;
+                    $counts['absent']--;
+                }
+                if ($r['time_in_status'] === 'Undertime') {
+                    // Count as attended day as well (late time-in)
                     $counts['absent']--;
                 }
                 if ($r['time_out_status'] === 'Undertime') $counts['undertime']++;
@@ -176,6 +181,10 @@ try {
                 }
                 if ($r['time_in_status'] === 'Late') {
                     $counts['late']++;
+                    $counts['absent']--;
+                }
+                if ($r['time_in_status'] === 'Undertime') {
+                    // Count as attended day as well (late time-in)
                     $counts['absent']--;
                 }
                 if ($r['time_out_status'] === 'Undertime') $counts['undertime']++;

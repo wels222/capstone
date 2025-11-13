@@ -431,7 +431,7 @@
                 statusEl.style.background = '#ef4444';
                 statusEl.style.color = '#fff';
                 statusEl.innerHTML = '<i class="fas fa-times-circle" style="margin-right:6px;"></i>' + status;
-            } else if (s.includes('on-time') || s.includes('ontime')) {
+            } else if (s.includes('on-time') || s.includes('ontime') || s === 'out' || s.includes(' out')) {
                 statusEl.style.background = '#14b8a6';
                 statusEl.style.color = '#fff';
                 statusEl.innerHTML = '<i class="fas fa-user-check" style="margin-right:6px;"></i>' + status;

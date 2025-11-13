@@ -69,7 +69,7 @@ try {
         }
 
         $sql .= ' ORDER BY a.time_in DESC';
-    } else if ($status === 'On-time' || $status === 'Undertime' || $status === 'Overtime') {
+    } else if ($status === 'Out' || $status === 'On-time' || $status === 'Undertime' || $status === 'Overtime') {
         // Filter by time_out_status only
         $params = [$date];
         $sql = 'SELECT a.*, 

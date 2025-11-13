@@ -588,6 +588,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     timeInStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 px-2 py-0.5"><i class="fas fa-clock mr-1"></i>Late</span>';
                 } else if (timeInStatus === 'Present') {
                     timeInStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-green-100 text-green-800 px-2 py-0.5"><i class="fas fa-check mr-1"></i>Present</span>';
+                } else if (timeInStatus === 'Undertime') {
+                    timeInStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-amber-100 text-amber-800 px-2 py-0.5"><i class="fas fa-hourglass-half mr-1"></i>Undertime</span>';
                 } else if (timeInStatus === 'Absent') {
                     timeInStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-red-100 text-red-800 px-2 py-0.5"><i class="fas fa-times mr-1"></i>Absent</span>';
                 } else {
@@ -600,13 +602,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Time Out Status Badge
             let timeOutStatusBadge = '';
             if (rec.timeOut) {
-                const timeOutStatus = rec.timeOutStatus || (rec.undertime ? 'Undertime' : (rec.overtime ? 'Overtime' : 'On-time'));
+                const timeOutStatus = rec.timeOutStatus || (rec.undertime ? 'Undertime' : (rec.overtime ? 'Overtime' : 'Out'));
                 if (timeOutStatus === 'Undertime') {
                     timeOutStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-orange-100 text-orange-800 px-2 py-0.5"><i class="fas fa-user-clock mr-1"></i>Undertime</span>';
                 } else if (timeOutStatus === 'Overtime') {
                     timeOutStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-blue-100 text-blue-800 px-2 py-0.5"><i class="fas fa-business-time mr-1"></i>Overtime</span>';
-                } else if (timeOutStatus === 'On-time') {
-                    timeOutStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-green-100 text-green-800 px-2 py-0.5"><i class="fas fa-check mr-1"></i>On-time</span>';
+                } else if (timeOutStatus === 'On-time' || timeOutStatus === 'Out') {
+                    timeOutStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-green-100 text-green-800 px-2 py-0.5"><i class="fas fa-check mr-1"></i>Out</span>';
                 } else {
                     timeOutStatusBadge = '<span class="text-gray-400">—</span>';
                 }

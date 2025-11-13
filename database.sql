@@ -151,8 +151,8 @@ CREATE TABLE IF NOT EXISTS attendance (
     date DATE NOT NULL,
     time_in DATETIME DEFAULT NULL,
     time_out DATETIME DEFAULT NULL,
-    time_in_status ENUM('Present','Late','Absent') DEFAULT NULL COMMENT 'Time In Status: Present (5:30 AM - 7:00 AM), Late (7:01 AM - 12:00 PM), Absent (12:01 PM onwards)',
-    time_out_status ENUM('On-time','Undertime','Overtime') DEFAULT NULL COMMENT 'Time Out Status: Undertime (7:30 AM - 4:59 PM), On-time (5:00 PM - 5:05 PM), Overtime (5:06 PM onwards)',
+	time_in_status ENUM('Present','Late','Undertime','Absent') DEFAULT NULL COMMENT 'Time In Status: Present (6:00 AM - 8:00 AM), Late (8:01 AM - 12:00 PM), Undertime (12:01 PM - 5:00 PM), Absent (after 5:00 PM)',
+	time_out_status ENUM('Out','Undertime','Overtime','On-time') DEFAULT NULL COMMENT 'Time Out Status: Undertime (up to 4:59 PM), Out (5:00 PM - 5:59 PM), Overtime (6:00 PM onwards). Includes On-time for backward compatibility.',
     status VARCHAR(20) DEFAULT NULL COMMENT 'Overall daily status: Present, Absent, etc.',
     notes TEXT DEFAULT NULL COMMENT 'Additional notes or remarks',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -172,3 +172,18 @@ CREATE TABLE IF NOT EXISTS department_heads (
     updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_department (department)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS fingerprints (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    employee_id VARCHAR(50) NOT NULL,
+    template LONGBLOB NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    INDEX (employee_id),
+    CONSTRAINT fk_fingerprints_employee
+        FOREIGN KEY (employee_id) REFERENCES users(employee_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+

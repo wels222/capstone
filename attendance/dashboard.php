@@ -168,7 +168,7 @@ session_start();
         </div>
         <div class="card">
             <div class="card-icon present"><i class="fas fa-check-circle"></i></div>
-            <div class="card-title">Present (On-time)</div>
+            <div class="card-title">Present</div>
             <div class="card-value" id="present">-</div>
         </div>
         <div class="card">
@@ -201,8 +201,8 @@ session_start();
         <button class="status-btn" data-status="Absent" style="padding: 12px 24px; background: #ef4444; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; font-size: 14px; transition: all 0.3s;">
             <i class="fas fa-times-circle"></i> Absent Only
         </button>
-        <button class="status-btn" data-status="On-time" style="padding: 12px 24px; background: #14b8a6; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; font-size: 14px; transition: all 0.3s;">
-            <i class="fas fa-user-check"></i> On-time
+        <button class="status-btn" data-status="Out" style="padding: 12px 24px; background: #14b8a6; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; font-size: 14px; transition: all 0.3s;">
+            <i class="fas fa-user-check"></i> Out
         </button>
         <button class="status-btn" data-status="Undertime" style="padding: 12px 24px; background: #fb923c; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; font-size: 14px; transition: all 0.3s;">
             <i class="fas fa-hourglass-half"></i> Undertime
@@ -331,12 +331,13 @@ session_start();
                 let timeInColor = '#dc2626';
                 if(timeInStatus === 'Present') { timeInBg = '#dcfce7'; timeInColor = '#16a34a'; }
                 else if(timeInStatus === 'Late') { timeInBg = '#fef3c7'; timeInColor = '#d97706'; }
+                else if(timeInStatus === 'Undertime') { timeInBg = '#fde68a'; timeInColor = '#b45309'; }
                 
                 // Time Out Status
                 const timeOutStatus = rec.time_out_status || '-';
                 let timeOutBg = '#f3f4f6';
                 let timeOutColor = '#6b7280';
-                if(timeOutStatus === 'On-time') { timeOutBg = '#d1fae5'; timeOutColor = '#059669'; }
+                if(timeOutStatus === 'On-time' || timeOutStatus === 'Out') { timeOutBg = '#d1fae5'; timeOutColor = '#059669'; }
                 else if(timeOutStatus === 'Undertime') { timeOutBg = '#fed7aa'; timeOutColor = '#ea580c'; }
                 else if(timeOutStatus === 'Overtime') { timeOutBg = '#dbeafe'; timeOutColor = '#2563eb'; }
                 

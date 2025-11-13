@@ -23,39 +23,43 @@ try {
         $timeInStatus = null;
         $timeOutStatus = null;
         
-        // Recalculate Time In Status
+        // Recalculate Time In Status (new rules)
         if ($timeIn) {
             $timeInTimestamp = strtotime($timeIn);
-            $present_start = strtotime($date . ' 05:30:00'); // 5:30 AM
-            $present_end = strtotime($date . ' 07:00:00');   // 7:00 AM
+            $present_start = strtotime($date . ' 06:00:00'); // 6:00 AM
+            $present_end = strtotime($date . ' 08:00:00');   // 8:00 AM
             $late_end = strtotime($date . ' 12:00:00');      // 12:00 PM
-            
-            if ($timeInTimestamp >= $present_start && $timeInTimestamp <= $present_end) {
-                $timeInStatus = 'Present'; // 5:30 AM - 7:00 AM
-            } elseif ($timeInTimestamp > $present_end && $timeInTimestamp <= $late_end) {
-                $timeInStatus = 'Late'; // 7:01 AM - 12:00 PM
+            $undertime_end = strtotime($date . ' 17:00:00'); // 5:00 PM
+
+            if ($timeInTimestamp < $present_start) {
+                $timeInStatus = 'Present';
+            } elseif ($timeInTimestamp <= $present_end) {
+                $timeInStatus = 'Present';
+            } elseif ($timeInTimestamp <= $late_end) {
+                $timeInStatus = 'Late';
+            } elseif ($timeInTimestamp <= $undertime_end) {
+                $timeInStatus = 'Undertime';
             } else {
-                $timeInStatus = 'Absent'; // 12:01 PM onwards
+                $timeInStatus = 'Absent';
             }
         }
         
-        // Recalculate Time Out Status
+        // Recalculate Time Out Status (new rules)
         if ($timeOut) {
             $timeOutTimestamp = strtotime($timeOut);
-            $undertime_start = strtotime($date . ' 07:30:00'); // 7:30 AM
             $undertime_end = strtotime($date . ' 16:59:59');   // 4:59:59 PM
-            $ontime_start = strtotime($date . ' 17:00:00');    // 5:00 PM
-            $ontime_end = strtotime($date . ' 17:05:00');      // 5:05 PM
-            $overtime_start = strtotime($date . ' 17:06:00');  // 5:06 PM
-            
-            if ($timeOutTimestamp >= $undertime_start && $timeOutTimestamp <= $undertime_end) {
-                $timeOutStatus = 'Undertime'; // 7:30 AM - 4:59 PM
-            } elseif ($timeOutTimestamp >= $ontime_start && $timeOutTimestamp <= $ontime_end) {
-                $timeOutStatus = 'On-time'; // 5:00 PM - 5:05 PM
+            $out_start = strtotime($date . ' 17:00:00');       // 5:00 PM
+            $out_end = strtotime($date . ' 17:05:00');         // 5:05 PM
+            $overtime_start = strtotime($date . ' 18:00:00');  // 6:00 PM
+
+            if ($timeOutTimestamp <= $undertime_end) {
+                $timeOutStatus = 'Undertime';
+            } elseif ($timeOutTimestamp >= $out_start && $timeOutTimestamp <= $out_end) {
+                $timeOutStatus = 'Out';
             } elseif ($timeOutTimestamp >= $overtime_start) {
-                $timeOutStatus = 'Overtime'; // 5:06 PM onwards
+                $timeOutStatus = 'Overtime';
             } else {
-                $timeOutStatus = 'On-time'; // Default fallback
+                $timeOutStatus = 'Out';
             }
         }
         

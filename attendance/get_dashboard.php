@@ -16,7 +16,7 @@ $totStmt = $pdo->prepare($totSql);
 $totStmt->execute($totParams);
 $total = $totStmt->fetchColumn();
 
-// Present count (time_in_status = 'Present' only, not Late)
+// Present count (time_in_status = 'Present' only)
 $presentSql = 'SELECT COUNT(DISTINCT a.employee_id) FROM attendance a 
                JOIN users u ON a.employee_id = u.employee_id 
                WHERE a.date = ? AND a.time_in_status = "Present"';
@@ -42,10 +42,20 @@ $lateStmt = $pdo->prepare($lateSql);
 $lateStmt->execute($lateParams);
 $late = $lateStmt->fetchColumn();
 
-// Active count (Present + Late = anyone who timed in before 12:01 PM)
-$active = intval($present) + intval($late);
+// Undertime-at-time-in count (time_in_status = 'Undertime')
+$uiSql = 'SELECT COUNT(DISTINCT a.employee_id) FROM attendance a 
+            JOIN users u ON a.employee_id = u.employee_id 
+            WHERE a.date = ? AND a.time_in_status = "Undertime"';
+$uiParams = [$today];
+if ($dept) { $uiSql .= ' AND u.department = ?'; $uiParams[] = $dept; }
+$uiStmt = $pdo->prepare($uiSql);
+$uiStmt->execute($uiParams);
+$timeinUndertime = $uiStmt->fetchColumn();
 
-// Absent = total - active (not total - present)
+// Active = Present + Late + Time-in Undertime (anyone who timed in by 5:00 PM)
+$active = intval($present) + intval($late) + intval($timeinUndertime);
+
+// Absent = total - active
 $absent = max(0, intval($total) - intval($active));
 
 echo json_encode([
@@ -53,6 +63,7 @@ echo json_encode([
     'total_employees' => intval($total),
     'present' => intval($present),
     'late' => intval($late),
+    'timein_undertime' => intval($timeinUndertime),
     'active' => intval($active),
     'absent' => intval($absent),
     'date' => $today,

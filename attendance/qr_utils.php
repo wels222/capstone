@@ -67,15 +67,21 @@ function qr_record_attendance_for_user($pdo, $userId) {
     $att = $stmt->fetch();
 
     if (!$att) {
-        // Insert time in
+        // Insert time in (apply unified rules)
         $timeInTimestamp = strtotime($now);
-        $present_start = strtotime($today . ' 05:30:00');
-        $present_end = strtotime($today . ' 07:00:00');
-        $late_end = strtotime($today . ' 12:00:00');
-        if ($timeInTimestamp >= $present_start && $timeInTimestamp <= $present_end) {
+        $present_start = strtotime($today . ' 06:00:00'); // 6:00 AM
+        $present_end = strtotime($today . ' 08:00:00');   // 8:00 AM
+        $late_end = strtotime($today . ' 12:00:00');      // 12:00 PM
+        $undertime_end = strtotime($today . ' 17:00:00'); // 5:00 PM
+
+        if ($timeInTimestamp < $present_start) {
             $time_in_status = 'Present';
-        } elseif ($timeInTimestamp > $present_end && $timeInTimestamp <= $late_end) {
+        } elseif ($timeInTimestamp <= $present_end) {
+            $time_in_status = 'Present';
+        } elseif ($timeInTimestamp <= $late_end) {
             $time_in_status = 'Late';
+        } elseif ($timeInTimestamp <= $undertime_end) {
+            $time_in_status = 'Undertime';
         } else {
             $time_in_status = 'Absent';
         }
@@ -128,23 +134,22 @@ function qr_record_attendance_for_user($pdo, $userId) {
             } catch (Exception $e) {}
             return ['success'=>false, 'message'=>'Time out already recorded for today'];
         }
-        // Record time out
+        // Record time out (apply unified rules)
         $time_out = $now;
         $time_out_timestamp = strtotime($time_out);
-        $undertime_start = strtotime($today . ' 07:30:00');
-        $undertime_end = strtotime($today . ' 16:59:59');
-        $ontime_start = strtotime($today . ' 17:00:00');
-        $ontime_end = strtotime($today . ' 17:05:00');
-        $overtime_start = strtotime($today . ' 17:06:00');
+        $undertime_end = strtotime($today . ' 16:59:59');   // 4:59:59 PM
+        $out_start = strtotime($today . ' 17:00:00');       // 5:00 PM
+        $out_end = strtotime($today . ' 17:05:00');         // 5:05 PM
+        $overtime_start = strtotime($today . ' 18:00:00');  // 6:00 PM
 
-        if ($time_out_timestamp >= $undertime_start && $time_out_timestamp <= $undertime_end) {
+        if ($time_out_timestamp <= $undertime_end) {
             $time_out_status = 'Undertime';
-        } elseif ($time_out_timestamp >= $ontime_start && $time_out_timestamp <= $ontime_end) {
-            $time_out_status = 'On-time';
+        } elseif ($time_out_timestamp >= $out_start && $time_out_timestamp <= $out_end) {
+            $time_out_status = 'Out';
         } elseif ($time_out_timestamp >= $overtime_start) {
             $time_out_status = 'Overtime';
         } else {
-            $time_out_status = 'On-time';
+            $time_out_status = 'Out'; // 5:05:01 PM - 5:59:59 PM
         }
 
         $upd = $pdo->prepare('UPDATE attendance SET time_out = ?, time_out_status = ? WHERE id = ?');

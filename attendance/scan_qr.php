@@ -35,21 +35,27 @@ if (!$att) {
     // First scan = Time In
     $time_in = $now;
     
-    // Time In Status Rules:
-    // 5:30 AM - 7:00 AM = Present
-    // 7:01 AM - 12:00 PM = Late  
-    // 12:01 PM onwards = Absent
+    // Time In Status Rules (Manila):
+    // 6:00 AM - 8:00 AM => Present
+    // 8:01 AM - 12:00 PM => Late
+    // 12:01 PM - 5:00 PM => Undertime
+    // After 5:00 PM => Absent (too late to start)
     $timeInTimestamp = strtotime($time_in);
-    $present_start = strtotime($today . ' 05:30:00'); // 5:30 AM
-    $present_end = strtotime($today . ' 07:00:00');   // 7:00 AM
+    $present_start = strtotime($today . ' 06:00:00'); // 6:00 AM
+    $present_end = strtotime($today . ' 08:00:00');   // 8:00 AM
     $late_end = strtotime($today . ' 12:00:00');      // 12:00 PM (noon)
-    
-    if ($timeInTimestamp >= $present_start && $timeInTimestamp <= $present_end) {
-        $time_in_status = 'Present'; // 5:30 AM - 7:00 AM
-    } elseif ($timeInTimestamp > $present_end && $timeInTimestamp <= $late_end) {
-        $time_in_status = 'Late'; // 7:01 AM - 12:00 PM
+    $undertime_end = strtotime($today . ' 17:00:00'); // 5:00 PM
+
+    if ($timeInTimestamp < $present_start) {
+        $time_in_status = 'Present'; // earlier than 6:00 AM treated as Present
+    } elseif ($timeInTimestamp <= $present_end) {
+        $time_in_status = 'Present'; // 6:00 AM - 8:00 AM
+    } elseif ($timeInTimestamp <= $late_end) {
+        $time_in_status = 'Late'; // 8:01 AM - 12:00 PM
+    } elseif ($timeInTimestamp <= $undertime_end) {
+        $time_in_status = 'Undertime'; // 12:01 PM - 5:00 PM (late time-in counts as undertime)
     } else {
-        $time_in_status = 'Absent'; // 12:01 PM onwards
+        $time_in_status = 'Absent'; // after 5:00 PM
     }
 
     $ins = $pdo->prepare('INSERT INTO attendance (employee_id, date, time_in, time_in_status) VALUES (?, ?, ?, ?)');
@@ -77,25 +83,29 @@ if (!$att) {
     // Second scan = Time Out
     $time_out = $now;
     
-    // Time Out Status Rules:
-    // 7:30 AM - 4:59 PM = Undertime
-    // 5:00 PM - 5:05 PM = On-time
-    // 5:06 PM - 5:30 PM onwards = Overtime
+    // Time Out Status Rules (Manila):
+    // 8:01 AM - 4:59 PM => Undertime
+    // 5:00 PM - 5:05 PM => Out
+    // 6:00 PM - 9:00 PM (and later) => Overtime
     $time_out_timestamp = strtotime($time_out);
-    $undertime_start = strtotime($today . ' 07:30:00'); // 7:30 AM
+    $undertime_start = strtotime($today . ' 08:01:00'); // 8:01 AM
     $undertime_end = strtotime($today . ' 16:59:59');   // 4:59:59 PM
-    $ontime_start = strtotime($today . ' 17:00:00');    // 5:00 PM
-    $ontime_end = strtotime($today . ' 17:05:00');      // 5:05 PM
-    $overtime_start = strtotime($today . ' 17:06:00');  // 5:06 PM
-    
-    if ($time_out_timestamp >= $undertime_start && $time_out_timestamp <= $undertime_end) {
-        $time_out_status = 'Undertime'; // 7:30 AM - 4:59 PM
-    } elseif ($time_out_timestamp >= $ontime_start && $time_out_timestamp <= $ontime_end) {
-        $time_out_status = 'On-time'; // 5:00 PM - 5:05 PM
+    $out_start = strtotime($today . ' 17:00:00');       // 5:00 PM
+    $out_end = strtotime($today . ' 17:05:00');         // 5:05 PM
+    $overtime_start = strtotime($today . ' 18:00:00');  // 6:00 PM
+    $overtime_cap = strtotime($today . ' 21:00:00');    // 9:00 PM (cap for labeling)
+
+    if ($time_out_timestamp <= $undertime_end) {
+        // Anything up to 4:59:59 PM counts as undertime
+        // (covers early outs including before 8:01 AM if it ever occurs)
+        $time_out_status = 'Undertime';
+    } elseif ($time_out_timestamp >= $out_start && $time_out_timestamp <= $out_end) {
+        $time_out_status = 'Out'; // 5:00 PM - 5:05 PM
     } elseif ($time_out_timestamp >= $overtime_start) {
-        $time_out_status = 'Overtime'; // 5:06 PM onwards
+        $time_out_status = 'Overtime'; // 6:00 PM onwards (9:00 PM+ still overtime)
     } else {
-        $time_out_status = 'On-time'; // Default fallback
+        // 5:05:01 PM - 5:59:59 PM treat as Out as well
+        $time_out_status = 'Out';
     }
     
     // Update time_out and time_out_status (keep time_in_status unchanged)
