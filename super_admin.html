@@ -413,6 +413,12 @@
             Super Admin Dashboard
           </div>
           <div class="flex items-center gap-4">
+            <a
+              href="fingerprint/components/Register_Fingerprint/register_page.php"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors"
+            >
+              <i class="fas fa-fingerprint"></i> Fingerprint Registration
+            </a>
             <span class="hidden md:block font-medium text-blue-900"
               >Super Admin</span
             >
@@ -677,9 +683,9 @@
         </div>
         <form id='add-account-form' class='space-y-4'>
           <div class='wizard-step active' data-step='1'>
-            <div><label class='block text-sm font-medium'>Last Name</label><input name='lastname' class='w-full border rounded px-3 py-2' required></div>
-            <div><label class='block text-sm font-medium'>First Name</label><input name='firstname' class='w-full border rounded px-3 py-2' required></div>
-            <div><label class='block text-sm font-medium'>Middle Initial</label><input name='mi' maxlength='1' class='w-full border rounded px-3 py-2'></div>
+            <div><label class='block text-sm font-medium'>Last Name</label><input name='lastname' class='w-full border rounded px-3 py-2' required pattern='[A-Za-z \\-\']+' title='Letters, spaces, hyphen (-) and apostrophe (\') only'></div>
+            <div><label class='block text-sm font-medium'>First Name</label><input name='firstname' class='w-full border rounded px-3 py-2' required pattern='[A-Za-z \\-\']+' title='Letters, spaces, hyphen (-) and apostrophe (\') only'></div>
+            <div><label class='block text-sm font-medium'>Middle Initial</label><input name='mi' maxlength='1' class='w-full border rounded px-3 py-2' pattern='[A-Za-z]' title='Single letter only'></div>
           </div>
           <div class='wizard-step' data-step='2'>
             <div><label class='block text-sm font-medium'>Department</label>
@@ -713,7 +719,7 @@
                 <option value='OJT'>OJT</option>
               </select>
             </div>
-            <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' placeholder='0917xxxxxxx' /></div>
+            <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' placeholder='0917xxxxxxx' inputmode='numeric' pattern='09[0-9]{9}' maxlength='11' title='Must start with 09 and be 11 digits' oninput="this.value=this.value.replace(/[^0-9]/g,'')" /></div>
           </div>
           <div class='wizard-step' data-step='3'>
             <div><label class='block text-sm font-medium'>Role</label>
@@ -778,6 +784,37 @@
                 alert("Please fill required fields before continuing.");
                 return;
               }
+              // additional format validation per step
+              const nameRegex = /^[A-Za-z \-']+$/;
+              const phoneRegex = /^09\d{9}$/;
+              const stepNum = Number(stepEl.getAttribute("data-step"));
+              if (stepNum === 1) {
+                const ln = stepEl
+                  .querySelector("input[name='lastname']")
+                  .value.trim();
+                const fn = stepEl
+                  .querySelector("input[name='firstname']")
+                  .value.trim();
+                const mi = stepEl
+                  .querySelector("input[name='mi']")
+                  .value.trim();
+                if (!nameRegex.test(ln) || !nameRegex.test(fn)) {
+                  alert("Name fields must be letters only.");
+                  return;
+                }
+                if (mi && !/^[A-Za-z]$/.test(mi)) {
+                  alert("Middle initial must be a single letter.");
+                  return;
+                }
+              } else if (stepNum === 2) {
+                const phone = stepEl
+                  .querySelector("input[name='contact_no']")
+                  .value.trim();
+                if (phone && !phoneRegex.test(phone)) {
+                  alert("Contact number must start with 09 and be 11 digits.");
+                  return;
+                }
+              }
               setStep(Math.min(totalSteps, currentStep + 1));
             });
           document
@@ -792,13 +829,44 @@
               e.preventDefault();
               const form = document.getElementById("add-account-form");
               const data = Object.fromEntries(new FormData(form).entries());
+              // final validation
+              const nameRegex2 = /^[A-Za-z \-']+$/;
+              const phoneRegex2 = /^09\d{9}$/;
+              if (
+                !nameRegex2.test(data.lastname) ||
+                !nameRegex2.test(data.firstname)
+              ) {
+                alert("Name fields must be letters only.");
+                return;
+              }
+              if (data.mi && !/^[A-Za-z]$/.test(data.mi)) {
+                alert("Middle initial must be a single letter.");
+                return;
+              }
+              if (data.contact_no && !phoneRegex2.test(data.contact_no)) {
+                alert("Contact number must start with 09 and be 11 digits.");
+                return;
+              }
               // keep original fetch API and payload
               fetch("api/super_admin_users.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action: "add", ...data }),
               })
-                .then((r) => r.json().catch(() => null))
+                .then(async (r) => {
+                  let res = null;
+                  try {
+                    res = await r.json();
+                  } catch (_) {}
+                  if (!r.ok) {
+                    alert(
+                      res?.error ||
+                        "Validation failed. Please check the inputs."
+                    );
+                    return Promise.reject(res);
+                  }
+                  return res;
+                })
                 .then((res) => {
                   // Show the generated Employee ID when available
                   if (res && (res.employee_id || res.emp_id)) {
@@ -813,8 +881,7 @@
                   fetchData();
                 })
                 .catch(() => {
-                  closeCrudModal();
-                  fetchData();
+                  /* handled above */
                 });
             });
         }, 80);
@@ -974,7 +1041,7 @@
               </div>
               <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' value='${
                 user.contact_no || ""
-              }' /></div>
+              }' inputmode='numeric' pattern='09[0-9]{9}' maxlength='11' title='Must start with 09 and be 11 digits' oninput="this.value=this.value.replace(/[^0-9]/g,'')" /></div>
             </div>
             <div class='wizard-step' data-step='3'>
               <div><label class='block text-sm font-medium'>Role</label>
@@ -1070,7 +1137,20 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action: "edit", id, ...data }),
               })
-                .then((r) => r.json())
+                .then(async (r) => {
+                  let res = null;
+                  try {
+                    res = await r.json();
+                  } catch (_) {}
+                  if (!r.ok) {
+                    alert(
+                      res?.error ||
+                        "Validation failed. Please check the inputs."
+                    );
+                    return Promise.reject(res);
+                  }
+                  return res;
+                })
                 .then(() => {
                   closeCrudModal();
                   fetchData();

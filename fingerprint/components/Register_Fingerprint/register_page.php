@@ -51,6 +51,30 @@ body {
     color: #333;                         /* optional: dark text for visibility */
 }
 
+.back-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.back-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
 .content-row {
     display: flex;
     width: 100%;
@@ -97,6 +121,9 @@ body {
 <body>
 
 <div class="main-card">
+    <a href="../../../super_admin.html" class="back-btn">
+        <i class="fas fa-arrow-left"></i> Back to Admin
+    </a>
     <div class="title">Register Fingerprint</div>
     <div class="content-row">
         <div id="left-column" class="left-column">

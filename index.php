@@ -252,44 +252,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: all 0.5s ease-in-out;
+            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             opacity: 0;
-            pointer-events: none;
+            visibility: hidden;
         }
 
         .modal-bg.is-open {
             opacity: 1;
-            pointer-events: auto;
+            visibility: visible;
         }
 
         .modal-container {
             display: flex;
-            max-width: 800px;
+            max-width: 900px;
             width: 90%;
-            border-radius: 16px;
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 100px rgba(30, 64, 175, 0.1);
             position: relative;
             background: #fff;
-            transform: scale(0.9);
-            transition: transform 0.4s ease-in-out;
+            transform: scale(0.7) translateY(-50px) rotateX(10deg);
+            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            opacity: 0;
         }
         
         .modal-bg.is-open .modal-container {
-            transform: scale(1);
+            transform: scale(1) translateY(0) rotateX(0deg);
+            opacity: 1;
         }
 
         .modal-title {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #1f2937;
+            font-size: 2.25rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 0.5rem;
+            animation: titleSlide 0.8s ease-out 0.3s both;
         }
 
         .modal-desc {
             font-size: 1rem;
             color: #6b7280;
             margin-bottom: 2rem;
+            animation: titleSlide 0.8s ease-out 0.4s both;
+        }
+
+        @keyframes titleSlide {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
         
         .modal-message {
@@ -304,41 +322,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .modal-left {
-            padding: 2.5rem;
+            padding: 3rem;
             flex: 1.5;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            background: linear-gradient(to bottom, #ffffff 0%, #f9fafb 100%);
         }
 
         .modal-right {
             flex: 2;
             display: none;
             position: relative;
+            overflow: hidden;
+        }
+        
+        .modal-right::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.1) 0%, rgba(59, 130, 246, 0.2) 100%);
+            z-index: 1;
         }
         
         .modal-right img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            animation: imageZoom 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes imageZoom {
+            0% {
+                transform: scale(1);
+            }
+            100% {
+                transform: scale(1.1);
+            }
         }
 
         .input-button {
-            padding: 0.75rem 1.5rem;
+            padding: 0.875rem 2rem;
             outline: none;
             border: none;
             color: #fff;
             border-radius: 9999px;
-            background: #1e40af;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
             font-family: 'Poppins', sans-serif;
             font-weight: 600;
             font-size: 1rem;
-            transition: background 0.3s ease;
+            transition: all 0.3s ease;
             cursor: pointer;
+            box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .input-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
         }
 
         .input-button:hover {
-            background: #1e3a8a;
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 64, 175, 0.4);
+        }
+
+        .input-button:hover::before {
+            left: 100%;
+        }
+
+        .input-button:active {
+            transform: translateY(0);
         }
         
         .input-label {
@@ -353,12 +418,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .input-block {
             display: flex;
             flex-direction: column;
-            padding: 0.75rem 1rem;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
             margin-bottom: 1.25rem;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            transition: all 0.3s ease;
             position: relative;
+            background: white;
+            animation: inputSlide 0.6s ease-out backwards;
+        }
+
+        .input-block:nth-child(1) {
+            animation-delay: 0.5s;
+        }
+
+        .input-block:nth-child(2) {
+            animation-delay: 0.6s;
+        }
+
+        @keyframes inputSlide {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .input-block input {
@@ -367,6 +453,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 0.25rem 0 0;
             font-size: 1rem;
             background: transparent;
+            color: #1f2937;
         }
 
         .input-block input::placeholder {
@@ -374,8 +461,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .input-block:focus-within {
-            border-color: #1e40af;
-            box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.2);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .input-block:hover {
+            border-color: #9ca3af;
         }
 
         .input-block .password-toggle {
@@ -411,36 +503,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .close-button {
             position: absolute;
-            top: 1rem;
-            right: 1rem;
-            width: 32px;
-            height: 32px;
-            background: transparent;
-            border: none;
+            top: 1.25rem;
+            right: 1.25rem;
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #e5e7eb;
+            border-radius: 50%;
             cursor: pointer;
-            color: #9ca3af;
-            transition: color 0.2s;
+            color: #6b7280;
+            transition: all 0.3s ease;
             z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .close-button:hover {
-            color: #4b5563;
+            background: #fee2e2;
+            border-color: #ef4444;
+            color: #dc2626;
+            transform: rotate(90deg);
+        }
+
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
         }
 
         .logo-button {
             cursor: pointer;
             border-radius: 50%;
-            transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.5s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
             animation: logoEntrance 1.5s ease-in-out;
+            max-width: 150px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
         }
 
         .logo-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
         }
 
-        .logo-button.clicked {
-            animation: logoClick 0.6s ease-in-out forwards;
+        .logo-button:active {
+            transform: scale(0.95);
+        }
+
+        .logo-reminder {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #1e40af;
+            animation: reminderPulse 2s ease-in-out infinite;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 2px solid rgba(30, 64, 175, 0.2);
+        }
+
+        .logo-reminder i {
+            animation: pointerBounce 1s ease-in-out infinite;
+        }
+
+        @keyframes reminderPulse {
+            0%, 100% {
+                transform: translateY(0);
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            }
+            50% {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 20px rgba(30, 64, 175, 0.2);
+            }
+        }
+
+        @keyframes pointerBounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-3px);
+            }
+        }
+
+        .modal-bg.is-open ~ .logo-container {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.5);
+        }
+
+        .logo-container {
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
 
         @keyframes logoEntrance {
@@ -461,19 +619,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             0% {
                 transform: scale(1);
             }
-            25% {
-                transform: scale(0.95) rotate(-5deg);
-            }
             50% {
-                transform: scale(1.15) rotate(5deg);
-            }
-            75% {
-                transform: scale(0.9);
-                opacity: 1;
+                transform: scale(1.1) rotate(5deg);
             }
             100% {
-                transform: scale(0);
-                opacity: 0;
+                transform: scale(1);
             }
         }
 
@@ -485,7 +635,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
-    <img src="assets/logo.png" alt="Mabini Logo" class="logo-button" id="open-modal-logo">
+    <div class="logo-container">
+        <img src="assets/logo.png" alt="Mabini Logo" class="logo-button" id="open-modal-logo">
+        <div class="logo-reminder">
+            <i class="fas fa-hand-pointer"></i>
+            Click the logo to log in
+        </div>
+    </div>
 
     <div class="modal-bg">
         <div class="modal-container">
@@ -543,20 +699,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             body.style.overflow = "auto";
         };
 
-        openButton.addEventListener("click", openModal);
-        closeButton.addEventListener("click", closeModal);
-        modalBg.addEventListener("click", (e) => {
-            if (e.target === modalBg) {
-                closeModal();
-            }
+        openButton.addEventListener("click", () => {
+            openButton.classList.add('clicked');
+            setTimeout(() => {
+                openModal();
+                openButton.classList.remove('clicked');
+            }, 300);
         });
+        
+        closeButton.addEventListener("click", closeModal);
+        
+        // Removed click outside to close - login container will stay visible
+        // modalBg.addEventListener("click", (e) => {
+        //     if (e.target === modalBg) {
+        //         closeModal();
+        //     }
+        // });
 
-        document.onkeydown = evt => {
-            evt = evt || window.event;
-            if (evt.key === "Escape" || evt.keyCode === 27) {
-                closeModal();
-            }
-        };
+        // Removed ESC key to close - only close button works now
+        // document.onkeydown = evt => {
+        //     evt = evt || window.event;
+        //     if (evt.key === "Escape" || evt.keyCode === 27) {
+        //         closeModal();
+        //     }
+        // };
 
         // Remove JS form redirect, let PHP handle login
         // loginForm.addEventListener('submit', (e) => {
@@ -576,17 +742,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             alert('A password reset link has been sent to your email.');
         });
 
-        // Auto-click logo animation on page load
+        // Auto-open modal on page load
         window.addEventListener('load', () => {
             setTimeout(() => {
-                // Add clicked animation to logo
-                openButton.classList.add('clicked');
-                
-                // Open modal after animation starts
-                setTimeout(() => {
-                    openModal();
-                }, 300);
-            }, 800); // Wait 800ms after page load before starting animation
+                openModal();
+            }, 800); // Wait 800ms after page load before opening
         });
     </script>
 </body>

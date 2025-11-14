@@ -4,17 +4,32 @@ require_once 'db.php';
 $error = '';
 $success = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $lastname = $_POST['lastname'] ?? '';
-    $firstname = $_POST['firstname'] ?? '';
-    $mi = $_POST['mi'] ?? '';
-    $department = $_POST['department'] ?? '';
-    $position = $_POST['position'] ?? '';
-    $role = $_POST['role'] ?? 'employee';
-    $contact_no = $_POST['contact_no'] ?? '';
-    $email = $_POST['email'] ?? '';
+    // Trim and normalize inputs
+    $lastname = trim($_POST['lastname'] ?? '');
+    $firstname = trim($_POST['firstname'] ?? '');
+    $mi = trim($_POST['mi'] ?? '');
+    $department = trim($_POST['department'] ?? '');
+    $position = trim($_POST['position'] ?? '');
+    $role = trim($_POST['role'] ?? 'employee');
+    $contact_no = preg_replace('/\s+/', '', $_POST['contact_no'] ?? '');
+    $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
-    if ($password !== $confirm) {
+
+    // Server-side validations
+    $nameRegex = "/^[A-Za-z\s\-']+$/"; // letters, spaces, hyphen, apostrophe
+    $miRegex = "/^[A-Za-z]?$/";         // optional single letter
+    $phoneRegex = "/^09\d{9}$/";       // PH mobile: 11 digits starting with 09
+
+    if (!preg_match($nameRegex, $lastname) || !preg_match($nameRegex, $firstname)) {
+        $error = 'Names must contain letters only (no numbers).';
+    } elseif ($mi !== '' && !preg_match($miRegex, $mi)) {
+        $error = 'Middle initial must be a single letter.';
+    } elseif ($contact_no !== '' && !preg_match($phoneRegex, $contact_no)) {
+        $error = 'Contact number must be 11 digits starting with 09.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Please provide a valid email address.';
+    } elseif ($password !== $confirm) {
         $error = 'Passwords do not match.';
     } elseif (strlen($password) < 6) {
         $error = 'Password must be at least 6 characters.';
@@ -292,20 +307,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?= $success ?>
                     </div>
                 <?php endif; ?>
+                <div id="client-message" class="modal-message error" style="display:none;"></div>
                 <form id="register-form" method="post" action="">
                     <!-- Step 1: Name -->
                     <div class="step" id="step-1">
                         <div class="input-block">
                             <label for="lastname" class="input-label">Last Name</label>
-                            <input type="text" name="lastname" id="lastname" placeholder="Last Name" required>
+                            <input type="text" name="lastname" id="lastname" placeholder="Last Name" required pattern="[A-Za-z \-']+" title="Letters, spaces, hyphen (-) and apostrophe (') only">
                         </div>
                         <div class="input-block">
                             <label for="firstname" class="input-label">First Name</label>
-                            <input type="text" name="firstname" id="firstname" placeholder="First Name" required>
+                            <input type="text" name="firstname" id="firstname" placeholder="First Name" required pattern="[A-Za-z \-']+" title="Letters, spaces, hyphen (-) and apostrophe (') only">
                         </div>
                         <div class="input-block">
                             <label for="mi" class="input-label">Middle Initial</label>
-                            <input type="text" name="mi" id="mi" placeholder="M" maxlength="1">
+                            <input type="text" name="mi" id="mi" placeholder="M" maxlength="1" pattern="[A-Za-z]" title="Single letter only">
                         </div>
                         <div class="modal-buttons">
                             <button type="button" class="input-button" id="next-1">Next</button>
@@ -356,7 +372,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                         <div class="input-block">
                             <label for="contact_no" class="input-label">Contact No.</label>
-                            <input type="text" name="contact_no" id="contact_no" placeholder="09XXXXXXXXX" >
+                            <input type="text" name="contact_no" id="contact_no" placeholder="09XXXXXXXXX" inputmode="numeric" pattern="09[0-9]{9}" maxlength="11" title="Must start with 09 and be 11 digits" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                         </div>
                         <div class="modal-buttons">
                             <button type="button" class="input-button" id="prev-2">Back</button>
@@ -392,27 +408,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
     <script>
-        // Multi-step form logic
+        // Multi-step form logic with validation
         const step1 = document.getElementById('step-1');
         const step2 = document.getElementById('step-2');
         const step3 = document.getElementById('step-3');
+        const clientMessage = document.getElementById('client-message');
+
+        const nameRegex = /^[A-Za-z \-']+$/;
+        const miRegex = /^[A-Za-z]?$/;
+        const phoneRegex = /^09\d{9}$/;
+
+        function showClientError(msg) {
+            clientMessage.textContent = msg;
+            clientMessage.style.display = 'block';
+        }
+        function clearClientError() {
+            clientMessage.textContent = '';
+            clientMessage.style.display = 'none';
+        }
+
         document.getElementById('next-1').onclick = function() {
-            if (document.getElementById('lastname').value && document.getElementById('firstname').value) {
-                step1.style.display = 'none';
-                step2.style.display = 'block';
-            }
+            const ln = document.getElementById('lastname').value.trim();
+            const fn = document.getElementById('firstname').value.trim();
+            const mi = document.getElementById('mi').value.trim();
+            if (!ln || !fn) { showClientError('Please fill in your name.'); return; }
+            if (!nameRegex.test(ln) || !nameRegex.test(fn)) { showClientError('Name fields must be letters only.'); return; }
+            if (mi && !miRegex.test(mi)) { showClientError('Middle initial must be a single letter.'); return; }
+            clearClientError();
+            step1.style.display = 'none';
+            step2.style.display = 'block';
         };
         document.getElementById('next-2').onclick = function() {
-            if (document.getElementById('department').value && document.getElementById('position').value) {
-                step2.style.display = 'none';
-                step3.style.display = 'block';
-            }
+            const dept = document.getElementById('department').value;
+            const pos = document.getElementById('position').value;
+            const role = document.getElementById('role').value;
+            const phone = document.getElementById('contact_no').value.trim();
+            if (!dept || !pos || !role) { showClientError('Please select department, position, and role.'); return; }
+            if (phone && !phoneRegex.test(phone)) { showClientError('Contact number must start with 09 and be 11 digits.'); return; }
+            clearClientError();
+            step2.style.display = 'none';
+            step3.style.display = 'block';
         };
         document.getElementById('prev-2').onclick = function() {
+            clearClientError();
             step2.style.display = 'none';
             step1.style.display = 'block';
         };
         document.getElementById('prev-3').onclick = function() {
+            clearClientError();
             step3.style.display = 'none';
             step2.style.display = 'block';
         };

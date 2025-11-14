@@ -129,6 +129,21 @@ Or set up Windows Task Scheduler to run it automatically daily.
 
 ---
 
+## 🕘 Auto Timeout at 9:00 PM
+
+If an employee has a recorded time-in but no time-out by 9:00 PM:
+
+- The system will automatically set their time-out to `5:00 PM` with status **Out**.
+- Run this daily at or after 9:00 PM:
+
+```bash
+php c:\xampp\htdocs\capstone\attendance\auto_timeout.php
+```
+
+Schedule via Windows Task Scheduler (Asia/Manila).
+
+---
+
 ## ✅ Complete!
 
 The attendance system now properly tracks and displays:

@@ -55,6 +55,47 @@ header("Content-Type: text/html");
         overflow: hidden;
         transition: transform 0.3s ease;
     }
+    /* New side‑by‑side panels container */
+    .scan-panels { 
+        display: flex; 
+        gap: 20px; 
+        width: 100%; 
+        flex: 1; 
+        min-height: 0;
+        align-items: stretch;
+    }
+    .panel-box {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(145deg, #f8f9fa, #ffffff);
+        border: 2px dashed rgba(102, 126, 234, 0.25);
+        border-radius: 16px;
+        padding: 18px;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.08);
+        transition: border-color .3s ease, box-shadow .3s ease;
+        min-height: 0;
+        max-width: 50%;
+    }
+    .panel-box:hover { 
+        border-color: rgba(102,126,234,0.4); 
+        box-shadow: 0 6px 28px rgba(102,126,234,0.12); 
+    }
+    .panel-box h2 { 
+        margin-top: 0;
+        margin-bottom: 14px;
+    }
+    .panel-box .reader-container {
+        height: auto;
+        min-height: 280px;
+        flex: 1;
+    }
+    .panel-box .qr-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        justify-content: space-between;
+    }
     .right {
         flex: 1;
         background: rgba(255, 255, 255, 0.98);
@@ -255,25 +296,26 @@ header("Content-Type: text/html");
                 </div>
             </div>
 
-            <div class="scanner-box">
-                <h2><span class="status-indicator"></span>Fingerprint Scanner</h2>
-                <div id="reader-container" class="reader-container">Place finger on the scanner</div>
-                <div id="title-log-container" style="margin-top:8px; color:#4b5563;"></div>
-            </div>
-
-            <h2 style="margin-top:10px;"><span class="status-indicator"></span>QR Attendance</h2>
-            <div class="qr-panel" aria-live="polite" style="max-height: 26vh; overflow: visible;">
-                <div class="qr-card" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-                    <div class="qr-wrap">
-                        <img id="rotating-qr-img" src="" alt="Rotating QR code for attendance" class="qr-large" style="width:100%;height:18vh;max-height:18vh;aspect-ratio:1/1;display:block;object-fit:contain;border-radius:6px;"/>
-                    </div>
-                    <div style="width:100%;max-width:520px;display:flex;gap:6px;align-items:center;">
-                        <a id="rotating-qr-link" href="#" target="_blank" rel="noopener noreferrer" class="link-url" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 8px;background:rgba(255,255,255,0.85);border-radius:8px;color:#374151;text-decoration:none;border:1px solid rgba(15,23,42,0.06);font-size:12px;">Open attendance link</a>
-                        <button id="copyLinkBtn" class="btn small" style="padding:6px 10px;font-size:12px;">Copy</button>
-                    </div>
-                    <div id="qr-meta" class="qr-meta" style="font-size:11px;color:rgba(0,0,0,0.7);width:100%;max-width:520px;text-align:center;">
-                        <div style="opacity:0.95">Next rotation in <strong id="rot-count">60</strong>s</div>
-                        <div id="qr-updated" style="opacity:0.85;font-size:11px;margin-top:4px;">Last updated: —</div>
+            <div class="scan-panels">
+                <div class="panel-box" id="fingerprint-panel">
+                    <h2><span class="status-indicator"></span>Fingerprint Scanner</h2>
+                    <div id="reader-container" class="reader-container">Place finger on the scanner</div>
+                    <div id="title-log-container" style="margin-top:8px; color:#4b5563;"></div>
+                </div>
+                <div class="panel-box" id="qr-panel" aria-live="polite">
+                    <h2><span class="status-indicator"></span>QR Attendance</h2>
+                    <div class="qr-card">
+                        <div class="qr-wrap" style="margin-top:2px;flex:1;display:flex;align-items:center;justify-content:center;">
+                            <img id="rotating-qr-img" src="" alt="Rotating QR code for attendance" class="qr-large" style="width:100%;max-width:100%;height:auto;aspect-ratio:1/1;display:block;object-fit:contain;border-radius:6px;"/>
+                        </div>
+                        <div style="width:100%;display:flex;gap:6px;align-items:center;margin-top:12px;">
+                            <a id="rotating-qr-link" href="#" target="_blank" rel="noopener noreferrer" class="link-url" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 8px;background:rgba(255,255,255,0.85);border-radius:8px;color:#374151;text-decoration:none;border:1px solid rgba(15,23,42,0.06);font-size:12px;">Open attendance link</a>
+                            <button id="copyLinkBtn" class="btn small" style="padding:6px 10px;font-size:12px;">Copy</button>
+                        </div>
+                        <div id="qr-meta" class="qr-meta" style="font-size:11px;color:rgba(0,0,0,0.7);width:100%;text-align:center;margin-top:8px;">
+                            <div style="opacity:0.95">Next rotation in <strong id="rot-count">60</strong>s</div>
+                            <div id="qr-updated" style="opacity:0.85;font-size:11px;margin-top:4px;">Last updated: —</div>
+                        </div>
                     </div>
                 </div>
             </div>

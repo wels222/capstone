@@ -7,13 +7,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$data = json_decode(file_get_contents('php://input'), true);
 	$action = $data['action'] ?? '';
 	if ($action === 'add') {
+		// Trim and validate inputs
+		$lastname = trim($data['lastname'] ?? '');
+		$firstname = trim($data['firstname'] ?? '');
+		$mi = trim($data['mi'] ?? '');
+		$department = trim($data['department'] ?? '');
+		$position = trim($data['position'] ?? '');
+		$role = trim($data['role'] ?? 'employee');
+		$contact_no = preg_replace('/\s+/', '', $data['contact_no'] ?? '');
+		$email = trim($data['email'] ?? '');
+		$password = $data['password'] ?? '';
+		$status = trim($data['status'] ?? 'pending');
+
+		$nameRegex = "/^[A-Za-z\s\-']+$/";
+		$miRegex = "/^[A-Za-z]?$/";
+		$phoneRegex = "/^09\d{9}$/";
+		$allowedPositions = ['Permanent','Casual','JO','OJT'];
+		$allowedRoles = ['employee','department_head','hr'];
+
+		if (!preg_match($nameRegex, $lastname) || !preg_match($nameRegex, $firstname)) {
+			http_response_code(400); echo json_encode(['error' => 'Names must contain letters only.']); exit;
+		}
+		if ($mi !== '' && !preg_match($miRegex, $mi)) {
+			http_response_code(400); echo json_encode(['error' => 'Middle initial must be a single letter.']); exit;
+		}
+		if ($contact_no !== '' && !preg_match($phoneRegex, $contact_no)) {
+			http_response_code(400); echo json_encode(['error' => 'Contact number must start with 09 and be 11 digits.']); exit;
+		}
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			http_response_code(400); echo json_encode(['error' => 'Invalid email address.']); exit;
+		}
+		if (!in_array($position, $allowedPositions)) {
+			http_response_code(400); echo json_encode(['error' => 'Invalid position selected.']); exit;
+		}
+		if (!in_array($role, $allowedRoles)) {
+			http_response_code(400); echo json_encode(['error' => 'Invalid role selected.']); exit;
+		}
+		if (strlen($password) < 6) {
+			http_response_code(400); echo json_encode(['error' => 'Password must be at least 6 characters.']); exit;
+		}
+		// Check duplicate email
+		$chk = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+		$chk->execute([$email]);
+		if ($chk->fetch()) { http_response_code(400); echo json_encode(['error' => 'Email already registered.']); exit; }
+
 		$stmt = $pdo->prepare('INSERT INTO users (lastname, firstname, mi, department, position, role, contact_no, status, email, password, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())');
-		$hash = password_hash($data['password'], PASSWORD_DEFAULT);
-		$role = $data['role'] ?? 'employee';
-		$contact_no = $data['contact_no'] ?? null;
-		$status = $data['status'] ?? 'pending';
+		$hash = password_hash($password, PASSWORD_DEFAULT);
 		$stmt->execute([
-			$data['lastname'], $data['firstname'], $data['mi'], $data['department'], $data['position'], $role, $contact_no, $status, $data['email'], $hash
+			$lastname, $firstname, $mi, $department, $position, $role, ($contact_no ?: null), $status, $email, $hash
 		]);
 		// Generate automatic employee_id based on the inserted numeric id
 		try {
@@ -32,12 +73,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		echo json_encode(['success' => true]);
 		exit;
 	} elseif ($action === 'edit') {
+		// Validate editable fields
+		$lastname = trim($data['lastname'] ?? '');
+		$firstname = trim($data['firstname'] ?? '');
+		$mi = trim($data['mi'] ?? '');
+		$department = trim($data['department'] ?? '');
+		$position = trim($data['position'] ?? '');
+		$role = trim($data['role'] ?? 'employee');
+		$contact_no = preg_replace('/\s+/', '', $data['contact_no'] ?? '');
+		$email = trim($data['email'] ?? '');
+		$nameRegex = "/^[A-Za-z\s\-']+$/";
+		$miRegex = "/^[A-Za-z]?$/";
+		$phoneRegex = "/^09\d{9}$/";
+		$allowedPositions = ['Permanent','Casual','JO','OJT'];
+		$allowedRoles = ['employee','department_head','hr'];
+		if (!preg_match($nameRegex, $lastname) || !preg_match($nameRegex, $firstname)) { http_response_code(400); echo json_encode(['error' => 'Names must contain letters only.']); exit; }
+		if ($mi !== '' && !preg_match($miRegex, $mi)) { http_response_code(400); echo json_encode(['error' => 'Middle initial must be a single letter.']); exit; }
+		if ($contact_no !== '' && !preg_match($phoneRegex, $contact_no)) { http_response_code(400); echo json_encode(['error' => 'Contact number must start with 09 and be 11 digits.']); exit; }
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { http_response_code(400); echo json_encode(['error' => 'Invalid email address.']); exit; }
+		if (!in_array($position, $allowedPositions)) { http_response_code(400); echo json_encode(['error' => 'Invalid position selected.']); exit; }
+		if (!in_array($role, $allowedRoles)) { http_response_code(400); echo json_encode(['error' => 'Invalid role selected.']); exit; }
+		// If email changed, ensure uniqueness
+		if (!empty($data['id'])) {
+			$chk = $pdo->prepare('SELECT id FROM users WHERE email = ? AND id <> ?');
+			$chk->execute([$email, (int)$data['id']]);
+			if ($chk->fetch()) { http_response_code(400); echo json_encode(['error' => 'Email already in use by another account.']); exit; }
+		}
 		$fields = ['lastname', 'firstname', 'mi', 'department', 'position', 'role', 'contact_no', 'status', 'email'];
 		$set = [];
 		$params = [];
 		foreach ($fields as $f) {
 			$set[] = "$f = ?";
-			$params[] = $data[$f] ?? null;
+			$params[] = ${$f} ?? null;
 		}
 		if (!empty($data['password'])) {
 			$set[] = "password = ?";
