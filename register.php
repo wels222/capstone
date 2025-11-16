@@ -41,6 +41,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($position, $allowedPositions)) {
             $error = 'Invalid position selected.';
         } else {
+            // Enforce only one Department Head per department
+            if ($role === 'department_head') {
+                $stmt = $pdo->prepare("SELECT id FROM users WHERE role = 'department_head' AND department = ? LIMIT 1");
+                $stmt->execute([$department]);
+                if ($stmt->fetch()) {
+                    $error = 'A Department Head is already assigned to this department.';
+                }
+            }
+
+            if (!$error) {
             $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
             $stmt->execute([$email]);
             if ($stmt->fetch()) {
@@ -68,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $error = 'Registration failed. Please try again.';
                 }
+            }
             }
         }
     }
@@ -438,13 +449,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             step1.style.display = 'none';
             step2.style.display = 'block';
         };
-        document.getElementById('next-2').onclick = function() {
+        document.getElementById('next-2').onclick = async function() {
             const dept = document.getElementById('department').value;
             const pos = document.getElementById('position').value;
             const role = document.getElementById('role').value;
             const phone = document.getElementById('contact_no').value.trim();
             if (!dept || !pos || !role) { showClientError('Please select department, position, and role.'); return; }
             if (phone && !phoneRegex.test(phone)) { showClientError('Contact number must start with 09 and be 11 digits.'); return; }
+            // Additional client-side check: only one Department Head per department
+            if (role === 'department_head') {
+                try {
+                    const res = await fetch('api/dept_heads.php');
+                    const heads = await res.json();
+                    const exists = Array.isArray(heads) && heads.some(h => (h.department || '') === dept);
+                    if (exists) {
+                        showClientError('A Department Head is already assigned to this department.');
+                        return;
+                    }
+                } catch (e) {
+                    // If the check fails, fail closed to prevent duplicates
+                    showClientError('Unable to verify this department’s head right now. Please try again later.');
+                    return;
+                }
+            }
             clearClientError();
             step2.style.display = 'none';
             step3.style.display = 'block';

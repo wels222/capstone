@@ -847,42 +847,74 @@
                 alert("Contact number must start with 09 and be 11 digits.");
                 return;
               }
-              // keep original fetch API and payload
-              fetch("api/super_admin_users.php", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "add", ...data }),
-              })
-                .then(async (r) => {
-                  let res = null;
+              // Enforce only one Department Head per department (client-side precheck)
+              const ensureDeptHeadAvailability = async () => {
+                if ((data.role || "") === "department_head") {
                   try {
-                    res = await r.json();
-                  } catch (_) {}
-                  if (!r.ok) {
+                    const r = await fetch("api/dept_heads.php");
+                    const heads = await r.json();
+                    const exists =
+                      Array.isArray(heads) &&
+                      heads.some(
+                        (h) => (h.department || "") === (data.department || "")
+                      );
+                    if (exists) {
+                      alert(
+                        "A Department Head is already assigned to this department."
+                      );
+                      return false;
+                    }
+                  } catch (e) {
                     alert(
-                      res?.error ||
-                        "Validation failed. Please check the inputs."
+                      "Unable to verify this department’s head right now. Please try again later."
                     );
-                    return Promise.reject(res);
+                    return false;
                   }
-                  return res;
+                }
+                return true;
+              };
+              ensureDeptHeadAvailability().then((ok) => {
+                if (!ok) return;
+                // keep original fetch API and payload
+                fetch("api/super_admin_users.php", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "add", ...data }),
                 })
-                .then((res) => {
-                  // Show the generated Employee ID when available
-                  if (res && (res.employee_id || res.emp_id)) {
-                    const empId = res.employee_id || res.emp_id;
-                    alert("Account added. Employee ID: " + empId);
-                  } else if (res && (res.id || res.user_id || res.insert_id)) {
-                    // Fallback to numeric id display if API doesn’t return employee_id
-                    const newId = res.id || res.user_id || res.insert_id;
-                    alert("Account added. ID: " + newId);
-                  }
-                  closeCrudModal();
-                  fetchData();
-                })
-                .catch(() => {
-                  /* handled above */
-                });
+                  .then(async (r) => {
+                    let res = null;
+                    try {
+                      res = await r.json();
+                    } catch (_) {}
+                    if (!r.ok) {
+                      alert(
+                        res?.error ||
+                          "Validation failed. Please check the inputs."
+                      );
+                      return Promise.reject(res);
+                    }
+                    return res;
+                  })
+                  .then((res) => {
+                    // Show the generated Employee ID when available
+                    if (res && (res.employee_id || res.emp_id)) {
+                      const empId = res.employee_id || res.emp_id;
+                      alert("Account added. Employee ID: " + empId);
+                    } else if (
+                      res &&
+                      (res.id || res.user_id || res.insert_id)
+                    ) {
+                      // Fallback to numeric id display if API doesn’t return employee_id
+                      const newId = res.id || res.user_id || res.insert_id;
+                      alert("Account added. ID: " + newId);
+                    }
+                    closeCrudModal();
+                    fetchData();
+                  })
+                  .catch(() => {
+                    /* handled above */
+                  });
+              });
             });
         }, 80);
       };
@@ -1132,29 +1164,60 @@
               e.preventDefault();
               const form = document.getElementById("edit-account-form");
               const data = Object.fromEntries(new FormData(form).entries());
-              fetch("api/super_admin_users.php", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "edit", id, ...data }),
-              })
-                .then(async (r) => {
-                  let res = null;
+              // Enforce only one Department Head per department on edit (allow if it's the same user)
+              const proceedEdit = async () => {
+                if ((data.role || "") === "department_head") {
                   try {
-                    res = await r.json();
-                  } catch (_) {}
-                  if (!r.ok) {
+                    const r = await fetch("api/dept_heads.php");
+                    const heads = await r.json();
+                    const conflict =
+                      Array.isArray(heads) &&
+                      heads.some(
+                        (h) =>
+                          (h.department || "") === (data.department || "") &&
+                          String(h.id) !== String(id)
+                      );
+                    if (conflict) {
+                      alert(
+                        "A Department Head is already assigned to this department."
+                      );
+                      return false;
+                    }
+                  } catch (e) {
                     alert(
-                      res?.error ||
-                        "Validation failed. Please check the inputs."
+                      "Unable to verify this department’s head right now. Please try again later."
                     );
-                    return Promise.reject(res);
+                    return false;
                   }
-                  return res;
+                }
+                return true;
+              };
+              proceedEdit().then((ok) => {
+                if (!ok) return;
+                fetch("api/super_admin_users.php", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "edit", id, ...data }),
                 })
-                .then(() => {
-                  closeCrudModal();
-                  fetchData();
-                });
+                  .then(async (r) => {
+                    let res = null;
+                    try {
+                      res = await r.json();
+                    } catch (_) {}
+                    if (!r.ok) {
+                      alert(
+                        res?.error ||
+                          "Validation failed. Please check the inputs."
+                      );
+                      return Promise.reject(res);
+                    }
+                    return res;
+                  })
+                  .then(() => {
+                    closeCrudModal();
+                    fetchData();
+                  });
+              });
             });
         }, 80);
       };

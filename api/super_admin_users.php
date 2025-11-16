@@ -46,6 +46,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		if (strlen($password) < 6) {
 			http_response_code(400); echo json_encode(['error' => 'Password must be at least 6 characters.']); exit;
 		}
+		// Enforce only one Department Head per department (server-side)
+		if ($role === 'department_head') {
+			$chkHead = $pdo->prepare("SELECT id FROM users WHERE role = 'department_head' AND department = ? LIMIT 1");
+			$chkHead->execute([$department]);
+			if ($chkHead->fetch()) {
+				http_response_code(400); echo json_encode(['error' => 'A Department Head is already assigned to this department.']); exit;
+			}
+		}
+
 		// Check duplicate email
 		$chk = $pdo->prepare('SELECT id FROM users WHERE email = ?');
 		$chk->execute([$email]);
@@ -93,6 +102,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { http_response_code(400); echo json_encode(['error' => 'Invalid email address.']); exit; }
 		if (!in_array($position, $allowedPositions)) { http_response_code(400); echo json_encode(['error' => 'Invalid position selected.']); exit; }
 		if (!in_array($role, $allowedRoles)) { http_response_code(400); echo json_encode(['error' => 'Invalid role selected.']); exit; }
+		// Enforce only one Department Head per department on edit (exclude the same user)
+		if ($role === 'department_head' && !empty($data['id'])) {
+			$chkHead = $pdo->prepare("SELECT id FROM users WHERE role = 'department_head' AND department = ? AND id <> ? LIMIT 1");
+			$chkHead->execute([$department, (int)$data['id']]);
+			if ($chkHead->fetch()) { http_response_code(400); echo json_encode(['error' => 'A Department Head is already assigned to this department.']); exit; }
+		}
+
 		// If email changed, ensure uniqueness
 		if (!empty($data['id'])) {
 			$chk = $pdo->prepare('SELECT id FROM users WHERE email = ? AND id <> ?');

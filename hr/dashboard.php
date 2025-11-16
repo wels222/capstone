@@ -769,6 +769,10 @@ try {
                 <i class="fas fa-user-clock" style="font-size:0.9rem;"></i>
                 <span style="font-size:0.9rem;">My Attendance</span>
             </a>
+            <a href="../attendance/dashboard.php" title="View All Attendance" style="margin-left:0.5rem; display:inline-flex; align-items:center; gap:0.5rem; padding:0.375rem 0.75rem; background:#3b82f6; color:#fff; border-radius:0.5rem; text-decoration:none; font-weight:600;">
+                <i class="fas fa-users" style="font-size:0.9rem;"></i>
+                <span style="font-size:0.9rem;">All Attendance</span>
+            </a>
             <img src="../assets/logo.png" alt="Profile" class="profile-image">
         </div>
     </header>

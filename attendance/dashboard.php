@@ -127,8 +127,16 @@ session_start();
 </head>
 <body>
     <div class="header">
-        <h1><i class="fas fa-chart-line"></i> Attendance Dashboard</h1>
-        <div class="subtitle">Real-time attendance monitoring system</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1><i class="fas fa-chart-line"></i> Attendance Dashboard</h1>
+                <div class="subtitle">Real-time attendance monitoring system</div>
+            </div>
+            <a href="../hr/dashboard.php" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1.25rem; background:rgba(255,255,255,0.2); color:#fff; border-radius:0.5rem; text-decoration:none; font-weight:600; border:2px solid rgba(255,255,255,0.3); transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                <i class="fas fa-arrow-left" style="font-size:0.9rem;"></i>
+                <span style="font-size:0.95rem;">Back to HR Dashboard</span>
+            </a>
+        </div>
     </div>
 
     <div class="controls">
