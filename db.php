@@ -1,4 +1,4 @@
-<?php
+ <?php
 // db.php - Database connection
 $host = 'localhost';
 $db   = 'capstone'; // <- ensure this is "capstone"

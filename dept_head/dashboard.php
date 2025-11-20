@@ -253,18 +253,60 @@ try {
 
         .active-projects-box, .events-box {
             background-color: #fff;
-            padding: 2rem;
+            padding: 0;
             border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             flex: 1 1 45%; /* Flex-basis allows them to grow but wrap */
             min-width: 300px; /* Ensures they don't get too narrow */
+            max-height: 600px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #e5e7eb;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .active-projects-box:hover, .events-box:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
         }
 
         .active-projects-box h3, .events-box h3 {
             font-size: 1.25rem;
-            font-weight: 600;
+            font-weight: 700;
             color: #1f2937;
-            margin-bottom: 1rem;
+            margin: 0;
+            padding: 1.5rem 2rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-bottom: 2px solid #3b82f6;
+            border-radius: 1rem 1rem 0 0;
+        }
+
+        .tasks-scrollable-content,
+        .events-scrollable-content {
+            overflow-y: auto;
+            flex: 1;
+            padding: 1.5rem 2rem;
+        }
+
+        .tasks-scrollable-content::-webkit-scrollbar,
+        .events-scrollable-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .tasks-scrollable-content::-webkit-scrollbar-track,
+        .events-scrollable-content::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        .tasks-scrollable-content::-webkit-scrollbar-thumb,
+        .events-scrollable-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .tasks-scrollable-content::-webkit-scrollbar-thumb:hover,
+        .events-scrollable-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
         
         table {
@@ -310,35 +352,49 @@ try {
 
         .event-item {
             display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            padding: 1rem 0;
-            border-bottom: 1px solid #e5e7eb;
+            align-items: flex-start;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            margin-bottom: 0.75rem;
+            border-radius: 0.75rem;
+            border: 1px solid #e5e7eb;
+            background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+            transition: all 0.3s ease;
+        }
+
+        .event-item:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
         }
 
         .event-item:last-child {
-            border-bottom: none;
+            margin-bottom: 0;
         }
 
         .event-date {
-            background-color: #e5e7eb;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
             text-align: center;
             line-height: 1;
+            min-width: 70px;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }
 
         .event-date .day {
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             font-weight: 700;
             display: block;
+            color: #ffffff;
         }
 
         .event-date .month {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             font-weight: 600;
-            color: #6b7280;
+            color: #dbeafe;
+            margin-top: 0.25rem;
         }
 
         .event-details {
@@ -346,18 +402,31 @@ try {
         }
 
         .event-details .event-title {
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 1rem;
             color: #1f2937;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
         }
 
-        .event-details .event-location {
-            font-size: 0.9rem;
+        .event-details .event-description {
+            font-size: 0.875rem;
             color: #6b7280;
+            line-height: 1.5;
+            margin-bottom: 0.5rem;
         }
 
         .event-time {
-            font-size: 0.9rem;
-            color: #9ca3af;
+            font-size: 0.8rem;
+            color: #3b82f6;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .event-time i {
+            font-size: 0.75rem;
         }
 
         .all-projects-chart {
@@ -919,33 +988,35 @@ try {
                     </div>
                     <div class="projects-events-container">
                         <div class="active-projects-box">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold text-gray-800">Tasks</h3>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full">
-                                    <thead>
-                                        <tr>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Task Name</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Employee</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Progress</th>
-                                            <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th class="py-3 px-4 whitespace-nowrap font-semibold text-sm text-gray-500 uppercase tracking-wider">Due Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tasks-table-body">
-                                        <tr id="tasks-empty-row">
-                                            <td class="py-4 px-4 text-gray-500" colspan="5">Loading tasks...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <h3><i class="fas fa-tasks mr-2"></i>Tasks</h3>
+                            <div class="tasks-scrollable-content">
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full">
+                                        <thead>
+                                            <tr>
+                                                <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Task Name</th>
+                                                <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Employee</th>
+                                                <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Progress</th>
+                                                <th class="py-3 px-4 font-semibold text-sm text-gray-500 uppercase tracking-wider">Status</th>
+                                                <th class="py-3 px-4 whitespace-nowrap font-semibold text-sm text-gray-500 uppercase tracking-wider">Due Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tasks-table-body">
+                                            <tr id="tasks-empty-row">
+                                                <td class="py-4 px-4 text-gray-500" colspan="5">Loading tasks...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                         <div class="events-box">
-                            <h3 class="text-xl font-bold text-gray-800">Events</h3>
-                                <ul id="events-list">
+                            <h3><i class="fas fa-calendar-alt mr-2"></i>Events</h3>
+                            <div class="events-scrollable-content">
+                                <div id="events-list">
                                     <!-- Events will be loaded here -->
-                                </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1219,20 +1290,32 @@ try {
                     eventsList.innerHTML = '';
                     if (data && data.length > 0) {
                         data.forEach(event => {
-                            const li = document.createElement('li');
-                            li.className = 'py-2 border-b last:border-0 flex justify-between items-center';
-                            li.innerHTML = `
-                                <span><strong>${event.title}</strong> - ${event.description || ''}</span>
-                                <span class="text-xs text-gray-500 ml-2">${event.date} ${event.time ? ('- ' + event.time) : ''}</span>
+                            const eventDate = new Date(event.date + ' ' + (event.time || '00:00'));
+                            const day = eventDate.getDate();
+                            const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+                            const timeStr = event.time ? eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '';
+                            
+                            const eventDiv = document.createElement('div');
+                            eventDiv.className = 'event-item';
+                            eventDiv.innerHTML = `
+                                <div class="event-date">
+                                    <span class="day">${day}</span>
+                                    <span class="month">${month}</span>
+                                </div>
+                                <div class="event-details">
+                                    <div class="event-title">${event.title}</div>
+                                    ${event.description ? `<div class="event-description">${event.description}</div>` : ''}
+                                    ${timeStr ? `<div class="event-time"><i class="fas fa-clock"></i>${timeStr}</div>` : ''}
+                                </div>
                             `;
-                            eventsList.appendChild(li);
+                            eventsList.appendChild(eventDiv);
                         });
                     } else {
-                        eventsList.innerHTML = '<li class="py-2 text-gray-500">No events found.</li>';
+                        eventsList.innerHTML = '<div style="text-align: center; padding: 2rem; color: #9ca3af;"><i class="fas fa-calendar-times" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><div>No events found.</div></div>';
                     }
                 })
                 .catch(err => {
-                    document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
+                    document.getElementById('events-list').innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;"><i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><div>Failed to load events.</div></div>';
                 });
         });
     </script>

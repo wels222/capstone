@@ -304,7 +304,7 @@
 
       .chart-wrapper {
         position: relative;
-        height: 350px;
+        height: 450px;
       }
 
       .risk-alert {
@@ -971,7 +971,7 @@
           charts.deptDistribution.destroy();
         }
 
-        const labels = departments.map((d) => d.department.substring(0, 20));
+        const labels = departments.map((d) => d.department);
         const data = departments.map((d) => d.employee_count);
 
         charts.deptDistribution = new Chart(ctx, {
@@ -997,6 +997,17 @@
               },
             },
             scales: {
+              x: {
+                ticks: {
+                  autoSkip: false,
+                  maxRotation: 45,
+                  minRotation: 45,
+                  font: {
+                    size: 11,
+                    weight: "bold",
+                  },
+                },
+              },
               y: {
                 beginAtZero: true,
                 ticks: {
@@ -1196,7 +1207,7 @@
           charts.riskHeatmap.destroy();
         }
 
-        const labels = departments.map((d) => d.department.substring(0, 20));
+        const labels = departments.map((d) => d.department);
         const attendanceRisk = departments.map((d) => 100 - d.attendance_rate);
         const leaveRisk = departments.map(
           (d) => (d.pending_leaves / d.employee_count) * 100
@@ -1232,6 +1243,17 @@
               },
             },
             scales: {
+              x: {
+                ticks: {
+                  autoSkip: false,
+                  maxRotation: 45,
+                  minRotation: 45,
+                  font: {
+                    size: 11,
+                    weight: "bold",
+                  },
+                },
+              },
               y: {
                 beginAtZero: true,
                 max: 100,

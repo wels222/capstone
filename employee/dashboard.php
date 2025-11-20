@@ -103,6 +103,110 @@ if ($user) {
             /* Slightly increase list height on larger viewports but keep the analytics panel in-flow */
             #todos-list { max-height: calc(100vh - 14rem); }
         }
+
+        /* Announcement/Events section styling */
+        .announcement-container {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .announcement-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .announcement-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        .announcement-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .announcement-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .event-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            margin-bottom: 0.75rem;
+            border-radius: 0.75rem;
+            border: 1px solid #e5e7eb;
+            background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+            transition: all 0.3s ease;
+        }
+
+        .event-item:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .event-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .event-date {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            line-height: 1;
+            min-width: 70px;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .event-date .day {
+            font-size: 1.75rem;
+            font-weight: 700;
+            display: block;
+            color: #ffffff;
+        }
+
+        .event-date .month {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #dbeafe;
+            margin-top: 0.25rem;
+        }
+
+        .event-details {
+            flex-grow: 1;
+        }
+
+        .event-details .event-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .event-details .event-description {
+            font-size: 0.875rem;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-bottom: 0.5rem;
+        }
+
+        .event-time {
+            font-size: 0.8rem;
+            color: #3b82f6;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .event-time i {
+            font-size: 0.75rem;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-6 lg:p-10">
@@ -375,16 +479,18 @@ if ($user) {
 
                 <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-semibold text-gray-800">Announcement(s)</h3>
+                        <h3 class="text-lg font-semibold text-gray-800"><i class="fas fa-bullhorn mr-2 text-blue-600"></i>Announcement(s)</h3>
                         <div class="flex space-x-2 text-gray-500">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2zm0 7a1 1 0 100-2 1 1 0 000 2z" />
                             </svg>
                         </div>
                     </div>
-                        <ul id="events-list">
+                    <div class="announcement-container">
+                        <div id="events-list">
                             <!-- Events will be loaded here -->
-                        </ul>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-xl shadow-md p-6 flex flex-col items-center justify-center">
@@ -1369,24 +1475,37 @@ if ($user) {
             fetch('../api/get_events.php')
                 .then(response => response.json())
                 .then(data => {
+                    data = (data || []).filter(e => !(Number(e.is_archived||0)===1));
                     const eventsList = document.getElementById('events-list');
                     eventsList.innerHTML = '';
                     if (data && data.length > 0) {
                         data.forEach(event => {
-                            const li = document.createElement('li');
-                            li.className = 'py-2 border-b last:border-0 flex justify-between items-center';
-                            li.innerHTML = `
-                                <span><strong>${event.title}</strong> - ${event.description || ''}</span>
-                                <span class="text-xs text-gray-500 ml-2">${event.date} ${event.time ? ('- ' + event.time) : ''}</span>
+                            const eventDate = new Date(event.date + ' ' + (event.time || '00:00'));
+                            const day = eventDate.getDate();
+                            const month = eventDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+                            const timeStr = event.time ? eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '';
+                            
+                            const eventDiv = document.createElement('div');
+                            eventDiv.className = 'event-item';
+                            eventDiv.innerHTML = `
+                                <div class="event-date">
+                                    <span class="day">${day}</span>
+                                    <span class="month">${month}</span>
+                                </div>
+                                <div class="event-details">
+                                    <div class="event-title">${event.title}</div>
+                                    ${event.description ? `<div class="event-description">${event.description}</div>` : ''}
+                                    ${timeStr ? `<div class="event-time"><i class="fas fa-clock"></i>${timeStr}</div>` : ''}
+                                </div>
                             `;
-                            eventsList.appendChild(li);
+                            eventsList.appendChild(eventDiv);
                         });
                     } else {
-                        eventsList.innerHTML = '<li class="py-2 text-gray-500">No events found.</li>';
+                        eventsList.innerHTML = '<div style="text-align: center; padding: 3rem; color: #9ca3af;"><i class="fas fa-calendar-times" style="font-size: 2.5rem; margin-bottom: 1rem; display: block;"></i><div style="font-size: 0.875rem;">No announcements found.</div></div>';
                     }
                 })
                 .catch(err => {
-                    document.getElementById('events-list').innerHTML = '<li class="py-2 text-red-500">Failed to load events.</li>';
+                    document.getElementById('events-list').innerHTML = '<div style="text-align: center; padding: 3rem; color: #ef4444;"><i class="fas fa-exclamation-circle" style="font-size: 2.5rem; margin-bottom: 1rem; display: block;"></i><div style="font-size: 0.875rem;">Failed to load announcements.</div></div>';
                 });
     });
     </script>

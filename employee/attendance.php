@@ -112,8 +112,20 @@ foreach ($attendanceRows as $r) {
     $timeInStatus = $r['time_in_status'] ?? null;
     $timeOutStatus = $r['time_out_status'] ?? null;
     
-    // determine status and flags
-    $status = $r['status'] ?: ($timeInRaw ? 'Present' : 'Absent');
+    // determine unified display status prioritizing time-out status when available
+    if ($timeInStatus === 'Absent' || !$timeInRaw) {
+        $status = 'Absent';
+    } elseif ($timeOutStatus === 'Undertime') {
+        $status = 'Undertime';
+    } elseif ($timeOutStatus === 'Overtime') {
+        $status = 'Overtime';
+    } elseif ($timeOutStatus === 'On-time' || $timeOutStatus === 'Out') {
+        $status = 'Present';
+    } elseif ($timeInStatus === 'Late') {
+        $status = 'Late';
+    } else {
+        $status = 'Present';
+    }
 
     // Set flags based on database status values
     $tardy = ($timeInStatus === 'Late');
@@ -708,15 +720,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const id = parseInt(e.target.dataset.id, 10);
             const rec = attendanceRecords.find(r => r.id === id);
             if (!rec) return;
+            // Build status badges (same mapping as table rows)
+            let timeInStatusBadge = '<span class="text-gray-400">—</span>';
+            if (rec.timeIn) {
+                const timeInStatus = rec.timeInStatus || (rec.tardy ? 'Late' : 'Present');
+                if (timeInStatus === 'Late') {
+                    timeInStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 px-2 py-0.5"><i class="fas fa-clock mr-1"></i>Late</span>';
+                } else if (timeInStatus === 'Present') {
+                    timeInStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-green-100 text-green-800 px-2 py-0.5"><i class="fas fa-check mr-1"></i>Present</span>';
+                } else if (timeInStatus === 'Undertime') {
+                    timeInStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-amber-100 text-amber-800 px-2 py-0.5"><i class="fas fa-hourglass-half mr-1"></i>Undertime</span>';
+                } else if (timeInStatus === 'Absent') {
+                    timeInStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-red-100 text-red-800 px-2 py-0.5"><i class="fas fa-times mr-1"></i>Absent</span>';
+                }
+            }
+
+            let timeOutStatusBadge = '<span class="text-gray-400">—</span>';
+            if (rec.timeOut) {
+                const timeOutStatus = rec.timeOutStatus || (rec.undertime ? 'Undertime' : (rec.overtime ? 'Overtime' : 'Out'));
+                if (timeOutStatus === 'Undertime') {
+                    timeOutStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-orange-100 text-orange-800 px-2 py-0.5"><i class="fas fa-user-clock mr-1"></i>Undertime</span>';
+                } else if (timeOutStatus === 'Overtime') {
+                    timeOutStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-blue-100 text-blue-800 px-2 py-0.5"><i class="fas fa-business-time mr-1"></i>Overtime</span>';
+                } else if (timeOutStatus === 'On-time' || timeOutStatus === 'Out') {
+                    timeOutStatusBadge = '<span class="inline-flex items-center text-xs font-medium rounded-full bg-green-100 text-green-800 px-2 py-0.5"><i class="fas fa-check mr-1"></i>Out</span>';
+                }
+            }
             detailsContent.innerHTML = `
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <p class="text-xs text-gray-500">Date</p>
                         <p class="text-sm font-medium text-gray-900">${rec.date}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-500">Status</p>
-                        <p class="text-sm font-medium text-gray-900">${rec.status}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-500">Time In</p>
@@ -725,6 +759,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div>
                         <p class="text-xs text-gray-500">Time Out</p>
                         <p class="text-sm font-medium text-gray-900">${rec.timeOut || '—'}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Time In Status</p>
+                        <p class="text-sm font-medium text-gray-900">${timeInStatusBadge}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Time Out Status</p>
+                        <p class="text-sm font-medium text-gray-900">${timeOutStatusBadge}</p>
                     </div>
                 </div>
                 ${rec.tardy || rec.undertime || rec.overtime ? `<div class="mt-3 pt-3 border-t border-gray-200">

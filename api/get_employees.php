@@ -5,6 +5,7 @@ require_once '../db.php';
 
 try {
     $email = $_SESSION['email'] ?? null;
+    $role = null;
     $dept = null;
     // Best-effort ensure archive columns exist on users
     try {
@@ -15,14 +16,18 @@ try {
     } catch (Throwable $__e) { /* ignore */ }
     if ($email) {
         try {
-            $s = $pdo->prepare('SELECT department FROM users WHERE email = ?');
+            $s = $pdo->prepare('SELECT role, department FROM users WHERE email = ?');
             $s->execute([$email]);
             $r = $s->fetch(PDO::FETCH_ASSOC);
+            $role = strtolower($r['role'] ?? '');
             $dept = $r['department'] ?? null;
         } catch (PDOException $__e) { /* ignore */ }
     }
 
-    if ($dept) {
+    // HR users can see ALL employees regardless of department
+    if ($role === 'hr' || $role === 'human resources') {
+        $stmt = $pdo->query('SELECT id, lastname, firstname, mi, department, position, role, status, email, profile_picture, contact_no, is_archived FROM users WHERE (is_archived = 0 OR is_archived IS NULL)');
+    } elseif ($dept) {
         $stmt = $pdo->prepare('SELECT id, lastname, firstname, mi, department, position, role, status, email, profile_picture, contact_no, is_archived FROM users WHERE department = ? AND (is_archived = 0 OR is_archived IS NULL)');
         $stmt->execute([$dept]);
     } else {
