@@ -1345,12 +1345,15 @@
             // Filter to current department for Dept Head view (client-side)
             if (currentDept)
               data = data.filter((d) => String(d.department) === currentDept);
-            // Only include leaves that have been HR-approved
+            // Show leaves in the calendar only when BOTH HR AND Municipal Admin have approved them
             data = data.filter(
               (l) =>
-                String(l.approved_by_hr) === "1" ||
-                l.approved_by_hr === 1 ||
-                l.approved_by_hr === true
+                (String(l.approved_by_hr) === "1" ||
+                  l.approved_by_hr === 1 ||
+                  l.approved_by_hr === true) &&
+                (String(l.approved_by_municipal) === "1" ||
+                  l.approved_by_municipal === 1 ||
+                  l.approved_by_municipal === true)
             );
             monthLeaves = data;
           } catch (e) {

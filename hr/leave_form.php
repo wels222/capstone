@@ -104,7 +104,7 @@ if ($user_email) {
             </div>
             <div>
               <label for="salaryInput" class="block text-sm font-medium text-gray-700">Salary</label>
-              <input type="text" id="salaryInput" name="salaryInput" value="<?= htmlspecialchars($user_salary) ?>" required class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+              <input type="number" id="salaryInput" name="salaryInput" value="<?= htmlspecialchars($user_salary) ?>" required class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" step="0.01" min="0">
             </div>
           </div>
           <div class="mt-6">

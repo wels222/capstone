@@ -1332,12 +1332,15 @@
             const js = await res.json();
             let data =
               js && js.success && Array.isArray(js.data) ? js.data : [];
-            // Only show leaves in the calendar once HR has approved them
+            // Show leaves in the calendar only when BOTH HR AND Municipal Admin have approved them
             data = data.filter(
               (l) =>
-                String(l.approved_by_hr) === "1" ||
-                l.approved_by_hr === 1 ||
-                l.approved_by_hr === true
+                (String(l.approved_by_hr) === "1" ||
+                  l.approved_by_hr === 1 ||
+                  l.approved_by_hr === true) &&
+                (String(l.approved_by_municipal) === "1" ||
+                  l.approved_by_municipal === 1 ||
+                  l.approved_by_municipal === true)
             );
             monthLeaves = data;
           } catch (e) {
