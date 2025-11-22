@@ -67,6 +67,9 @@ if ($user) {
     $profilePicture = '';
     $userEmail = '';
 }
+// Check if user is JO or OJT (they should not have leave access)
+$positionLower = strtolower(trim($position));
+$isJoOrOjt = (strpos($positionLower, 'jo') !== false || strpos($positionLower, 'ojt') !== false);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -340,6 +343,7 @@ if ($user) {
                 <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-4">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
                     <div class="flex flex-wrap justify-around gap-4 text-center">
+                        <?php if (!$isJoOrOjt): ?>
                         <a href="apply_leave.html" class="flex flex-col items-center space-y-2 cursor-pointer">
                             <div class="bg-blue-100 p-4 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -356,6 +360,7 @@ if ($user) {
                             </div>
                             <span class="text-sm text-gray-600">Leave Status</span>
                         </a>
+                        <?php endif; ?>
                         <a href="task.html" class="flex flex-col items-center space-y-2 cursor-pointer">
                             <div class="bg-green-100 p-4 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -384,14 +389,16 @@ if ($user) {
                     </div>
                 </div>
 
+                <?php if (!$isJoOrOjt): ?>
                 <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Leave Credits</h3>
                     <div id="leave-credits-container" class="relative">
-                        <div id="leave-credits-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 max-h-[28rem] md:max-h-[20rem] overflow-y-auto pr-2">
+                        <div id="leave-credits-grid" class="grid grid-cols-2 gap-4 max-h-[32rem] overflow-y-auto pr-2">
                             <div class="text-center text-gray-500 p-6">Loading leave credits...</div>
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
 
                 <div class="bg-white rounded-xl shadow-md p-6 lg:col-span-2">
                     <div class="flex justify-between items-center mb-4">
@@ -749,8 +756,13 @@ if ($user) {
                      // --- Real-time Leave Credits widget for current user ---
                      const leaveGridHost = document.getElementById('leave-credits-grid');
                      const _currentUserEmail = <?php echo json_encode($userEmail); ?>;
+                     const _isJoOrOjt = <?php echo json_encode($isJoOrOjt); ?>;
                      async function fetchLeaveCreditsForCurrentUser(){
                              if (!leaveGridHost) return;
+                             if (_isJoOrOjt) {
+                                     // JO/OJT employees don't have leave credits
+                                     return;
+                             }
                              if (!_currentUserEmail) {
                                      leaveGridHost.innerHTML = '<div class="text-gray-500 p-4">Not available (not signed in)</div>';
                                      return;

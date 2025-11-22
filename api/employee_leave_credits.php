@@ -110,6 +110,29 @@ try {
         exit;
     }
 
+    // Check if user is JO or OJT - they don't have leave credits
+    $userStmt = $pdo->prepare("SELECT position FROM users WHERE email = ?");
+    $userStmt->execute([$email]);
+    $userRow = $userStmt->fetch(PDO::FETCH_ASSOC);
+    if ($userRow) {
+        $positionLower = strtolower(trim($userRow['position']));
+        $isJoOrOjt = (strpos($positionLower, 'jo') !== false || strpos($positionLower, 'ojt') !== false);
+        if ($isJoOrOjt) {
+            // Return empty credits for JO/OJT employees
+            echo json_encode([
+                'success' => true,
+                'data' => [],
+                'summary' => [
+                    'totalDays' => 0,
+                    'usedDays' => 0,
+                    'availableDays' => 0,
+                ],
+                'message' => 'JO/OJT employees are not eligible for leave credits'
+            ]);
+            exit;
+        }
+    }
+
     // Initialize tallies
     $used = [];
     foreach ($ENTITLEMENTS as $k => $v) { $used[$k] = 0; }
