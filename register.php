@@ -29,6 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Contact number must be 11 digits starting with 09.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please provide a valid email address.';
+    } elseif (!preg_match('/@gmail\.com$/i', $email)) {
+        $error = 'Email must be a Gmail address (ending in @gmail.com).';
+    } elseif (!isset($_SESSION['verified_email']) || $_SESSION['verified_email'] !== $email) {
+        $error = 'Please verify your Gmail address before registering.';
     } elseif ($password !== $confirm) {
         $error = 'Passwords do not match.';
     } elseif (strlen($password) < 6) {
@@ -138,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             max-width: 800px;
             width: 90%;
+            max-height: 90vh;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -147,15 +152,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transition: transform 0.4s ease-in-out;
         }
         .modal-title {
-            font-size: 2rem;
+            font-size: 1.75rem;
             font-weight: 600;
             color: #1f2937;
             margin-bottom: 0.5rem;
         }
         .modal-desc {
-            font-size: 1rem;
+            font-size: 0.875rem;
             color: #6b7280;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
         .modal-message {
             margin-bottom: 1rem;
@@ -180,7 +185,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flex: 1.5;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
+            overflow-y: auto;
+            max-height: 90vh;
         }
         .modal-right {
             flex: 2;
@@ -193,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             object-fit: cover;
         }
         .input-button {
-            padding: 0.75rem 1.5rem;
+            padding: 0.65rem 1.25rem;
             outline: none;
             border: none;
             color: #fff;
@@ -201,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: #1e40af;
             font-family: 'Poppins', sans-serif;
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 0.95rem;
             transition: background 0.3s ease;
             cursor: pointer;
         }
@@ -219,10 +226,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .input-block {
             display: flex;
             flex-direction: column;
-            padding: 0.75rem 1rem;
+            padding: 0.6rem 0.85rem;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
-            margin-bottom: 1.25rem;
+            margin-bottom: 1rem;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
             position: relative;
         }
@@ -392,23 +399,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <!-- Step 3: Email/Password -->
                     <div class="step" id="step-3" style="display:none;">
-                        <div class="input-block">
-                            <label for="email" class="input-label">Email</label>
-                            <input type="email" name="email" id="email" placeholder="email@example.com" required>
-                        </div>
+                                            <div class="input-block">
+                                                <label for="email" class="input-label">Gmail Address</label>
+                                                <input type="email" name="email" id="email" placeholder="example@gmail.com" required pattern="^[^@\s]+@gmail\.com$" title="Must be a valid @gmail.com address">
+                                            </div>
+                                            <div class="input-block" id="email-verification-block">
+                                                <label class="input-label">Email Verification</label>
+                                                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                                                    <button type="button" class="input-button" id="send-code-btn" style="flex:1;">Send Code</button>
+                                                    <input type="text" id="verification_code" placeholder="Enter 6-digit code" maxlength="6" pattern="[0-9]{6}" style="flex:1;display:none;border:1px solid #e5e7eb;border-radius:8px;padding:0.5rem;background:#f9fafb;" inputmode="numeric">
+                                                    <button type="button" class="input-button" id="verify-code-btn" style="flex:1;display:none;">Verify</button>
+                                                </div>
+                                                <small id="verification-hint" style="display:block;margin-top:0.5rem;color:#6b7280;">You must verify your Gmail before setting a password.</small>
+                                            </div>
                         <div class="input-block">
                             <label for="password" class="input-label">Password</label>
-                            <input type="password" name="password" id="password" placeholder="••••••••" required>
+                                                <input type="password" name="password" id="password" placeholder="••••••••" required disabled>
                             <i id="password-toggle" class="fas fa-eye password-toggle"></i>
                         </div>
                         <div class="input-block">
                             <label for="confirm_password" class="input-label">Confirm Password</label>
-                            <input type="password" name="confirm_password" id="confirm_password" placeholder="••••••••" required>
+                                                <input type="password" name="confirm_password" id="confirm_password" placeholder="••••••••" required disabled>
                             <i id="confirm-toggle" class="fas fa-eye password-toggle"></i>
                         </div>
                         <div class="modal-buttons">
                             <button type="button" class="input-button" id="prev-3">Back</button>
-                            <button type="submit" class="input-button">Register</button>
+                                                <button type="submit" class="input-button" id="register-btn" disabled>Register</button>
                         </div>
                     </div>
                 </form>
@@ -502,6 +518,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             confirmInput.type = type;
             confirmToggle.classList.toggle('fa-eye');
             confirmToggle.classList.toggle('fa-eye-slash');
+        });
+
+        // Email verification logic
+        const sendCodeBtn = document.getElementById('send-code-btn');
+        const verifyCodeBtn = document.getElementById('verify-code-btn');
+        const verificationInput = document.getElementById('verification_code');
+        const registerBtn = document.getElementById('register-btn');
+
+        let codeSent = false;
+        sendCodeBtn.addEventListener('click', async () => {
+            clearClientError();
+            const email = document.getElementById('email').value.trim();
+            if (!email.match(/@gmail\.com$/i)) { showClientError('Please enter a valid @gmail.com address.'); return; }
+            sendCodeBtn.disabled = true;
+            sendCodeBtn.textContent = 'Sending...';
+            // Reveal code input & verify button early so user sees where to enter
+            verificationInput.style.display = 'block';
+            verifyCodeBtn.style.display = 'block';
+            try {
+                const res = await fetch('api/send_verification_code.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email: email, purpose: 'registration'})
+                });
+                const data = await res.json();
+                if (!res.ok || data.status !== 'ok') {
+                    showClientError(data.message || 'Failed to send code.');
+                    sendCodeBtn.disabled = false;
+                    sendCodeBtn.textContent = 'Send Code';
+                    return;
+                }
+                codeSent = true;
+                showClientError('Code sent! Please check your Gmail inbox.');
+                clientMessage.classList.remove('error');
+                clientMessage.classList.add('success');
+                // Enable resend after 60 seconds to prevent spam
+                let countdown = 60;
+                sendCodeBtn.textContent = `Resend Code (${countdown}s)`;
+                sendCodeBtn.disabled = true;
+                const timer = setInterval(() => {
+                    countdown--;
+                    if (countdown > 0) {
+                        sendCodeBtn.textContent = `Resend Code (${countdown}s)`;
+                    } else {
+                        clearInterval(timer);
+                        sendCodeBtn.textContent = 'Resend Code';
+                        sendCodeBtn.disabled = false;
+                    }
+                }, 1000);
+            } catch (e) {
+                showClientError('Network or server error sending code. If this persists, contact admin.');
+                sendCodeBtn.disabled = false;
+                sendCodeBtn.textContent = 'Send Code';
+            }
+        });
+
+        verifyCodeBtn.addEventListener('click', async () => {
+            clearClientError();
+            if (!codeSent) { showClientError('Send a code first.'); return; }
+            const email = document.getElementById('email').value.trim();
+            const code = verificationInput.value.trim();
+            if (!code.match(/^[0-9]{6}$/)) { showClientError('Enter the 6-digit code.'); return; }
+            verifyCodeBtn.disabled = true;
+            verifyCodeBtn.textContent = 'Verifying...';
+            try {
+                const res = await fetch('api/verify_registration_code.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email: email, code: code})
+                });
+                const data = await res.json();
+                if (!res.ok || data.status !== 'ok') {
+                    showClientError(data.message || 'Invalid code.');
+                    verifyCodeBtn.disabled = false;
+                    verifyCodeBtn.textContent = 'Verify';
+                    return;
+                }
+                // Success
+                clientMessage.textContent = 'Email verified! You may set your password.';
+                clientMessage.style.display = 'block';
+                clientMessage.classList.remove('error');
+                clientMessage.classList.add('success');
+                document.getElementById('email').readOnly = true;
+                passwordInput.disabled = false;
+                confirmInput.disabled = false;
+                registerBtn.disabled = false;
+                verifyCodeBtn.textContent = 'Verified';
+                verifyCodeBtn.disabled = true;
+                sendCodeBtn.disabled = true;
+            } catch (e) {
+                showClientError('Network error verifying code.');
+                verifyCodeBtn.disabled = false;
+                verifyCodeBtn.textContent = 'Verify';
+            }
         });
     </script>
 </body>

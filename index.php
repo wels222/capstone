@@ -739,7 +739,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         forgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
-            alert('A password reset link has been sent to your email.');
+            window.location.href = 'forgot_password.php';
         });
 
         // Auto-open modal on page load

@@ -1,17 +1,15 @@
 <?php
-// Sends a 6-digit verification code to a Gmail address for registration (or other purposes).
-// Expects JSON: { email: string, purpose: 'registration' }
+// Sends password reset code to user's email
 session_start();
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../config_smtp.php';
 
-// Optional: load PHPMailer if available; else simulate send in dev.
 $autoload = __DIR__ . '/../vendor/autoload.php';
 $mailerAvailable = file_exists($autoload);
 if ($mailerAvailable) {
-    require_once $autoload; // Composer autoload
+    require_once $autoload;
 }
 
 function respond($status, $message, $extra = []) {
@@ -28,38 +26,50 @@ if ($raw) {
 }
 
 $email = trim($data['email'] ?? ($_POST['email'] ?? ''));
-$purpose = trim($data['purpose'] ?? ($_POST['purpose'] ?? 'registration'));
 
 if (!$email) respond('error', 'Email is required.');
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) respond('error', 'Invalid email format.');
-if (!preg_match('/@gmail\.com$/i', $email)) respond('error', 'Email must be a Gmail address.');
 
-if ($purpose === 'registration') {
-    try {
-        $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([$email]);
-        if ($stmt->fetch()) respond('error', 'Email already registered.');
-    } catch (Exception $e) {
-        respond('error', 'Database error checking email.');
+// Check if user exists and is approved
+try {
+    $stmt = $pdo->prepare('SELECT id, status FROM users WHERE email = ? LIMIT 1');
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+    
+    if (!$user) {
+        respond('error', 'No account found with this email address.');
     }
+    
+    $status = strtolower($user['status'] ?? '');
+    if ($status === 'pending') {
+        respond('error', 'Your account is still pending approval. Please wait for admin approval before resetting your password.');
+    } elseif ($status === 'declined') {
+        respond('error', 'Your account registration was declined. Please contact the administrator.');
+    } elseif ($status !== 'approved') {
+        respond('error', 'Your account is not active. Please contact the administrator.');
+    }
+} catch (Exception $e) {
+    respond('error', 'Database error.');
 }
 
-if (isset($_SESSION['verification_last_sent']) && isset($_SESSION['verification_email']) && $_SESSION['verification_email'] === $email) {
-    $elapsed = time() - (int)$_SESSION['verification_last_sent'];
+// Rate limiting
+if (isset($_SESSION['reset_last_sent']) && isset($_SESSION['reset_email']) && $_SESSION['reset_email'] === $email) {
+    $elapsed = time() - (int)$_SESSION['reset_last_sent'];
     if ($elapsed < 60) respond('error', 'Please wait '.(60 - $elapsed).'s before requesting a new code.');
 }
 
+// Generate code
 try {
     $code = (string)random_int(100000, 999999);
 } catch (Exception $e) {
     $code = (string)mt_rand(100000, 999999);
 }
 
-$_SESSION['verification_email'] = $email;
-$_SESSION['verification_code'] = $code; // Consider hashing in production
-$_SESSION['verification_expires'] = time() + 300; // 5 minutes
-$_SESSION['verification_last_sent'] = time();
-$_SESSION['verification_purpose'] = $purpose;
+// Store in session
+$_SESSION['reset_email'] = $email;
+$_SESSION['reset_code'] = $code;
+$_SESSION['reset_expires'] = time() + 300; // 5 minutes
+$_SESSION['reset_last_sent'] = time();
 
 if ($mailerAvailable && class_exists('\\PHPMailer\\PHPMailer\\PHPMailer')) {
     $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
@@ -68,6 +78,7 @@ if ($mailerAvailable && class_exists('\\PHPMailer\\PHPMailer\\PHPMailer')) {
     $smtpPass = SMTP_PASS;
     $smtpPort = SMTP_PORT;
     $smtpSecure = SMTP_SECURE;
+    
     try {
         $mail->isSMTP();
         $mail->Host = $smtpHost;
@@ -80,24 +91,22 @@ if ($mailerAvailable && class_exists('\\PHPMailer\\PHPMailer\\PHPMailer')) {
         $fromName = APP_NAME;
         $mail->setFrom($fromEmail, $fromName);
         $mail->addAddress($email);
-        $mail->Subject = 'Your Verification Code';
+        $mail->Subject = 'Password Reset Code';
         $mail->isHTML(true);
-        $mail->Body = '<p>Your verification code is:</p><h2 style="letter-spacing:3px;">'.$code.'</h2><p>It expires in 10 minutes.</p>';
-        $mail->AltBody = "Your verification code: $code (expires in 10 minutes).";
+        $mail->Body = '<p>Your password reset code is:</p><h2 style="letter-spacing:3px;">'.$code.'</h2><p>It expires in 10 minutes.</p><p>If you did not request this, please ignore this email.</p>';
+        $mail->AltBody = "Your password reset code: $code (expires in 10 minutes). If you did not request this, please ignore this email.";
         
-        // Check if SMTP credentials are configured
         if ($smtpUser === 'your-system-email@gmail.com' || $smtpPass === 'your-app-password-here') {
-            $_SESSION['verification_simulated'] = true;
-            respond('ok', 'Code generated (SMTP not configured yet, simulated). Edit config_smtp.php', ['email' => $email, 'code' => $code]);
+            $_SESSION['reset_simulated'] = true;
+            respond('ok', 'Code generated (SMTP not configured, simulated). Code: '.$code, ['email' => $email, 'code' => $code]);
         }
         
         $mail->send();
-        respond('ok', 'Verification code sent to your email.', ['email' => $email]);
+        respond('ok', 'Password reset code sent to your email.', ['email' => $email]);
     } catch (\PHPMailer\PHPMailer\Exception $e) {
         respond('error', 'Failed to send email: '.$e->getMessage());
     }
 } else {
-    // Dev fallback if PHPMailer not installed
-    $_SESSION['verification_simulated'] = true;
+    $_SESSION['reset_simulated'] = true;
     respond('ok', 'Code generated (PHPMailer not installed, simulated). Code: '.$code, ['email' => $email, 'code' => $code]);
 }
