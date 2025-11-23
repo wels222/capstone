@@ -352,50 +352,87 @@ function updateClock(){
 setInterval(updateClock, 1000);
 updateClock();
 
-// ==== Rotating QR (copied from attendance/scan.html, paths adjusted) ====
+// ==== NEW 60-SECOND TOKEN QR SYSTEM (DATABASE-BASED, HOSTING-COMPATIBLE) ====
+// Each QR token expires exactly 60 seconds after creation
+// Automatically regenerates tokens using device real-time
 let rotInterval = null;
 let countdownInterval = null;
-let serverTimeOffset = 0;
+let currentTokenExpiry = null;
 
 async function fetchRotatingQR() {
     try {
         const res = await fetch('../../../attendance/generate_qr.php');
         const data = await res.json();
-        const url = data.url;
-        if (data.serverTime) {
-            const clientTime = Math.floor(Date.now() / 1000);
-            serverTimeOffset = data.serverTime - clientTime;
+        
+        if (!data.success) {
+            console.error('Failed to generate QR token:', data.message);
+            return;
         }
+        
+        const url = data.url;
+        const expiresInSeconds = data.expires_in_seconds || 60;
+        
+        // Store expiry time based on device time (hosting-compatible)
+        currentTokenExpiry = new Date(data.expires_at).getTime();
+        
         const img = document.getElementById('rotating-qr-img');
         const link = document.getElementById('rotating-qr-link');
+        
         // Compute best-fit QR size based on container width (keeps image sharp)
         const container = img.parentElement;
         const containerWidth = container ? Math.min(container.clientWidth, window.innerWidth) : 320;
-        // Keep inside 18vh to match visual cap, convert vh to px
         const vhCap = Math.floor(window.innerHeight * 0.18);
         const target = Math.min(containerWidth, vhCap);
         const size = Math.max(220, Math.min(600, target));
+        
+        // Generate QR code using external API (works on all hosting)
         const qrApi = 'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size + '&data=' + encodeURIComponent(url);
         img.src = qrApi;
         link.href = url;
         link.textContent = url;
+        
         document.getElementById('qr-updated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
-    } catch (err) { console.error('Failed to load rotating QR', err); }
+        
+        // Start countdown based on actual expiration time (60 seconds)
+        startCountdown(expiresInSeconds);
+        
+    } catch (err) { 
+        console.error('Failed to load QR token', err); 
+    }
+}
+
+function startCountdown(initialSeconds) {
+    if (countdownInterval) clearInterval(countdownInterval);
+    
+    let secondsLeft = initialSeconds;
+    const counterEl = document.getElementById('rot-count');
+    
+    counterEl.textContent = secondsLeft;
+    
+    countdownInterval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft < 0) secondsLeft = 0;
+        counterEl.textContent = secondsLeft;
+        
+        // When countdown reaches 0, fetch new token immediately
+        if (secondsLeft <= 0) {
+            clearInterval(countdownInterval);
+            fetchRotatingQR();
+        }
+    }, 1000);
 }
 
 function startRotation() {
+    // Fetch first QR token immediately
     fetchRotatingQR();
-    function schedule() {
-        const now = Date.now() + (serverTimeOffset * 1000);
-        const msToNextMinute = 60000 - (now % 60000);
-        let secondsLeft = Math.ceil(msToNextMinute / 1000);
-        const counterEl = document.getElementById('rot-count');
-        if (countdownInterval) clearInterval(countdownInterval);
-        counterEl.textContent = secondsLeft;
-        countdownInterval = setInterval(() => { secondsLeft--; if (secondsLeft < 0) secondsLeft = 0; counterEl.textContent = secondsLeft; }, 1000);
-        setTimeout(() => { fetchRotatingQR(); if (rotInterval) clearInterval(rotInterval); rotInterval = setInterval(fetchRotatingQR, 60000); schedule(); }, msToNextMinute + 200);
-    }
-    schedule();
+    
+    // Check periodically if token needs refresh (fallback safety check)
+    setInterval(() => {
+        const now = Date.now();
+        if (currentTokenExpiry && now >= currentTokenExpiry) {
+            fetchRotatingQR();
+        }
+    }, 5000); // Check every 5 seconds as safety backup
 }
 
 document.getElementById('copyLinkBtn').addEventListener('click', async () => {

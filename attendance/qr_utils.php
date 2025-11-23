@@ -1,48 +1,132 @@
 <?php
-// Utility functions for QR rotating token generation and verification
-// and a helper to record attendance for a logged-in user.
+// Utility functions for QR token generation and verification (DATABASE-BASED APPROACH)
+// This hosting-compatible approach stores tokens in database with automatic 60-second expiration
+// Works on any hosting provider without .env files or file permission issues
 require_once __DIR__ . '/../db.php';
 
-function qr_generate_token_for_min($minuteTimestamp = null) {
-    // Use minute precision (floor(time()/60))
-    if ($minuteTimestamp === null) $minuteTimestamp = floor(time() / 60);
-    $payload = (string)$minuteTimestamp;
-    $sig = hash_hmac('sha256', $payload, QR_SECRET);
-    $token = base64_encode($payload . ':' . $sig);
-    // Make token URL-safe
-    return rtrim(strtr($token, '+/', '-_'), '=');
-}
-
-function qr_decode_token($token) {
-    $token = strtr($token, '-_', '+/');
-    $pad = strlen($token) % 4;
-    if ($pad) $token .= str_repeat('=', 4 - $pad);
-    $decoded = base64_decode($token);
-    if (!$decoded) return false;
-    $parts = explode(':', $decoded);
-    if (count($parts) !== 2) return false;
-    return ['minute' => (int)$parts[0], 'sig' => $parts[1]];
-}
-
-function qr_verify_token($token, $allowedSkewMinutes = 0) {
-    $data = qr_decode_token($token);
-    if (!$data) return false;
-    $minute = $data['minute'];
-    $sig = $data['sig'];
-    // Check within allowed skew minutes. Default is 0 so only the current minute is accepted
-    $nowMin = floor(time() / 60);
-    for ($i = -$allowedSkewMinutes; $i <= $allowedSkewMinutes; $i++) {
-        $cand = (string)($nowMin + $i);
-        $expected = hash_hmac('sha256', $cand, QR_SECRET);
-        if (hash_equals($expected, $sig) && $minute == (int)$cand) {
-            return true;
-        }
+/**
+ * Generate a new QR token and store in database with 60-second expiration
+ * Uses device real-time for accurate expiration tracking
+ * @param PDO $pdo Database connection
+ * @return array Token data including token string, created_at, expires_at
+ */
+function qr_generate_new_token($pdo) {
+    // Clean up expired tokens first (automatic cleanup)
+    qr_cleanup_expired_tokens($pdo);
+    
+    // Generate unique token using random bytes + timestamp for uniqueness
+    try {
+        $randomPart = bin2hex(random_bytes(16));
+    } catch (Exception $e) {
+        $randomPart = bin2hex(openssl_random_pseudo_bytes(16));
     }
-    return false;
+    
+    // Add timestamp for uniqueness and sorting
+    $timestamp = microtime(true);
+    $token = $randomPart . '_' . str_replace('.', '', $timestamp);
+    
+    // Make URL-safe
+    $token = rtrim(strtr($token, '+/', '-_'), '=');
+    
+    // Set expiration to exactly 60 seconds from now (uses device real-time)
+    date_default_timezone_set('Asia/Manila');
+    $created_at = date('Y-m-d H:i:s');
+    $expires_at = date('Y-m-d H:i:s', strtotime($created_at) + 60); // 60 seconds expiration
+    
+    // Store in database
+    try {
+        $stmt = $pdo->prepare("INSERT INTO qr_tokens (token, created_at, expires_at, is_used) VALUES (?, ?, ?, 0)");
+        $stmt->execute([$token, $created_at, $expires_at]);
+        
+        return [
+            'success' => true,
+            'token' => $token,
+            'created_at' => $created_at,
+            'expires_at' => $expires_at,
+            'expires_in_seconds' => 60
+        ];
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'message' => 'Failed to generate token: ' . $e->getMessage()
+        ];
+    }
 }
 
+/**
+ * Verify QR token from database
+ * Checks if token exists, not expired, and not already used
+ * @param PDO $pdo Database connection
+ * @param string $token Token to verify
+ * @return bool True if valid, false otherwise
+ */
+function qr_verify_token($pdo, $token) {
+    if (empty($token)) return false;
+    
+    date_default_timezone_set('Asia/Manila');
+    $now = date('Y-m-d H:i:s');
+    
+    try {
+        // Check if token exists, not expired, and not used
+        $stmt = $pdo->prepare("
+            SELECT * FROM qr_tokens 
+            WHERE token = ? 
+            AND expires_at > ? 
+            AND is_used = 0 
+            LIMIT 1
+        ");
+        $stmt->execute([$token, $now]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return $result !== false;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
+ * Mark token as used after successful attendance recording
+ * @param PDO $pdo Database connection
+ * @param string $token Token to mark as used
+ * @param int $userId User ID who used the token
+ * @return bool Success status
+ */
+function qr_mark_token_used($pdo, $token, $userId = null) {
+    try {
+        $stmt = $pdo->prepare("UPDATE qr_tokens SET is_used = 1, used_by_user_id = ? WHERE token = ?");
+        $stmt->execute([$userId, $token]);
+        return true;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
+ * Clean up expired tokens from database (automatic maintenance)
+ * Removes tokens older than 5 minutes to keep database clean
+ * @param PDO $pdo Database connection
+ * @return int Number of deleted tokens
+ */
+function qr_cleanup_expired_tokens($pdo) {
+    date_default_timezone_set('Asia/Manila');
+    $cutoff = date('Y-m-d H:i:s', strtotime('-5 minutes')); // Keep last 5 minutes for logging
+    
+    try {
+        $stmt = $pdo->prepare("DELETE FROM qr_tokens WHERE created_at < ?");
+        $stmt->execute([$cutoff]);
+        return $stmt->rowCount();
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+/**
+ * Build full attendance URL for QR code (hosting-compatible)
+ * Automatically detects correct URL for any hosting environment
+ * @param string $token Token to include in URL
+ * @return string Full URL
+ */
 function qr_build_attendance_url($token) {
-    // Builds full URL to index.php with qr token
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $base = rtrim($scheme . '://' . $host . BASE_PATH, '/');

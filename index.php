@@ -7,18 +7,24 @@ if (!isset($_GET['qr'])) {
 }
 
 // If arrived via QR link, validate immediately and store pending token in session so we can process after login
+// NEW DATABASE-BASED APPROACH: Token validated against database with 60-second expiration
 if (isset($_GET['qr']) && $_GET['qr']) {
     require_once __DIR__ . '/attendance/qr_utils.php';
     $pending = $_GET['qr'];
-    // Validate with 1-minute tolerance (current + previous minute only)
-    // This keeps strict 1-minute rotation while allowing for scan/network delay on hosting
-    if (qr_verify_token($pending, 1)) {
-        // store the valid raw token; will be validated and processed after successful login
+    
+    // Verify token against database (checks expiration automatically)
+    if (qr_verify_token($pdo, $pending)) {
+        // Token is valid and not expired - store for processing after login
         $_SESSION['qr_pending'] = $pending;
         unset($_SESSION['qr_pending_invalid']);
-        // If the user is already logged in, attempt to verify and process immediately
-        if (isset($_SESSION['user_id']) && $_SESSION['user_id'] !== '') {
+        
+        // If the user is already logged in, process attendance immediately
+        if (isset($_SESSION['user_id']) && $_SESSION['user_id'] !== '' && $_SESSION['user_id'] !== 'superadmin') {
             $res = qr_record_attendance_for_user($pdo, $_SESSION['user_id']);
+            
+            // Mark token as used to prevent reuse
+            qr_mark_token_used($pdo, $pending, $_SESSION['user_id']);
+            
             // Clear pending token
             unset($_SESSION['qr_pending']);
 
@@ -137,15 +143,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $roleNorm = strtolower($user['role'] ?? $user['position'] ?? '');
             // If login was initiated via QR, attempt to process attendance after login
+            // NEW DATABASE-BASED APPROACH: Validates token against database with 60-second expiration
             if (!empty($_SESSION['qr_pending'])) {
                 // include QR utilities
                 require_once __DIR__ . '/attendance/qr_utils.php';
                 $pending = $_SESSION['qr_pending'];
-                    // Validate with 1-minute tolerance (current + previous minute only)
-                    // This keeps strict 1-minute rotation while allowing for scan/network delay on hosting
-                    if (qr_verify_token($pending, 1)) {
+                
+                // Verify token against database (checks if not expired and not used)
+                if (qr_verify_token($pdo, $pending)) {
                     // Record attendance for this user
                     $result = qr_record_attendance_for_user($pdo, $user['id']);
+                    
+                    // Mark token as used to prevent reuse
+                    qr_mark_token_used($pdo, $pending, $user['id']);
+                    
                     // Clear pending token
                     unset($_SESSION['qr_pending']);
                     // Determine redirect target based on roleNorm (mirror normal login routing)

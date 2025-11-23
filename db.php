@@ -18,42 +18,40 @@ try {
     throw new PDOException($e->getMessage(), (int)$e->getCode());
 }
 
-// Load environment variables from .env (simple loader)
-$envPath = __DIR__ . '/.env';
-if (file_exists($envPath)) {
-    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        if (!strpos($line, '=')) continue;
-        list($k, $v) = explode('=', $line, 2);
-        $k = trim($k);
-        $v = trim($v);
-        if ($k === '') continue;
-        // export to environment so getenv can pick it up
-        putenv("$k=$v");
-        $_ENV[$k] = $v;
-    }
-}
-
-// QR token secret used to sign rotating QR tokens. Prefer environment variable QR_SECRET.
-$envSecret = getenv('QR_SECRET');
-if ($envSecret && $envSecret !== '') {
-    if (!defined('QR_SECRET')) define('QR_SECRET', $envSecret);
-} else {
-    // If none provided, generate a secure secret and persist to .env for future runs
+// QR token secret - stored in database for hosting compatibility (no .env files needed)
+// This approach works on any hosting provider without file permission issues
+if (!defined('QR_SECRET')) {
     try {
-        $generated = bin2hex(random_bytes(32));
-    } catch (Exception $e) {
-        // Fallback to less-secure unique id
-        $generated = bin2hex(openssl_random_pseudo_bytes(32));
+        // Try to get QR_SECRET from database
+        $stmt = $pdo->query("SELECT config_value FROM system_config WHERE config_key = 'QR_SECRET' LIMIT 1");
+        $row = $stmt->fetch();
+        
+        if ($row && !empty($row['config_value'])) {
+            define('QR_SECRET', $row['config_value']);
+        } else {
+            // Generate new secret and store in database
+            try {
+                $generated = bin2hex(random_bytes(32));
+            } catch (Exception $e) {
+                $generated = bin2hex(openssl_random_pseudo_bytes(32));
+            }
+            
+            // Store in database for future use
+            $pdo->exec("INSERT INTO system_config (config_key, config_value) VALUES ('QR_SECRET', '{$generated}') 
+                       ON DUPLICATE KEY UPDATE config_value = '{$generated}'");
+            
+            define('QR_SECRET', $generated);
+        }
+    } catch (PDOException $e) {
+        // Fallback if system_config table doesn't exist yet
+        // Generate temporary secret (will be stored once table is created)
+        try {
+            $generated = bin2hex(random_bytes(32));
+        } catch (Exception $ex) {
+            $generated = bin2hex(openssl_random_pseudo_bytes(32));
+        }
+        define('QR_SECRET', $generated);
     }
-    // Append or create .env with QR_SECRET
-    if (!file_exists($envPath) || strpos(file_get_contents($envPath), 'QR_SECRET=') === false) {
-        file_put_contents($envPath, "QR_SECRET={$generated}\n", FILE_APPEND | LOCK_EX);
-    }
-    putenv("QR_SECRET={$generated}");
-    $_ENV['QR_SECRET'] = $generated;
-    if (!defined('QR_SECRET')) define('QR_SECRET', $generated);
 }
 
 // Base path for the application. Automatically detects the correct path for both local and hosted environments.

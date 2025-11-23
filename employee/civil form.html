@@ -1660,10 +1660,10 @@
                 // After submission always redirect the employee back to their dashboard.
                 // (Do not redirect to dept head pages from this form.)
                 try {
-                  window.location.href = "/capstone/employee/dashboard.php";
+                  window.location.href = "../employee/dashboard.php";
                 } catch (e) {
                   // Fallback in the unlikely event assignment throws
-                  location.assign("/capstone/employee/dashboard.php");
+                  location.assign("../employee/dashboard.php");
                 }
               }, 1200);
             } else {

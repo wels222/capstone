@@ -1,32 +1,44 @@
 <?php
-// Returns a JSON object with the current rotating QR URL (main index.php?qr=TOKEN)
+// Generates a new QR token with 60-second expiration (DATABASE-BASED APPROACH)
+// Hosting-compatible: Works on any hosting provider without .env files
+// Auto-expires after exactly 60 seconds from creation time
 require_once __DIR__ . '/qr_utils.php';
 
 header('Content-Type: application/json');
 
-// Get current server time for synchronization
+// Generate new token and store in database with automatic 60-second expiration
+$tokenData = qr_generate_new_token($pdo);
+
+if (!$tokenData['success']) {
+    echo json_encode([
+        'success' => false,
+        'message' => $tokenData['message'] ?? 'Failed to generate QR token'
+    ]);
+    exit;
+}
+
+$token = $tokenData['token'];
+
+// Build the URL for QR login (hosting-compatible)
+// Points to main index.php with QR token parameter
+// Automatically detects correct domain and path for any hosting environment
+$url = qr_build_attendance_url($token);
+
+// Get current server time for client synchronization
 date_default_timezone_set('Asia/Manila');
 $serverTime = time();
-$currentMinute = floor($serverTime / 60);
+$created = strtotime($tokenData['created_at']);
+$expires = strtotime($tokenData['expires_at']);
 
-$token = qr_generate_token_for_min($currentMinute);
-
-// Build the URL for QR login
-// The QR should point to the main index.php (login page) directly with the QR token
-// This ensures it works on both localhost and hosted environments
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-
-// BASE_PATH contains the application root (e.g., '/capstone' or '' for root)
-$base = rtrim($scheme . '://' . $host . BASE_PATH, '/');
-
-// Point directly to main index.php for maximum hosting compatibility
-$url = $base . '/index.php?qr=' . urlencode($token);
-
-// Return server time for client synchronization (keeps 1-minute rotation working on hosting)
+// Return token data with precise expiration info
 echo json_encode([
-    'token' => $token, 
+    'success' => true,
+    'token' => $token,
     'url' => $url,
-    'serverTime' => $serverTime,
-    'currentMinute' => $currentMinute
+    'created_at' => $tokenData['created_at'],
+    'expires_at' => $tokenData['expires_at'],
+    'server_time' => $serverTime,
+    'server_time_formatted' => date('Y-m-d H:i:s', $serverTime),
+    'expires_in_seconds' => max(0, $expires - $serverTime), // Remaining seconds
+    'valid_duration' => 60 // Token is valid for 60 seconds
 ]);
