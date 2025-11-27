@@ -47,6 +47,7 @@ try {
 // ---------------------------
 $dateOnly = date('Y-m-d', strtotime($timestamp));
 $timeOnly = date('H:i', strtotime($timestamp)); // HH:MM in 24-hour format
+$ninePm = '21:00';
 
 // ---------------------------
 // Determine time_in_status / time_out_status
@@ -80,7 +81,30 @@ if ($status === 'in') {
 
 try {
     if ($status === 'in') {
-        // Insert new attendance entry or update time_in
+        // If after 5:00 PM, lock as Absent and do not record time_in
+        if ($timeOnly > '17:00') {
+            // Upsert with Absent and NULL time_in
+            $stmt = $pdo->prepare("
+                INSERT INTO attendance (employee_id, date, time_in, time_in_status)
+                VALUES (:employee_id, :date, NULL, 'Absent')
+                ON DUPLICATE KEY UPDATE 
+                    time_in = NULL,
+                    time_in_status = 'Absent'
+            ");
+            $stmt->execute([
+                'employee_id' => $employee_id,
+                'date' => $dateOnly
+            ]);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Marked as Absent after 5:00 PM',
+                'status' => 'in',
+                'time_in_status' => 'Absent'
+            ]);
+            exit;
+        }
+
+        // Before 5:00 PM: insert/update normal time_in
         $stmt = $pdo->prepare("
             INSERT INTO attendance (employee_id, date, time_in, time_in_status)
             VALUES (:employee_id, :date, :time_in, :time_in_status)
@@ -104,13 +128,37 @@ try {
 
     } elseif ($status === 'out') {
         // Enforce: cannot time out without an existing time-in record for today
-        $chk = $pdo->prepare("SELECT id FROM attendance WHERE employee_id = :employee_id AND date = :date LIMIT 1");
+        $chk = $pdo->prepare("SELECT id, time_in_status, time_out FROM attendance WHERE employee_id = :employee_id AND date = :date LIMIT 1");
         $chk->execute(['employee_id' => $employee_id, 'date' => $dateOnly]);
         $row = $chk->fetch();
         if (!$row) {
             echo json_encode([
                 'success' => false,
                 'message' => 'Cannot time out without a time in record for today.'
+            ]);
+            exit;
+        }
+
+        // Block timeout if already marked Absent
+        if (strtolower($row['time_in_status'] ?? '') === 'absent') {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Attendance locked as Absent; time out ignored.',
+                'status' => 'out',
+                'time_out_status' => 'Absent'
+            ]);
+            exit;
+        }
+
+        // After 9:00 PM, mark as Forgotten and do not set time_out
+        if ($timeOnly >= $ninePm) {
+            $stmt = $pdo->prepare("UPDATE attendance SET time_out_status = 'Forgotten' WHERE id = :id");
+            $stmt->execute(['id' => $row['id']]);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Marked as Forgotten after 9:00 PM',
+                'status' => 'out',
+                'time_out_status' => 'Forgotten'
             ]);
             exit;
         }

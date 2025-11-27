@@ -22,8 +22,7 @@ if (isset($_GET['qr']) && $_GET['qr']) {
         if (isset($_SESSION['user_id']) && $_SESSION['user_id'] !== '' && $_SESSION['user_id'] !== 'superadmin') {
             $res = qr_record_attendance_for_user($pdo, $_SESSION['user_id']);
             
-            // Mark token as used to prevent reuse
-            qr_mark_token_used($pdo, $pending, $_SESSION['user_id']);
+            // Multi-use tokens: no need to mark as used
             
             // Clear pending token
             unset($_SESSION['qr_pending']);
@@ -154,8 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Record attendance for this user
                     $result = qr_record_attendance_for_user($pdo, $user['id']);
                     
-                    // Mark token as used to prevent reuse
-                    qr_mark_token_used($pdo, $pending, $user['id']);
+                    // Multi-use tokens: no need to mark as used
                     
                     // Clear pending token
                     unset($_SESSION['qr_pending']);

@@ -41,6 +41,18 @@ if ($nowH >= 17) {
         @ob_end_clean();
     }
 }
+// Auto-mark forgotten at 21:00 if not already run today
+if ($nowH >= 21) {
+    $lastForgotFile = __DIR__ . '/../attendance/last_forgotten_run.txt';
+    $lastF = is_readable($lastForgotFile) ? trim(file_get_contents($lastForgotFile)) : '';
+    if ($lastF !== date('Y-m-d')) {
+        ob_start();
+        @include_once __DIR__ . '/../attendance/auto_timeout.php';
+        // Record last run date
+        @file_put_contents($lastForgotFile, date('Y-m-d'));
+        @ob_end_clean();
+    }
+}
 try {
     $stmt = $pdo->prepare('SELECT employee_id, firstname, lastname, mi FROM users WHERE id = ?');
     $stmt->execute([$hr_user_id]);

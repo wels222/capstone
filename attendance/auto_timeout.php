@@ -2,7 +2,7 @@
 /**
  * Auto Timeout Script
  * If an employee has a time-in but no time-out by 9:00 PM,
- * automatically set their time-out to 5:00 PM with status 'Out'.
+ * mark their status as 'Forgotten' (no auto time_out value).
  *
  * Run daily at or after 9:00 PM Asia/Manila.
  */
@@ -33,12 +33,11 @@ try {
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $updated = 0;
-    $fivePm = $today . ' 17:00:00';
 
     if (!empty($rows)) {
-        $upd = $pdo->prepare('UPDATE attendance SET time_out = ?, time_out_status = ? WHERE id = ?');
+        $upd = $pdo->prepare('UPDATE attendance SET time_out_status = ? WHERE id = ?');
         foreach ($rows as $r) {
-            $upd->execute([$fivePm, 'Out', $r['id']]);
+            $upd->execute(['Forgotten', $r['id']]);
             $updated++;
         }
     }
@@ -47,7 +46,7 @@ try {
         'success' => true,
         'date' => $today,
         'updated' => $updated,
-        'message' => "Auto-timeout applied to {$updated} records (set to 5:00 PM, status 'Out')."
+        'message' => "Marked {$updated} records as 'Forgotten' (no time-out recorded)."
     ]);
 } catch (Exception $e) {
     echo json_encode([
