@@ -1,5 +1,7 @@
 <?php
 // api/super_admin_users.php
+require_once __DIR__ . '/../auth_guard.php';
+require_api_auth('super_admin');
 require_once '../db.php';
 header('Content-Type: application/json');
 

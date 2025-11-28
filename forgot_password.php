@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/auth_guard.php';
+prevent_if_authenticated();
 require_once 'db.php';
 $error = '';
 $success = '';

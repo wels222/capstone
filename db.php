@@ -3,7 +3,7 @@
 $host = 'localhost';
 $db   = 'capstone'; // <- ensure this is "capstone"
 $user = 'root';
-$pass = 'damnson';
+$pass = '';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";

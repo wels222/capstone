@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../auth_guard.php';
+require_role('employee');
 require_once __DIR__ . '/../db.php';
-
-// Redirect if not logged in
-if (!isset($_SESSION['user_id']) || $_SESSION['user_id'] === 'superadmin') {
-    header('Location: ../index.php');
-    exit();
-}
 
 $userId = $_SESSION['user_id'];
 
@@ -31,7 +26,7 @@ if ((isset($_GET['qr']) && $_GET['qr']) || (!empty($_SESSION['qr_pending']))) {
 
         // Determine base redirect target based on role/position (same logic as index.php)
         if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === 'superadmin') {
-            $redirect = '../super_admin.html';
+            $redirect = '../super_admin.php';
         } else {
             $sessRole = strtolower($_SESSION['role'] ?? $_SESSION['position'] ?? '');
             if ($sessRole === 'hr' || $sessRole === 'human resources') {

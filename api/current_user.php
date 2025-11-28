@@ -1,6 +1,7 @@
 <?php
 header('Content-Type: application/json');
-session_start();
+require_once __DIR__ . '/../auth_guard.php';
+require_api_auth();
 require_once __DIR__ . '/../db.php';
 
 $email = $_SESSION['email'] ?? null;

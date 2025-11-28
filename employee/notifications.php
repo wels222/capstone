@@ -1,6 +1,7 @@
 <?php
 // notifications.php - Employee notification list with actions
-session_start();
+require_once __DIR__ . '/../auth_guard.php';
+require_role('employee');
 header('Content-Type: application/json');
 require_once '../db.php';
 

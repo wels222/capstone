@@ -1,7 +1,7 @@
 <?php
 header('Content-Type: application/json');
-// Start session to allow fallback to current logged-in user email if not provided in payload
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
+require_once __DIR__ . '/../auth_guard.php';
+require_api_auth(['hr', 'department_head', 'employee']);
 require_once '../db.php';
 
 // Persist signatures to disk so they can be reused across submissions

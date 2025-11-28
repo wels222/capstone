@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../auth_guard.php';
+require_role(['hr', 'department_head', 'employee']);
 ?>
 <!DOCTYPE html>
 <html lang="en">

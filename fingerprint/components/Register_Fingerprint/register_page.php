@@ -121,7 +121,7 @@ body {
 <body>
 
 <div class="main-card">
-    <a href="../../../super_admin.html" class="back-btn">
+    <a href="../../../super_admin.php" class="back-btn">
         <i class="fas fa-arrow-left"></i> Back to Admin
     </a>
     <div class="title">Register Fingerprint</div>

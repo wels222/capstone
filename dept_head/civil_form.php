@@ -1,7 +1,7 @@
 <?php
+require_once __DIR__ . '/../auth_guard.php';
+require_role('department_head');
 require_once '../db.php';
-// Ensure session is available so we can read the logged-in user
-if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
 // Get leave request ID from URL
 $leave_id = $_GET['id'] ?? null;
 $leave = null;

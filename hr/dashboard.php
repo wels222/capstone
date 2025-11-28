@@ -1,10 +1,7 @@
 <?php
 // dashboard.php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header('Location: ../index.php');
-    exit();
-}
+require_once __DIR__ . '/../auth_guard.php';
+require_role('hr');
 // fetch basic user info for attendance quick-link
 require_once __DIR__ . '/../db.php';
 $hr_user_id = $_SESSION['user_id'];
@@ -873,6 +870,10 @@ try {
                 <i class="fas fa-users" style="font-size:0.9rem;"></i>
                 <span style="font-size:0.9rem;">All Attendance</span>
             </a>
+            <a href="../fingerprint/components/Fingerprint_Reader/scanner_page.php" target="_blank" title="QR Scanner" style="margin-left:0.5rem; display:inline-flex; align-items:center; gap:0.5rem; padding:0.375rem 0.75rem; background:#8b5cf6; color:#fff; border-radius:0.5rem; text-decoration:none; font-weight:600;">
+                <i class="fas fa-qrcode" style="font-size:0.9rem;"></i>
+                <span style="font-size:0.9rem;">QR</span>
+            </a>
             <img src="../assets/logo.png" alt="Profile" class="profile-image">
         </div>
     </header>
@@ -955,16 +956,16 @@ try {
                         <a href="employees.html"><i class="fas fa-users"></i> Employees</a>
                     </li>
                     <li class="nav-item">
-                        <a href="leave_status.html"><i class="fas fa-calendar-alt"></i> Leave Status</a>
+                        <a href="leave_status.php"><i class="fas fa-calendar-alt"></i> Leave Status</a>
                     </li>
                     <li class="nav-item">
-                        <a href="leave_request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>
+                        <a href="leave_request.php"><i class="fas fa-calendar-plus"></i> Leave Request</a>
                     </li>
                     <li class="nav-item">
-                        <a href="manage_events.html"><i class="fa fa-calendar-times"></i> Manage Events</a>
+                        <a href="manage_events.php"><i class="fa fa-calendar-times"></i> Manage Events</a>
                     </li>
                     <li class="nav-item">
-                        <a href="analytics.html"><i class="fas fa-chart-line"></i> Analytics</a>
+                        <a href="analytics.php"><i class="fas fa-chart-line"></i> Analytics</a>
                     </li>
                 </ul>
             </nav>

@@ -1,10 +1,7 @@
 <?php
 // dashboard.php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header('Location: ../index.php');
-    exit();
-}
+require_once __DIR__ . '/../auth_guard.php';
+require_role('department_head');
 // fetch basic user info for attendance quick-link
 require_once __DIR__ . '/../db.php';
 $dh_user_id = $_SESSION['user_id'];
@@ -918,20 +915,20 @@ try {
               >
             </li>
             <li class="nav-item">
-              <a href="employees.html"><i class="fas fa-users"></i> Employees</a>
+              <a href="employees.php"><i class="fas fa-users"></i> Employees</a>
             </li>
             <li class="nav-item">
-              <a href="leave-status.html"
+              <a href="leave-status.php"
                 ><i class="fas fa-calendar-alt"></i> Leave Status</a
               >
             </li>
             <li class="nav-item">
-              <a href="task-status.html"
+              <a href="task-status.php"
                 ><i class="fas fa-tasks"></i> Task Status</a
               >
             </li>
             <li class="nav-item">
-              <a href="leave-request.html"
+              <a href="leave-request.php"
                 ><i class="fas fa-calendar-plus"></i> Leave Request</a
               >
             </li>

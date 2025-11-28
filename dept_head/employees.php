@@ -1,26 +1,19 @@
 <?php
-// employees.php - Dynamic employee list from database
 require_once __DIR__ . '/../auth_guard.php';
-require_role('hr');
-require_once '../db.php';
-
-$categories = ['Permanent', 'Casual', 'JO', 'OJT'];
-$employees = [];
-// Group employees by their employment category stored in the `position` column
-foreach ($categories as $cat) {
-  $stmt = $pdo->prepare("SELECT * FROM users WHERE position = ?");
-  $stmt->execute([$cat]);
-  $employees[$cat] = $stmt->fetchAll();
-}
+require_role('department_head');
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bayan ng Mabini | Employee System</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+    <title>Dept Head | Employees</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       /* All colors are shades of blue or neutral tones to match the request. */
       @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
@@ -477,7 +470,10 @@ foreach ($categories as $cat) {
 
       /* Category-specific button colors matching dashboard boxes */
       .employee-tab-btn[data-category="Permanent"].active {
-        background-color: #3b82f6;
+        background-color: rgb(0, 98, 255);
+      }
+      .employee-tab-btn[data-category="All"].active {
+        background-color: #002e79;
       }
       .employee-tab-btn[data-category="Casual"].active {
         background-color: #93c5fd;
@@ -584,8 +580,8 @@ foreach ($categories as $cat) {
         padding: 2rem;
         border-radius: 1rem;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-        width: 90%;
-        max-width: 500px;
+        width: 94%;
+        max-width: 900px; /* widen to avoid cramped cards */
         position: relative;
         transform: scale(0.9);
         transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -735,150 +731,362 @@ foreach ($categories as $cat) {
         }
       }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <header class="top-header">
-        <div class="header-left">
-            <div class="header-logo">
-                <img src="../assets/logo.png" alt="Mabini Logo" class="logo-image" />
-            </div>
-            <span class="header-text">Bayan ng Mabini</span>
+      <div class="header-left" style="display: flex; align-items: center">
+        <div class="header-logo">
+          <img
+            src="../assets/logo.png"
+            alt="Mabini Logo"
+            style="width: 40px; height: 40px; margin-right: 10px"
+          />
         </div>
-        <div class="header-profile">
-            <i class="fas fa-bell notification-icon"></i>
-            <img src="../assets/logo.png" alt="Profile" class="profile-image" />
-        </div>
+        <span
+          class="header-text"
+          style="font-size: 1.2rem; font-weight: 600; color: #1e3a8a"
+          >Dept Head</span
+        >
+      </div>
+      <div class="header-profile">
+        <img
+          src="../assets/logo.png"
+          alt="Profile"
+          style="
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-left: 10px;
+          "
+        />
+      </div>
     </header>
+
     <div class="container">
-        <aside class="sidebar">
-            <nav class="nav-menu">
-                <ul>
-                    <li class="nav-item">
-                        <a href="dashboard.php"><i class="fas fa-th-large"></i> Dashboard</a>
-                    </li>
-                    <li class="nav-item active">
-                        <a href="#"><i class="fas fa-users"></i> Employees</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="leave-status.php"><i class="fas fa-calendar-alt"></i> Leave Status</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="leave-request.html"><i class="fas fa-calendar-plus"></i> Leave Request</a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="add-event.html"><i class="fas fa-calendar-plus"></i> Add Event</a>
-                    </li>
-                </ul>
-            </nav>
-            <div class="sign-out">
-                <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
+      <aside class="sidebar">
+        <nav class="nav-menu">
+          <ul>
+            <li class="nav-item">
+              <a href="dashboard.php"
+                ><i class="fas fa-th-large"></i> Dashboard</a
+              >
+            </li>
+            <li class="nav-item active">
+              <a href="#"><i class="fas fa-users"></i> Employees</a>
+            </li>
+            <li class="nav-item">
+              <a href="leave-status.php"
+                ><i class="fas fa-calendar-alt"></i> Leave Status</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="task-status.php"
+                ><i class="fas fa-tasks"></i> Task Status</a
+              >
+            </li>
+            <li class="nav-item">
+              <a href="leave-request.php"
+                ><i class="fas fa-calendar-plus"></i> Leave Request</a
+              >
+            </li>
+          </ul>
+        </nav>
+        <div class="sign-out">
+          <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="main-content-area">
+          <section id="employees-content" class="content-section active">
+            <h2 class="text-2xl font-bold mb-4">Employees (Department)</h2>
+
+            <div class="employee-tabs">
+              <button class="employee-tab-btn active" data-category="All">
+                All
+              </button>
+              <button class="employee-tab-btn" data-category="Permanent">
+                Permanent
+              </button>
+              <button class="employee-tab-btn" data-category="Casual">
+                Casual
+              </button>
+              <button class="employee-tab-btn" data-category="JO">JO</button>
+              <button class="employee-tab-btn" data-category="OJT">OJT</button>
             </div>
-        </aside>
-        <main class="main-content">
-            <div class="main-content-area">
-                <section id="employees-content" class="content-section active">
-                    <h2 class="text-2xl font-bold mb-4">Employees</h2>
-                    <div class="employee-tabs">
-                        <?php foreach ($categories as $i => $cat): ?>
-                        <button class="employee-tab-btn<?= $i === 0 ? ' active' : '' ?>" data-category="<?= htmlspecialchars($cat) ?>">
-                            <?= htmlspecialchars($cat) ?>
-                        </button>
-                        <?php endforeach; ?>
-                    </div>
-                    <div class="employee-grid">
-                        <?php foreach ($categories as $cat): ?>
-                            <?php foreach ($employees[$cat] as $emp): ?>
-                                <div class="employee-card" data-category="<?= htmlspecialchars($cat) ?>" data-name="<?= htmlspecialchars($emp['firstname'] . ' ' . $emp['lastname']) ?>" data-position="<?= htmlspecialchars($emp['position']) ?>" data-department="<?= htmlspecialchars($emp['department']) ?>" data-leaves='{}'>
-                                    <span class="active-status"></span>
-                                    <img src="assets/profile-placeholder.png" alt="<?= htmlspecialchars($emp['firstname'] . ' ' . $emp['lastname']) ?>" class="profile-image" />
-                                    <p class="employee-name"><?= htmlspecialchars($emp['firstname'] . ' ' . $emp['lastname']) ?></p>
-                                    <p class="employee-category"><?= htmlspecialchars($cat) ?></p>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
-            </div>
-        </main>
+
+            <div id="employee-grid" class="employee-grid"></div>
+          </section>
+        </div>
+      </main>
     </div>
+
     <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const employeeCards = document.querySelectorAll(".employee-card");
-        const modalOverlay = document.createElement("div");
-        modalOverlay.className = "modal-overlay";
-        document.body.appendChild(modalOverlay);
-
-        employeeCards.forEach((card) => {
-          card.addEventListener("click", () => {
-            const name = card.dataset.name;
-            const position = card.dataset.position;
-            const department = card.dataset.department;
-            const leaves = JSON.parse(card.dataset.leaves);
-
-            let leaveListHtml = "";
-            for (const type in leaves) {
-              leaveListHtml += `<li><span>${type}</span><span class="credit-count">${leaves[type]}</span></li>`;
-            }
-
-            const modalContent = `
-                        <div class="modal-content">
-                            <button class="modal-close-btn">&times;</button>
-                            <div class="modal-profile-header">
-                                <img src="assets/profile-placeholder.png" alt="${name}">
-                                <h4>${name}</h4>
-                                <p class="employee-details">${position} - ${department}</p>
-                            </div>
-                            <div class="modal-leave-credits">
-                                <h5>Leave Credits</h5>
-                                <ul>${leaveListHtml}</ul>
-                            </div>
-                        </div>
-                    `;
-
-            modalOverlay.innerHTML = modalContent;
-            modalOverlay.classList.add("show");
-
-            const closeButton = modalOverlay.querySelector(".modal-close-btn");
-            closeButton.addEventListener("click", () => {
-              modalOverlay.classList.remove("show");
-              setTimeout(() => (modalOverlay.innerHTML = ""), 300);
-            });
-
-            modalOverlay.addEventListener("click", (e) => {
-              if (e.target === modalOverlay) {
-                modalOverlay.classList.remove("show");
-                setTimeout(() => (modalOverlay.innerHTML = ""), 300);
-              }
-            });
-          });
-        });
-
-        // Tab functionality
+      document.addEventListener("DOMContentLoaded", async function () {
+        const employeeGrid = document.getElementById("employee-grid");
         const tabButtons = document.querySelectorAll(".employee-tab-btn");
-        const employeeGrid = document.querySelector(".employee-grid");
+        let employees = [];
 
-        tabButtons.forEach((button) => {
-          button.addEventListener("click", () => {
-            const category = button.dataset.category;
+        // Get current user (dept head) to determine department
+        let currentDept = null;
+        try {
+          const uRes = await fetch("../api/current_user.php");
+          const uJson = await uRes.json();
+          if (uJson && uJson.logged_in) {
+            currentDept = (uJson.department || "").toString();
+          }
+        } catch (e) {
+          console.warn("Failed to fetch current user", e);
+        }
 
-            // Remove active class from all buttons
-            tabButtons.forEach((btn) => btn.classList.remove("active"));
-
-            // Add active class to the clicked button
-            button.classList.add("active");
-
-            // Filter employee cards
-            const allCards = employeeGrid.querySelectorAll(".employee-card");
-            allCards.forEach((card) => {
-              if (card.dataset.category === category) {
-                card.style.display = "block";
-              } else {
-                card.style.display = "none";
-              }
+        // Fetch all employees
+        try {
+          const res = await fetch("../api/get_employees.php");
+          const json = await res.json();
+          if (json && Array.isArray(json.employees)) {
+            employees = json.employees;
+            // Filter employees: same department only (and exclude hr/pending)
+            employees = employees.filter((emp) => {
+              const empDept = (emp.department || "").toString();
+              const role = (emp.role || "").toString().toLowerCase();
+              const status = (emp.status || "").toString().toLowerCase();
+              if (currentDept && empDept !== currentDept) return false;
+              if (role === "hr") return false;
+              if (status === "pending") return false;
+              return true;
             });
+            renderEmployees("All");
+          } else {
+            employeeGrid.innerHTML =
+              '<div class="text-gray-500">No employees found.</div>';
+          }
+        } catch (err) {
+          console.error("get_employees error", err);
+          employeeGrid.innerHTML =
+            '<div class="text-red-500">Failed to load employees.</div>';
+        }
+
+        function renderEmployees(category) {
+          employeeGrid.innerHTML = "";
+          const list =
+            category === "All"
+              ? employees
+              : employees.filter((emp) => emp.position === category);
+          if (list.length === 0) {
+            employeeGrid.innerHTML =
+              '<div class="text-gray-500">No employees in this category.</div>';
+            return;
+          }
+          list.forEach((emp) => {
+            const card = document.createElement("div");
+            card.className = "employee-card";
+            card.dataset.category = emp.position;
+            card.dataset.name = emp.firstname + " " + emp.lastname;
+            card.dataset.position = emp.position;
+            card.dataset.department = emp.department;
+            card.dataset.email = emp.email;
+            card.innerHTML = `
+              <span class="active-status"></span>
+              <img src="${
+                emp.profile_picture
+                  ? emp.profile_picture
+                  : "../assets/profile-placeholder.png"
+              }" alt="${emp.firstname} ${emp.lastname}" class="profile-image" />
+              <p class="employee-name" style="font-weight:600;margin-bottom:4px">${
+                emp.firstname
+              } ${emp.lastname}</p>
+              <p class="employee-category" style="color:#6b7280">${
+                emp.position
+              }</p>
+            `;
+            card.addEventListener("click", function () {
+              openModal(emp);
+            });
+            employeeGrid.appendChild(card);
+          });
+        }
+
+        function openModal(emp) {
+          const modalOverlay = document.createElement("div");
+          modalOverlay.className = "modal-overlay show";
+          const name = emp.firstname + " " + emp.lastname;
+          modalOverlay.innerHTML = `
+            <div class="modal-content">
+              <button class="modal-close-btn" style="float:right;background:none;border:none;font-size:20px;cursor:pointer">&times;</button>
+              <div style="text-align:center">
+                <img src="${
+                  emp.profile_picture
+                    ? emp.profile_picture
+                    : "../assets/profile-placeholder.png"
+                }" alt="${name}" style="width:120px;height:120px;border-radius:50%;border:4px solid #3b82f6;margin-bottom:12px">
+                <h4 style="font-size:1.25rem;font-weight:700;margin-bottom:4px">${name}</h4>
+                <p style="color:#6b7280;margin-bottom:8px">${emp.position} - ${
+            emp.department
+          }</p>
+              </div>
+              <div style="margin-top:12px">
+                <h5 style="font-weight:600;margin-bottom:8px">Leave Credits</h5>
+                <div id="leaveGrid" class="relative">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pr-1 md:pr-2 items-stretch">
+                    <div class="text-center text-gray-500 p-4">Loading leave credits...</div>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          document.body.appendChild(modalOverlay);
+          modalOverlay
+            .querySelector(".modal-close-btn")
+            .addEventListener("click", () => {
+              modalOverlay.remove();
+            });
+          modalOverlay.addEventListener("click", (e) => {
+            if (e.target === modalOverlay) modalOverlay.remove();
+          });
+
+          // Fetch leave credits for selected employee
+          fetch(
+            `../api/employee_leave_credits.php?email=${encodeURIComponent(
+              emp.email
+            )}`
+          )
+            .then((r) => r.json())
+            .then((res) => {
+              const grid = modalOverlay.querySelector("#leaveGrid > div");
+              if (!res || !res.success) {
+                grid.innerHTML =
+                  '<div class="text-center text-red-500 p-4">Failed to load leave credits.</div>';
+                return;
+              }
+              const items = Array.isArray(res.data) ? res.data : [];
+              if (items.length === 0) {
+                grid.innerHTML =
+                  '<div class="text-center text-gray-500 p-4">No leave credits available.</div>';
+                return;
+              }
+              // Cards
+              grid.innerHTML = "";
+              items.forEach((it) => {
+                const div = document.createElement("div");
+                div.className =
+                  "h-full box-border overflow-hidden flex flex-col items-start p-5 md:p-6 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow space-y-4";
+                const rawUsed = Number(it.used) || 0;
+                const total = Math.max(0, Number(it.total) || 0);
+                const used = Math.min(Math.max(0, rawUsed), total);
+                const avail = Math.max(0, total - used);
+                const usedPct =
+                  total > 0
+                    ? Math.min(100, Math.round((used / total) * 100))
+                    : 0;
+                const availPct = Math.max(0, 100 - usedPct);
+                const nameLen = (it.type || "").length;
+                let titleSize = "text-[15px]";
+                if (nameLen > 24) titleSize = "text-[14px]";
+                if (nameLen > 30) titleSize = "text-sm";
+                if (nameLen > 36) titleSize = "text-[13px]";
+                if (nameLen > 44) titleSize = "text-xs";
+                div.innerHTML = `
+                      <div class="flex items-start justify-between w-full">
+                        <span class="${titleSize} font-semibold text-gray-900 break-words leading-snug pr-4 min-w-0">${it.type}</span>
+                        <span class="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200 whitespace-nowrap shrink-0">${total} days</span>
+                      </div>
+                      <div class="w-full mt-1 flex items-center gap-4 md:gap-6 flex-wrap justify-between flex-1">
+                        <div class="relative w-24 h-24 shrink-0 mx-auto sm:mx-0 p-1">
+                          <canvas width="88" height="88"></canvas>
+                          <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-sm font-semibold text-gray-800">${availPct}%</span>
+                          </div>
+                        </div>
+                        <div class="flex-1 min-w-[240px] px-1.5">
+                          <div class="flex items-center justify-between text-sm pr-4 md:pr-5">
+                            <span class="inline-flex items-center gap-2 text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>Used</span>
+                            <span class="font-semibold text-gray-800 shrink-0 mr-1 md:mr-2">${used} days</span>
+                          </div>
+                          <div class="mt-1 mx-4 progress-used"></div>
+                          <div class="flex items-center justify-between text-sm mt-3 pr-4 md:pr-5">
+                            <span class="inline-flex items-center gap-2 text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>Available</span>
+                            <span class="font-semibold text-gray-800 shrink-0 mr-1 md:mr-2">${avail} days</span>
+                          </div>
+                          <div class="mt-1 mx-4 progress-avail"></div>
+                        </div>
+                      </div>
+                    `;
+                grid.appendChild(div);
+                // Helper to draw crisp, contained progress bars with SVG
+                const makeProgressSVG = (pct, fill, track) => {
+                  const w = Math.max(0, Math.min(100, Number(pct) || 0));
+                  const hasFill = w > 0;
+                  return `
+                         <svg viewBox="0 0 100 8" width="100%" height="8" preserveAspectRatio="none" style="display:block">
+                           <rect x="0" y="0" width="100" height="8" rx="4" fill="${track}"></rect>
+                           ${
+                             hasFill
+                               ? `<rect x="0" y="0" width="${w}" height="8" rx="4" fill="${fill}"></rect>`
+                               : ""
+                           }
+                         </svg>
+                       `;
+                };
+
+                // Inject SVG progress bars
+                const usedHost = div.querySelector(".progress-used");
+                const availHost = div.querySelector(".progress-avail");
+                if (usedHost)
+                  usedHost.innerHTML = makeProgressSVG(
+                    usedPct,
+                    "#6366F1",
+                    "#E0E7FF"
+                  );
+                if (availHost)
+                  availHost.innerHTML = makeProgressSVG(
+                    availPct,
+                    "#10B981",
+                    "#D1FAE5"
+                  );
+                grid.appendChild(div);
+                const canvas = div.querySelector("canvas");
+                if (canvas && window.Chart) {
+                  const ctx = canvas.getContext("2d");
+                  new Chart(ctx, {
+                    type: "doughnut",
+                    data: {
+                      labels: ["Used", "Available"],
+                      datasets: [
+                        {
+                          data: [used, avail],
+                          backgroundColor: ["#6366F1", "#10B981"],
+                          borderWidth: 0,
+                        },
+                      ],
+                    },
+                    options: {
+                      responsive: false,
+                      cutout: "68%",
+                      plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false },
+                      },
+                    },
+                  });
+                }
+              });
+            })
+            .catch(() => {
+              const grid = document.querySelector("#leaveGrid > div");
+              if (grid)
+                grid.innerHTML =
+                  '<div class="text-center text-red-500 p-4">Failed to load leave credits.</div>';
+            });
+        }
+
+        tabButtons.forEach(function (button) {
+          button.addEventListener("click", function () {
+            const category = button.dataset.category;
+            tabButtons.forEach((btn) => btn.classList.remove("active"));
+            button.classList.add("active");
+            renderEmployees(category);
           });
         });
       });
     </script>
-</body>
+  </body>
 </html>

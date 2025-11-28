@@ -1,10 +1,7 @@
 <?php
 // dashboard.php
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    header('Location: ../index.php');
-    exit();
-}
+require_once __DIR__ . '/../auth_guard.php';
+require_role('employee');
 require_once '../db.php';
 
 // Helper: format name as "firstname MI. lastname" (uppercase)
@@ -344,7 +341,7 @@ $isJoOrOjt = (strpos($positionLower, 'jo') !== false || strpos($positionLower, '
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
                     <div class="flex flex-wrap justify-around gap-4 text-center">
                         <?php if (!$isJoOrOjt): ?>
-                        <a href="apply_leave.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                        <a href="apply_leave.php" class="flex flex-col items-center space-y-2 cursor-pointer">
                             <div class="bg-blue-100 p-4 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M17 17h.01" />
@@ -361,7 +358,7 @@ $isJoOrOjt = (strpos($positionLower, 'jo') !== false || strpos($positionLower, '
                             <span class="text-sm text-gray-600">Leave Status</span>
                         </a>
                         <?php endif; ?>
-                        <a href="task.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                        <a href="task.php" class="flex flex-col items-center space-y-2 cursor-pointer">
                             <div class="bg-green-100 p-4 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -378,7 +375,7 @@ $isJoOrOjt = (strpos($positionLower, 'jo') !== false || strpos($positionLower, '
                             </div>
                             <span class="text-sm text-gray-600">View Attendance</span>
                         </a>
-                        <a href="events.html" class="flex flex-col items-center space-y-2 cursor-pointer">
+                        <a href="events.php" class="flex flex-col items-center space-y-2 cursor-pointer">
                             <div class="bg-teal-100 p-4 rounded-full">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h.01M7 11h.01M16 11h.01m-2-2h.01m-6-4h.01M8 21h8a2 2 0 002-2V7a2 2 0 00-2-2H8a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -627,7 +624,7 @@ $isJoOrOjt = (strpos($positionLower, 'jo') !== false || strpos($positionLower, '
                     badge.textContent = t.status === 'pending' ? 'Pending' : 'In Progress';
                     const view = document.createElement('a');
                     view.className = 'text-xs text-gray-400 hover:text-blue-600';
-                    view.href = 'task.html';
+                    view.href = 'task.php';
                     view.textContent = 'View';
                     right.appendChild(badge);
                     right.appendChild(view);

@@ -1,7 +1,8 @@
 <?php
 header('Content-Type: application/json');
+require_once __DIR__ . '/../auth_guard.php';
+require_api_auth(['hr', 'department_head', 'employee']);
 require_once __DIR__ . '/../db.php';
-session_start();
 
 // Determine employee email from session when possible
 $employee_email = $_SESSION['email'] ?? null;

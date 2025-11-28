@@ -29,7 +29,7 @@ if (isset($_GET['qr']) && $_GET['qr']) {
 
             // Determine redirect target based on current session role/position (mirror normal login routing)
             if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === 'superadmin') {
-                $redirect = 'super_admin.html';
+                $redirect = 'super_admin.php';
             } else {
                 $sessRole = strtolower($_SESSION['role'] ?? $_SESSION['position'] ?? '');
                 if ($sessRole === 'hr' || $sessRole === 'human resources') {
@@ -72,7 +72,7 @@ if (isset($_GET['qr']) && $_GET['qr']) {
 if (isset($_SESSION['user_id'])) {
     // Super admin
     if ($_SESSION['user_id'] === 'superadmin') {
-        header('Location: super_admin.html');
+        header('Location: super_admin.php');
         exit();
     }
     // Prefer role (new column). Fall back to position for older users.
@@ -113,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = 'superadmin';
         $_SESSION['position'] = 'Super Admin';
         $_SESSION['email'] = $email;
-        header('Location: super_admin.html');
+        header('Location: super_admin.php');
         exit();
     }
     // Normal user login
@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } elseif ($roleNorm === 'employee') {
                         $redirect = 'employee/dashboard.php';
                     } elseif ($_SESSION['user_id'] === 'superadmin') {
-                        $redirect = 'super_admin.html';
+                        $redirect = 'super_admin.php';
                     } else {
                         $redirect = 'dashboard.php';
                     }

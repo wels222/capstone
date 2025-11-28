@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/../auth_guard.php';
+require_role('department_head');
 require_once __DIR__ . '/../db.php';
 
 $user_email = $_SESSION['email'] ?? '';
@@ -74,7 +75,7 @@ if ($user_email) {
     <main class="flex-grow p-4 overflow-y-auto mt-6">
       <div class="bg-white rounded-xl shadow-md p-6 mb-6">
         <div class="flex items-center text-gray-600">
-          <a href="apply_leave.html" class="cursor-pointer hover:text-blue-600">Apply for Leave</a>
+          <a href="apply_leave.php" class="cursor-pointer hover:text-blue-600">Apply for Leave</a>
           <span class="mx-2">&gt;</span>
           <span id="current-leave-type"></span>
         </div>

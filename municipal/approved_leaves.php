@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . '/../auth_guard.php';
+require_municipal_auth();
 require_once '../db.php';
-
-// Check if municipal admin is logged in
-if (!isset($_SESSION['municipal_logged_in']) || $_SESSION['municipal_logged_in'] !== true) {
-    header('Location: ../index.php');
-    exit;
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">

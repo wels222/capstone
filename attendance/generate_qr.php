@@ -3,6 +3,8 @@
 // Hosting-compatible: Works on any hosting provider without .env files
 // Auto-expires after exactly 60 seconds from creation time
 require_once __DIR__ . '/qr_utils.php';
+require_once __DIR__ . '/../auth_guard.php';
+require_api_auth(['hr', 'department_head']);
 
 header('Content-Type: application/json');
 
