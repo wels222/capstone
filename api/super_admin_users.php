@@ -65,12 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$stmt->execute([
 			$lastname, $firstname, $mi, $department, $position, $role, ($contact_no ?: null), $status, $email, $hash
 		]);
-		// Generate automatic employee_id based on the inserted numeric id
+		// Generate employee_id via centralized helper (EMPYYYY-####)
 		try {
 			$insertId = (int)$pdo->lastInsertId();
 			if ($insertId > 0) {
-				$year = date('Y');
-				$employeeId = sprintf('EMP-%s-%06d', $year, $insertId);
+				$employeeId = getNextEmployeeId($pdo);
 				$up = $pdo->prepare('UPDATE users SET employee_id = ? WHERE id = ?');
 				$up->execute([$employeeId, $insertId]);
 				echo json_encode(['success' => true, 'id' => $insertId, 'employee_id' => $employeeId]);
@@ -91,6 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$role = trim($data['role'] ?? 'employee');
 		$contact_no = preg_replace('/\s+/', '', $data['contact_no'] ?? '');
 		$email = trim($data['email'] ?? '');
+		// Status (missing previously) so edits defaulted incorrectly
+		$status = trim($data['status'] ?? '');
+		$allowedStatuses = ['pending','approved','declined'];
+		if ($status === '' || !in_array($status, $allowedStatuses)) { $status = 'pending'; }
 		$nameRegex = "/^[A-Za-z\s\-']+$/";
 		$miRegex = "/^[A-Za-z]?$/";
 		$phoneRegex = "/^09\d{9}$/";

@@ -18,6 +18,42 @@ try {
     throw new PDOException($e->getMessage(), (int)$e->getCode());
 }
 
+// Helper: Generate next employee ID in format EMPYYYY-####
+if (!function_exists('getNextEmployeeId')) {
+    function getNextEmployeeId(PDO $pdo, ?string $year = null): string {
+        $yr = $year ?: date('Y');
+        // Use a short transaction to reduce race conditions
+        try {
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare("SELECT employee_id FROM users WHERE employee_id LIKE ? ORDER BY employee_id DESC LIMIT 1 FOR UPDATE");
+            $like = sprintf('EMP%s-%%', $yr);
+            $stmt->execute([$like]);
+            $last = $stmt->fetchColumn();
+            if ($last && preg_match('/EMP\d{4}-(\d{1,})$/', $last, $m)) {
+                $seq = ((int)$m[1]) + 1;
+            } else {
+                $seq = 1;
+            }
+            $next = sprintf('EMP%s-%04d', $yr, $seq);
+            $pdo->commit();
+            return $next;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) { $pdo->rollBack(); }
+            // Fallback without transaction
+            $stmt = $pdo->prepare("SELECT employee_id FROM users WHERE employee_id LIKE ? ORDER BY employee_id DESC LIMIT 1");
+            $like = sprintf('EMP%s-%%', $yr);
+            $stmt->execute([$like]);
+            $last = $stmt->fetchColumn();
+            if ($last && preg_match('/EMP\d{4}-(\d{1,})$/', $last, $m)) {
+                $seq = ((int)$m[1]) + 1;
+            } else {
+                $seq = 1;
+            }
+            return sprintf('EMP%s-%04d', $yr, $seq);
+        }
+    }
+}
+
 // QR token secret - stored in database for hosting compatibility (no .env files needed)
 // This approach works on any hosting provider without file permission issues
 if (!defined('QR_SECRET')) {

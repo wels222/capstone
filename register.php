@@ -64,16 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // All new accounts require super admin approval: set status to 'pending'
                 $pendingStatus = 'pending';
                 
-                // Generate unique employee_id (format: EMP2025-0001)
-                $year = date('Y');
-                $stmt = $pdo->query("SELECT employee_id FROM users WHERE employee_id LIKE 'EMP{$year}-%' ORDER BY employee_id DESC LIMIT 1");
-                $lastEmp = $stmt->fetchColumn();
-                if ($lastEmp && preg_match('/EMP\d{4}-(\d+)/', $lastEmp, $m)) {
-                    $seq = intval($m[1]) + 1;
-                } else {
-                    $seq = 1;
-                }
-                $employee_id = sprintf('EMP%s-%04d', $year, $seq);
+                // Generate unique employee_id via centralized helper (EMPYYYY-####)
+                $employee_id = getNextEmployeeId($pdo);
 
                 // Note: per-user QR codes are retired. We still generate an employee_id here.
                 $stmt = $pdo->prepare('INSERT INTO users (email, password, department, lastname, firstname, mi, position, role, contact_no, status, employee_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
