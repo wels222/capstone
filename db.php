@@ -3,7 +3,7 @@
 $host    = getenv('DB_HOST') ?: 'localhost';
 $db      = getenv('DB_NAME') ?: 'capstone';
 $user    = getenv('DB_USER') ?: 'root';
-$pass    = getenv('DB_PASS') ?: '';
+$pass    = getenv('DB_PASS') ?: 'damnson';
 $charset = getenv('DB_CHARSET') ?: 'utf8mb4';
 $port    = getenv('DB_PORT') ?: null;
 
