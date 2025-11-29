@@ -183,6 +183,8 @@ require_role('employee');
                   title="Enter a description to enable download"
                   >Download</a
                 >
+                <button id="ack-submit-btn" class="hidden px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50" disabled>Mark In Progress</button>
+                <span id="no-file-hint" class="hidden text-sm text-gray-500">(No file attached)</span>
               </div>
             </div>
         </div>
@@ -336,6 +338,9 @@ require_role('employee');
         const attachmentDownload = document.getElementById(
           "attachment-download"
         );
+        const ackSubmitBtn = document.getElementById("ack-submit-btn");
+        const noFileHint = document.getElementById("no-file-hint");
+        let ackOnlyMode = false;
         // Submit modal refs
         const submitModal = document.getElementById("submit-modal");
         const closeSubmitModalBtn = document.getElementById("close-submit-modal");
@@ -526,21 +531,17 @@ require_role('employee');
                         }</p>
                         ${task.submissionNote ? `<p class="text-sm italic text-gray-500 mb-2"><strong>Submission note:</strong> ${task.submissionNote}</p>` : ''}
                         <div class="flex items-center gap-2 mb-3">
-                          ${
-                            task.attachment
-                              ? `<button data-id="${task.id}" class="open-attachment-btn text-sm text-white bg-gray-700 px-3 py-1 rounded hover:bg-gray-800 inline-flex items-center"><i class="fas fa-paperclip mr-2"></i>View attachment</button>`
-                              : ""
-                          }
-                          ${task.submissionFile ? `<a href="../${task.submissionFile}" target="_blank" class="text-sm text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 inline-flex items-center"><i class="fas fa-file-alt mr-2"></i>View submission</a>` : ''}
+                          ${ task.status === 'pending' ? `<button data-id="${task.id}" class="open-attachment-btn text-sm text-white bg-gray-700 px-3 py-1 rounded hover:bg-gray-800 inline-flex items-center"><i class=\"fas fa-paperclip mr-2\"></i>${task.attachment ? 'View attachment' : 'Acknowledge'}</button>` : '' }
+                          ${ task.submissionFile ? `<a href="../${task.submissionFile}" target="_blank" class="text-sm text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 inline-flex items-center"><i class="fas fa-file-alt mr-2"></i>View submission</a>` : '' }
                         </div>
                         <div class="flex items-center justify-between">
                           <div>
-                                            ${task.status !== 'completed' ? `
-                                              <div class="inline-flex items-center gap-2">
-                                                <button data-id="${task.id}" class="open-submit-btn text-sm text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 inline-flex items-center"><i class="fas fa-upload mr-2"></i>Submit</button>
-                                                ${task.isMissed ? `<button data-id="${task.id}" class="open-append-btn text-sm text-white bg-red-600 px-3 py-1 rounded hover:bg-red-700 inline-flex items-center"><i class="fas fa-plus mr-2"></i>Append</button>` : ''}
-                                              </div>
-                                            ` : `<span class="text-sm text-gray-500">Completed</span>`}
+                            ${task.status === 'completed' ? `<span class=\"text-sm text-gray-500\">Completed</span>` : `
+                              <div class=\"inline-flex items-center gap-2\">
+                                ${task.status === 'in-progress' ? `<button data-id=\"${task.id}\" class=\"open-submit-btn text-sm text-white bg-green-600 px-3 py-1 rounded hover:bg-green-700 inline-flex items-center\"><i class=\"fas fa-upload mr-2\"></i>Submit</button>` : ''}
+                                ${task.isMissed ? `<button data-id=\"${task.id}\" class=\"open-append-btn text-sm text-white bg-red-600 px-3 py-1 rounded hover:bg-red-700 inline-flex items-center\"><i class=\"fas fa-plus mr-2\"></i>Append</button>` : ''}
+                              </div>
+                            `}
                           </div>
                           <div class="w-full ml-4">
                               <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -608,7 +609,7 @@ require_role('employee');
             if (attachBtn) {
               const btn = attachBtn;
               currentTaskToUpdateId = parseInt(btn.dataset.id);
-              // Reset UI
+              // Reset UI (restore download button usage)
               ackNoteInput.value = "";
               ackError.classList.add("hidden");
               const tsk = tasks.find((t) => t.id === currentTaskToUpdateId);
@@ -622,7 +623,17 @@ require_role('employee');
               if (modalTitle && tsk) {
                 modalTitle.textContent = `Attachment for ${tsk.title}`;
               }
-              // Disable download until non-empty
+              // Decide mode: acknowledge-only if no attachment
+              ackOnlyMode = !tsk || !tsk.attachment;
+              if (ackOnlyMode) {
+                attachmentDownload.classList.add('hidden');
+                ackSubmitBtn.classList.remove('hidden');
+                noFileHint.classList.remove('hidden');
+              } else {
+                attachmentDownload.classList.remove('hidden');
+                ackSubmitBtn.classList.add('hidden');
+                noFileHint.classList.add('hidden');
+              }
               updateDownloadState();
               attachmentModal.classList.remove("hidden");
               // Autofocus textarea for quick typing
@@ -683,8 +694,13 @@ require_role('employee');
           );
         // Enable/disable Download based on description content; on click, save then download and close
         const updateDownloadState = () => {
-          if (!ackNoteInput || !attachmentDownload) return;
+          if (!ackNoteInput) return;
           const hasText = (ackNoteInput.value || "").trim().length > 0;
+          if (ackOnlyMode) {
+            if (ackSubmitBtn) ackSubmitBtn.disabled = !hasText;
+            return;
+          }
+          if (!attachmentDownload) return;
           if (hasText) {
             attachmentDownload.classList.remove(
               "cursor-not-allowed",
@@ -753,6 +769,28 @@ require_role('employee');
               .catch((err) => {
                 showToast(err.message || "Failed to save description.");
               });
+          });
+        }
+
+        // Acknowledge without attachment
+        if (ackSubmitBtn) {
+          ackSubmitBtn.addEventListener('click', () => {
+            const note = (ackNoteInput.value || '').trim();
+            if (!note) { ackError.classList.remove('hidden'); return; }
+            const fd = new FormData();
+            fd.append('id', String(currentTaskToUpdateId));
+            fd.append('note', note);
+            fetch('../api/tasks_acknowledge.php', { method: 'POST', body: fd, credentials: 'include' })
+              .then(r => r.json())
+              .then(data => {
+                if (!data.success) throw new Error(data.error || 'Save failed');
+                const idx = tasks.findIndex(t => t.id === currentTaskToUpdateId);
+                if (idx !== -1) { tasks[idx].submissionNote = note; tasks[idx].status = 'in-progress'; }
+                renderTasks();
+                attachmentModal.classList.add('hidden');
+                showToast('Task acknowledged');
+              })
+              .catch(err => showToast(err.message || 'Failed to acknowledge'));
           });
         }
 

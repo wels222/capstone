@@ -196,8 +196,10 @@ function prevent_if_authenticated($redirect_to = null) {
  */
 function require_api_auth($allowed_roles = null) {
     header('Content-Type: application/json');
-    
-    if (!is_logged_in()) {
+
+    // Accept either standard app login or municipal admin session
+    $authenticated = is_logged_in() || is_municipal_admin();
+    if (!$authenticated) {
         http_response_code(401);
         echo json_encode([
             'success' => false,
@@ -205,16 +207,20 @@ function require_api_auth($allowed_roles = null) {
         ]);
         exit();
     }
-    
-    if ($allowed_roles !== null && !has_role($allowed_roles)) {
-        http_response_code(403);
-        echo json_encode([
-            'success' => false,
-            'message' => 'You do not have permission to access this resource.'
-        ]);
-        exit();
+
+    // When roles are provided, allow municipal admins implicitly
+    if ($allowed_roles !== null) {
+        $has = has_role($allowed_roles);
+        if (!$has && !is_municipal_admin()) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'You do not have permission to access this resource.'
+            ]);
+            exit();
+        }
     }
-    
+
     return true;
 }
 

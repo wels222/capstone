@@ -1114,7 +1114,7 @@ require_role('hr');
                   </button>
                   <!-- Apply Leave button for HR -->
                   <a
-                    href="apply_leave.html"
+                    href="apply_leave.php"
                     class="export-button"
                     style="
                       background-color: #3b82f6;

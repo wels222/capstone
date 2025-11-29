@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/../auth_guard.php';
-require_role('department_head');
+// Allow Department Head, Employee, HR, and Municipal Admin to access
+if (function_exists('is_municipal_admin') && is_municipal_admin()) {
+  // Municipal admin is authenticated via a separate mechanism; allow through
+} else {
+  require_role(['department_head', 'employee', 'hr']);
+}
 require_once '../db.php';
 // Get leave request ID from URL
 $leave_id = $_GET['id'] ?? null;

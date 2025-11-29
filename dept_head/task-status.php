@@ -268,6 +268,99 @@ require_role('department_head');
         .status-badge.missed { background-color: #fee2e2; color: #b91c1c; }
         .status-badge.completed { background-color: #f0fdf4; color: #16a34a; }
 
+        /* Enhanced table styling */
+        .table-wrapper {
+            background: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 8px 24px -6px rgba(30,64,175,0.15);
+            padding: 1.25rem 1.25rem 1.75rem;
+            border: 1px solid #e2e8f0;
+            position: relative;
+        }
+        .tasks-table {
+            width: 100%;
+            border-spacing: 0;
+        }
+        .tasks-table thead th {
+            position: sticky;
+            top: 0;
+            background: linear-gradient(180deg,#f1f5f9 0%, #e2e8f0 100%);
+            font-size: 0.65rem;
+            letter-spacing: 0.05em;
+            font-weight: 700;
+            padding: .75rem .75rem;
+            text-transform: uppercase;
+            border-bottom: 2px solid #cbd5e1;
+            color: #1e3a8a;
+            z-index: 5;
+        }
+        .tasks-table tbody td {
+            padding: .9rem .75rem;
+            vertical-align: top;
+            font-size: 0.8rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .tasks-table tbody tr:nth-child(even) { background: #f8fafc; }
+        .tasks-table tbody tr:hover { background: #eef2ff; }
+        .tasks-table tbody tr.archived-row { opacity: .6; }
+        .tasks-table tbody tr.missed-row { background: #fff5f5; }
+        .tasks-table tbody tr.missed-row:hover { background: #ffe5e5; }
+        /* Refined status badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            font-size: .6rem;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            font-weight: 700;
+            padding: .35rem .6rem;
+            border-radius: 999px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .status-badge.inprogress { background: #dbeafe; color: #1e40af; }
+        .status-badge.pending { background: #fef3c7; color: #92400e; }
+        .status-badge.missed { background: #fee2e2; color: #b91c1c; }
+        .status-badge.completed { background: #dcfce7; color: #166534; }
+        .status-badge::before {
+            content: '';
+            width: .5rem; height: .5rem;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: .4;
+        }
+        .status-badge.missed::before { animation: pulse 1.2s infinite; }
+        @keyframes pulse { 0%{ transform: scale(1); opacity:.5;} 50%{ transform: scale(1.4); opacity:.25;} 100%{ transform: scale(1); opacity:.5;} }
+        /* Action buttons unified */
+        .task-action-btn {
+            font-size: .65rem;
+            font-weight: 600;
+            padding: .4rem .55rem;
+            border-radius: .45rem;
+            line-height: 1;
+            transition: background .15s, transform .15s; 
+            box-shadow: 0 1px 2px rgba(0,0,0,.05);
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+        }
+        .task-action-btn:hover { transform: translateY(-2px); }
+        .task-action-btn.edit { background:#fde68a; color:#92400e; }
+        .task-action-btn.archive { background:#fcd34d; color:#78350f; }
+        .task-action-btn.archive.disabled { background:#f1f5f9; color:#94a3b8; cursor:not-allowed; }
+        .task-action-btn.restore { background:#bbf7d0; color:#166534; }
+        .task-action-btn.delete { background:#fecaca; color:#7f1d1d; }
+        .task-action-btn.archived { background:#e2e8f0; color:#475569; }
+        /* File link */
+        .task-file-link { color:#1d4ed8; font-weight:600; position:relative; }
+        .task-file-link:hover { text-decoration:underline; }
+        /* Responsive tweak */
+        @media (max-width: 900px){
+            .tasks-table thead th, .tasks-table tbody td { padding:.65rem .5rem; }
+            .status-badge { font-size:.55rem; padding:.3rem .5rem; }
+        }
+
         /* Filter buttons */
         .filter-btn { cursor: pointer; border: none; padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-weight:600; }
         .filter-btn.active{ transform: translateY(-3px); box-shadow: 0 8px 20px rgba(16,24,40,0.08); }
@@ -756,6 +849,7 @@ require_role('department_head');
                                 <button data-status="in-progress" class="filter-btn bg-blue-100 text-blue-800">In Progress</button>
                                 <button data-status="missed" class="filter-btn bg-red-100 text-red-800">Missed</button>
                                 <button data-status="completed" class="filter-btn bg-green-100 text-green-800">Completed</button>
+                                <button data-status="archived" class="filter-btn bg-gray-100 text-gray-700">Archived</button>
                             </div>
                             <div>
                                 <button
@@ -787,8 +881,8 @@ require_role('department_head');
                                     </div>
                                 </div>
 
-                <div class="overflow-x-auto">
-          <table class="w-full table-auto text-left">
+                    <div class="table-wrapper overflow-x-auto">
+                <table class="tasks-table text-left">
                         <thead>
                             <tr class="text-sm text-gray-600 uppercase">
                                 <th class="py-2">Task Name</th>
@@ -797,11 +891,12 @@ require_role('department_head');
                                 <th class="py-2">Files</th>
                                 <th class="py-2">Note</th>
                                 <th class="py-2">Status</th>
+                                <th class="py-2">Archived</th>
                                 <th class="py-2">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="tasksTbody">
-                            <tr><td colspan="7" class="py-4 text-gray-500">Loading tasks...</td></tr>
+                            <tr><td colspan="8" class="py-4 text-gray-500">Loading tasks...</td></tr>
                         </tbody>
           </table>
         </div>
@@ -893,15 +988,16 @@ require_role('department_head');
         try{
             const res=await fetch('../api/tasks_list.php', { credentials:'include' });
             const data=await res.json();
-            if(!data.success){ tasksTbody.innerHTML=`<tr><td colspan="7" class="py-4 text-red-600">${data.error||'Failed to load'}</td></tr>`; return; }
+            if(!data.success){ tasksTbody.innerHTML=`<tr><td colspan="8" class="py-4 text-red-600">${data.error||'Failed to load'}</td></tr>`; return; }
             const tasks=(data.tasks||[]).map(t=>{ let isMissed=false; try{ const due = parseLocalDateTime(t.due_date); if(due && due < new Date() && t.status!=='completed') isMissed=true; }catch(e){} return Object.assign({},t,{isMissed}); });
             // keep tasks globally so edit/delete can find items
             window.__tasks = tasks;
             let filtered;
-            if(!filterStatus||filterStatus==='all') filtered=tasks;
-            else if(filterStatus==='missed') filtered=tasks.filter(x=>x.isMissed);
-            else if(filterStatus==='in-progress') filtered=tasks.filter(x=> (x.status||'').toLowerCase()==='in_progress' && !x.isMissed);
-            else if(filterStatus==='pending') filtered=tasks.filter(x=> (x.status||'').toLowerCase()==='pending' && !x.isMissed);
+            if(!filterStatus||filterStatus==='all') filtered=tasks.filter(x=> Number(x.is_archived||0)!==1);
+            else if(filterStatus==='missed') filtered=tasks.filter(x=>x.isMissed && Number(x.is_archived||0)!==1);
+            else if(filterStatus==='in-progress') filtered=tasks.filter(x=> (x.status||'').toLowerCase()==='in_progress' && !x.isMissed && Number(x.is_archived||0)!==1);
+            else if(filterStatus==='pending') filtered=tasks.filter(x=> (x.status||'').toLowerCase()==='pending' && !x.isMissed && Number(x.is_archived||0)!==1);
+            else if(filterStatus==='archived') filtered=tasks.filter(x=> Number(x.is_archived||0)===1);
             else filtered=tasks.filter(x=> (x.status||'').toLowerCase()===(filterStatus||'').toLowerCase());
             const rows = filtered.map(t=>{
                 let statusClass = t.status==='completed'?'completed': t.status==='in_progress'?'inprogress':'pending';
@@ -914,14 +1010,15 @@ require_role('department_head');
                                 const archived = Number(t.is_archived||0)===1;
                                 const canArchive = (String(t.status||'').toLowerCase()==='completed') || !!t.isMissed;
                                 const actionBtns = archived
-                                    ? `<span class=\"text-xs px-2 py-1 rounded bg-gray-200 text-gray-700\">Archived</span><button class=\"px-2 py-1 bg-green-200 text-green-900 rounded\" onclick=\"restoreTask(${t.id})\">Restore</button><button class=\"px-2 py-1 bg-red-200 text-red-900 rounded\" onclick=\"deleteTaskPermanent(${t.id})\">Delete</button>`
-                                    : `<button class=\"px-2 py-1 bg-yellow-200 text-yellow-900 rounded\" onclick=\"editTask(${t.id})\">Edit</button>` + (canArchive
-                                        ? ` <button class=\"px-2 py-1 bg-amber-200 text-amber-900 rounded\" onclick=\"archiveTask(${t.id})\">Archive</button>`
-                                        : ` <button class=\"px-2 py-1 bg-amber-100 text-amber-400 rounded cursor-not-allowed\" title=\"Only completed or missed tasks can be archived\" disabled>Archive</button>`);
-                                const rowClass = archived ? 'opacity-70' : '';
-                                return `<tr class="border-b hover:bg-gray-50 ${rowClass}"><td class="py-3 px-4 font-medium">${escapeHtml(t.title)}</td><td class="py-3 px-4">${escapeHtml(assignee)}</td><td class="py-3 px-4"><div class="flex items-center space-x-2"><svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z\"></path><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 14v-4\"></path></svg><div class="flex flex-col"><span>${fmtDateTime(t.due_date)}</span><span class="text-xs text-gray-400">${timeAgo(t.due_date)}</span></div></div></td><td class="py-3 px-4">${t.submission_file_path?`<a class=\"text-blue-600\" href=\"../${t.submission_file_path}\" target=\"_blank\">View file</a>`:'-'}</td><td class="py-3 px-4" title="${noteEsc}">${note?truncate(note,80):'-'}</td><td class="py-3 px-4"><span class="status-badge ${statusClass}">${escapeHtml(displayStatus)}</span></td><td class="py-3 px-4"><div class="flex gap-2">${actionBtns}</div></td></tr>`;
+                                    ? `<span class=\"task-action-btn archived\">Archived</span><button class=\"task-action-btn restore\" onclick=\"restoreTask(${t.id})\">Restore</button><button class=\"task-action-btn delete\" onclick=\"deleteTaskPermanent(${t.id})\">Delete</button>`
+                                    : `<button class=\"task-action-btn edit\" onclick=\"editTask(${t.id})\">Edit</button>` + (canArchive
+                                        ? ` <button class=\"task-action-btn archive\" onclick=\"archiveTask(${t.id})\">Archive</button>`
+                                        : ` <button class=\"task-action-btn archive disabled\" title=\"Only completed or missed tasks can be archived\" disabled>Archive</button>`);
+                                const rowClass = archived ? 'archived-row' : (t.isMissed ? 'missed-row' : '');
+                                const archivedCell = archived ? '<span class="status-badge pending" style="background:#e2e8f0;color:#475569;">Yes</span>' : '-';
+                                return `<tr class="border-b hover:bg-gray-50 ${rowClass}"><td class="py-3 px-4 font-medium">${escapeHtml(t.title)}</td><td class="py-3 px-4">${escapeHtml(assignee)}</td><td class="py-3 px-4"><div class="flex items-center space-x-2"><svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z\"></path><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 14v-4\"></path></svg><div class="flex flex-col"><span>${fmtDateTime(t.due_date)}</span><span class="text-xs text-gray-400">${timeAgo(t.due_date)}</span></div></div></td><td class="py-3 px-4">${t.submission_file_path?`<a class=\"text-blue-600\" href=\"../${t.submission_file_path}\" target=\"_blank\">View file</a>`:'-'}</td><td class="py-3 px-4" title="${noteEsc}">${note?truncate(note,80):'-'}</td><td class="py-3 px-4"><span class="status-badge ${statusClass}">${escapeHtml(displayStatus)}</span></td><td class="py-3 px-4">${archivedCell}</td><td class="py-3 px-4"><div class="flex gap-2">${actionBtns}</div></td></tr>`;
             }).join('');
-            tasksTbody.innerHTML = rows || '<tr><td colspan="7" class="py-4 text-gray-500">No tasks yet.</td></tr>';
+            tasksTbody.innerHTML = rows || '<tr><td colspan="8" class="py-4 text-gray-500">No tasks yet.</td></tr>';
         }catch(err){ tasksTbody.innerHTML='<tr><td colspan="7" class="py-4 text-red-600">Error loading tasks</td></tr>'; }
     }
 

@@ -1,7 +1,8 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../auth_guard.php';
-require_api_auth(['hr', 'department_head', 'employee']);
+// Allow municipal users to fetch leave requests for approval views
+require_api_auth(['hr', 'department_head', 'employee', 'municipal']);
 require_once '../db.php';
 
 // Ensure columns exist (silent checks)

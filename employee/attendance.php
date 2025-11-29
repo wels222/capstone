@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../auth_guard.php';
-require_role('employee');
+// Allow access for Employee, HR, and Department Head roles
+require_role(['employee','hr','department_head']);
 require_once __DIR__ . '/../db.php';
 
 $userId = $_SESSION['user_id'];

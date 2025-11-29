@@ -69,23 +69,29 @@ try {
 
 // Require a file upload
 // Note: For missed tasks we allow note-only iaDJUST requests (file optional). For normal submissions, file is required.
+// Handle file upload (for normal submission we require success)
 $submission_path = null;
-if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-    // no file uploaded; keep submission_path null
-} else {
+$fileProvided = !(empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK);
+if ($fileProvided) {
     $tmpPath = $_FILES['file']['tmp_name'];
     $origName = basename($_FILES['file']['name']);
     $ext = pathinfo($origName, PATHINFO_EXTENSION);
     $safeExt = preg_replace('/[^a-zA-Z0-9]/', '', $ext);
     $targetDir = __DIR__ . '/../uploads/task_submissions/';
-    $fileName = uniqid('submission_') . ($safeExt ? ('.' . $safeExt) : '');
-    $dest = $targetDir . $fileName;
-    // Move if directory exists and writable
-    if (@is_dir($targetDir) && @is_writable($targetDir) && @move_uploaded_file($tmpPath, $dest)) {
-        $submission_path = 'uploads/task_submissions/' . $fileName;
+    if (!is_dir($targetDir)) {
+        @mkdir($targetDir, 0775, true);
+    }
+    if (!is_dir($targetDir) || !is_writable($targetDir)) {
+        // Directory issue; keep path null
+        $fileProvided = false; // treat as failure
     } else {
-        // keep null and continue; for missed note-only we allow null
-        $submission_path = null;
+        $fileName = uniqid('submission_') . ($safeExt ? ('.' . $safeExt) : '');
+        $dest = $targetDir . $fileName;
+        if (@move_uploaded_file($tmpPath, $dest)) {
+            $submission_path = 'uploads/task_submissions/' . $fileName;
+        } else {
+            $fileProvided = false; // move failed
+        }
     }
 }
 
@@ -169,7 +175,8 @@ try {
         // For normal submissions, file is required
         if (!$submission_path) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'error' => 'File is required for normal submission']);
+            $errMsg = $fileProvided ? 'Failed to store uploaded file' : 'File is required for normal submission';
+            echo json_encode(['success' => false, 'error' => $errMsg]);
             exit;
         }
         $stmt = $pdo->prepare('UPDATE tasks SET status = "completed", submission_file_path = ?, submission_note = ?, completed_at = NOW() WHERE id = ? AND assigned_to_email = ?');
