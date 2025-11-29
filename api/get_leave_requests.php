@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 header('Content-Type: application/json');
 require_once __DIR__ . '/../auth_guard.php';
 // Allow municipal users to fetch leave requests for approval views

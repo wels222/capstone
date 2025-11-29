@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 /**
  * Migration script to update attendance table ENUM values
  * Run this once to update the database schema

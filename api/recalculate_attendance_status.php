@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 /**
  * Recalculate all attendance status based on new time ranges
  * This will update all existing records to match the new rules

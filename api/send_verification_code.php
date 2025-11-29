@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 // Sends a 6-digit verification code to a Gmail address for registration (or other purposes).
 // Expects JSON: { email: string, purpose: 'registration' }
 session_start();

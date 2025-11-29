@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 session_start();

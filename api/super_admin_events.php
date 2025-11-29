@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 // api/super_admin_events.php
 require_once '../db.php';
 header('Content-Type: application/json');

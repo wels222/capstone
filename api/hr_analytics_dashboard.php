@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 // hr_analytics_dashboard.php - Comprehensive analytics API for HR dashboard
 session_start();
 require_once __DIR__ . '/../db.php';

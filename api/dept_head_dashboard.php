@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 require_once __DIR__ . '/../auth_guard.php';
 require_api_auth('department_head');
 require_once __DIR__ . '/../db.php';

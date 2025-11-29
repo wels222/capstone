@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 // Verifies a registration email code stored in session.
 // Expects JSON: { email: string, code: string }
 session_start();

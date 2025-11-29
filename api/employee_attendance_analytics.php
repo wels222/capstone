@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 session_start();
 require_once __DIR__ . '/../db.php';
 

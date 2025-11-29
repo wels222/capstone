@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 // Sends password reset code to user's email
 session_start();
 header('Content-Type: application/json');

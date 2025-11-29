@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 // Simple one-off migration helper to convert tasks.due_date from DATE -> DATETIME
 // Usage: run this once from the server (php migrate_due_date_to_datetime.php) or open in browser while secure.
 

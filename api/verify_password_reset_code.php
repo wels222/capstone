@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 // Verifies password reset code stored in session
 session_start();
 header('Content-Type: application/json');

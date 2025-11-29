@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 // api/migrate_add_archiving.php
 // Idempotent migration to add soft-archive columns to core tables.
 // Usage: open this file in the browser once, or invoke via HTTP to run.

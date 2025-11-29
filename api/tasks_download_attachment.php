@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 // Secure download for task attachments; requires employee to have acknowledged (note submitted)
 session_start();
 require_once __DIR__ . '/../db.php';

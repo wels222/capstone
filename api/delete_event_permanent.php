@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/_bootstrap.php';
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
 $data = json_decode(file_get_contents('php://input'), true);
