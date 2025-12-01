@@ -235,24 +235,6 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === 'superadmin') {
 				<h1 class="text-xl font-bold text-gray-800">Dashboard</h1>
 			</div>
 			<div class="flex items-center space-x-4">
-				<!-- Notification bell + dropdown -->
-				<div id="notification-bell-container" class="relative">
-					<button id="notification-bell" class="text-gray-600 hover:text-blue-600 transition-colors relative" aria-label="Notifications" title="Notifications">
-						<i class="fas fa-bell text-lg"></i>
-						<span id="notification-badge" style="display:none;" class="absolute -top-2 -right-2 bg-red-600 text-white rounded-full px-2 py-0.5 text-xs font-bold">!</span>
-					</button>
-					<div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-96 bg-white border border-gray-200 rounded shadow-lg z-50">
-						<div class="flex items-center justify-between px-4 py-2 border-b">
-							<strong class="text-sm">Notifications</strong>
-							<div class="flex items-center gap-2">
-								<button id="markAllReadBtn" class="text-xs text-blue-600 hover:underline">Mark all read</button>
-								<button id="clearNotifBtn" class="text-xs text-red-600 hover:underline">Clear</button>
-							</div>
-						</div>
-						<div id="notification-list" class="p-3 space-y-3 max-h-80 overflow-y-auto"></div>
-						<div class="px-4 py-2 border-t text-center text-xs text-gray-500">Showing latest notifications</div>
-					</div>
-				</div>
 
                 <!-- Home button -->
                 <a id="home-button" href="<?= htmlspecialchars($home_link, ENT_QUOTES) ?>" class="text-gray-600 hover:text-blue-600 transition-colors" aria-label="Home" title="Home">
