@@ -226,7 +226,7 @@ export async function Register_Forms(isFingerReady, onRegister) {
     try {
         // Use your callAPI helper to call the PHP script
         const result = await callAPI(
-            "http://localhost/capstone/fingerprint/services/register_user_data.php",
+            "http://ec2-54-153-182-130.ap-southeast-2.compute.amazonaws.com/doel/fingerprint/services/register_user_data.php",
             { employee_id }  // POST data
         );
 

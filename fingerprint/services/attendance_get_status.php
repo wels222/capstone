@@ -10,7 +10,7 @@ date_default_timezone_set('Asia/Manila'); // <- Fixes "today" mismatch
 // ---------------------------
 // Database credentials
 // ---------------------------
-$host = 'localhost';
+$host = '127.0.0.1';
 $db   = 'capstone';
 $user = 'root';
 $pass = '';
