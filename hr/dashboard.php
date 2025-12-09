@@ -1263,17 +1263,27 @@ try {
                     const countJO = employees.filter(e => e.position === 'JO').length;
                     const countOJT = employees.filter(e => e.position === 'OJT').length;
                     
-                    document.getElementById('count-permanent').textContent = countPermanent;
-                    document.getElementById('count-casual').textContent = countCasual;
-                    document.getElementById('count-jo').textContent = countJO;
-                    document.getElementById('count-ojt').textContent = countOJT;
+                    const permanentTotal = document.getElementById('permanent-total');
+                    const casualTotal = document.getElementById('casual-total');
+                    const joTotal = document.getElementById('jo-total');
+                    const ojtTotal = document.getElementById('ojt-total');
+                    
+                    if (permanentTotal) permanentTotal.textContent = countPermanent;
+                    if (casualTotal) casualTotal.textContent = countCasual;
+                    if (joTotal) joTotal.textContent = countJO;
+                    if (ojtTotal) ojtTotal.textContent = countOJT;
                     
                     // Active counts based on today's attendance (who have time_in today)
                     const activeCounts = activeData.active;
-                    document.getElementById('active-permanent').textContent = activeCounts.Permanent + ' Active';
-                    document.getElementById('active-casual').textContent = activeCounts.Casual + ' Active';
-                    document.getElementById('active-jo').textContent = activeCounts.JO + ' Active';
-                    document.getElementById('active-ojt').textContent = activeCounts.OJT + ' Active';
+                    const permanentActive = document.getElementById('permanent-active');
+                    const casualActive = document.getElementById('casual-active');
+                    const joActive = document.getElementById('jo-active');
+                    const ojtActive = document.getElementById('ojt-active');
+                    
+                    if (permanentActive) permanentActive.textContent = activeCounts.Permanent;
+                    if (casualActive) casualActive.textContent = activeCounts.Casual;
+                    if (joActive) joActive.textContent = activeCounts.JO;
+                    if (ojtActive) ojtActive.textContent = activeCounts.OJT;
                 }
             })
             .catch(err => {
@@ -1300,13 +1310,16 @@ try {
                     }
                     tbody.innerHTML = '';
                     deps.forEach(d => {
+                        // Skip departments that are invalid
+                        if (!d.department || d.department === 'Unknown' || d.department.trim() === '') return;
+                        
                         const pct = Number(d.progress_percent) || 0;
                         let color = '#55a2ea';
                         if (pct >= 75) color = '#22c55e';
                         else if (pct < 40) color = '#ef4444';
                         const last = d.last_updated ? formatDate(d.last_updated) : '-';
                         const head = d.department_head_name ? escapeHtml(d.department_head_name) : '-';
-                        const department = d.department ? escapeHtml(d.department) : 'Unknown';
+                        const department = escapeHtml(d.department);
                         const row = `
                             <tr>
                                 <td class="py-4 px-4 whitespace-nowrap">${department}</td>

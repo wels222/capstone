@@ -6,16 +6,18 @@ require_once __DIR__ . '/../db.php';
 
 try {
     // Aggregate tasks by department (based on the assigned user's department)
-    $sql = "SELECT COALESCE(u.department, 'Unknown') AS department,
+    // Only include tasks assigned to users with a valid department
+    $sql = "SELECT u.department AS department,
         COUNT(t.id) AS total,
         SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed,
         SUM(CASE WHEN t.status IN ('pending','in_progress') THEN 1 ELSE 0 END) AS backlog,
         MAX(t.updated_at) AS last_updated,
-        (SELECT CONCAT(firstname, ' ', lastname) FROM users uh WHERE uh.role = 'department_head' AND uh.department = COALESCE(u.department, 'Unknown') LIMIT 1) AS department_head_name,
-        (SELECT uh.email FROM users uh WHERE uh.role = 'department_head' AND uh.department = COALESCE(u.department, 'Unknown') LIMIT 1) AS department_head_email
+        (SELECT CONCAT(firstname, ' ', lastname) FROM users uh WHERE uh.role = 'department_head' AND uh.department = u.department LIMIT 1) AS department_head_name,
+        (SELECT uh.email FROM users uh WHERE uh.role = 'department_head' AND uh.department = u.department LIMIT 1) AS department_head_email
         FROM tasks t
-        LEFT JOIN users u ON u.email = t.assigned_to_email
-        GROUP BY COALESCE(u.department, 'Unknown')
+        INNER JOIN users u ON u.email = t.assigned_to_email
+        WHERE u.department IS NOT NULL AND u.department != ''
+        GROUP BY u.department
         ORDER BY backlog DESC, total DESC";
 
     $stmt = $pdo->query($sql);
