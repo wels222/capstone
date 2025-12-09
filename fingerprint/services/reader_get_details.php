@@ -2,7 +2,7 @@
 header("Content-Type: application/json");
 
 // Database credentials
-$host = 'localhost';
+$host = '127.0.0.1';
 $db   = 'capstone';
 $user = 'root';
 $pass = '';

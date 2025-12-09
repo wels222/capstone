@@ -531,7 +531,7 @@ function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 async function waitForValidID(baseUrl){
     while(true){
-        const idData = await callAPI(`http://localhost/capstone/fingerprint/api/fingerprint/fingerprint_identify_user.php?base_url=${encodeURIComponent(baseUrl)}`);
+        const idData = await callAPI(`http://mabinihub.org/doel/fingerprint/api/fingerprint/fingerprint_identify_user.php?base_url=${encodeURIComponent(baseUrl)}`);
         const ident = idData.identification;
         if (!ident){ setTitleLog('No fingerprint detected'); ScannerReader('reader-container','idle'); await sleep(500); setTitleLog('Identifying user...'); continue; }
         if (ident.status === 'success' && ident.id > 0){ ScannerReader('reader-container','activated'); setTitleLog('Read Successful'); return idData; }
@@ -564,7 +564,7 @@ async function handleFingerprintScan(baseUrl){
     const idData = await waitForValidID(baseUrl);
     const fingerprintId = idData.identification.id;
     if (fingerprintId > 0){
-        const employeeIDResult = await callAPI(`http://localhost/capstone/fingerprint/services/reader_identify_user.php?id=${fingerprintId}`);
+        const employeeIDResult = await callAPI(`http://mabinihub.org/doel/fingerprint/services/reader_identify_user.php?id=${fingerprintId}`);
         const employeeIdString = employeeIDResult.employee_id;
         if (employeeIdString){
             // Auto record attendance via unified QR backend logic
@@ -589,18 +589,19 @@ async function handleFingerprintScan(baseUrl){
 }
 
 async function initializeScanner(){
+	/*
     setTitleLog('Stopping old server...');
-    const stopData = await callAPI('http://localhost/capstone/fingerprint/api/application/application_close_server.php');
+    const stopData = await callAPI('http://mabinihub.org/doel/fingerprint/api/application/application_close_server.php');
     if (!stopData.success && !(stopData.message || '').includes('not running')) { setTitleLog('Failed to stop server'); }
     else setTitleLog('Old server closed or not running.');
 
     setTitleLog('Starting server...');
-    const startData = await callAPI('http://localhost/capstone/fingerprint/api/application/application_start_server.php');
+    const startData = await callAPI('http://mabinihub.org/doel/fingerprint/api/application/application_start_server.php');
     if (!startData.success){ setTitleLog('Failed to start server: ' + (startData.message || 'Unknown')); return; }
     setTitleLog('Server started successfully.');
-
+	 */
     setTitleLog('Fetching server port...');
-    const portData = await callAPI('http://localhost/capstone/fingerprint/api/application/application_fetch_port.php');
+    const portData = await callAPI('http://mabinihub.org/doel/fingerprint/api/application/application_fetch_port.php');
     if (!portData.success){ setTitleLog('Failed to fetch server port.'); return; }
     const [host, port] = portData.server.split(':');
     const baseUrl = `http://${host}:${port}`;
@@ -608,14 +609,14 @@ async function initializeScanner(){
 
     setTitleLog('Connecting device...');
     await sleep(500);
-    const connectData = await callAPI('http://localhost/capstone/fingerprint/api/fingerprint/fingerprint_connect_device.php', { base_url: baseUrl });
+    const connectData = await callAPI('http://mabinihub.org/doel/fingerprint/api/fingerprint/fingerprint_connect_device.php', { base_url: baseUrl });
     if (!connectData.success){ setTitleLog('Device connection failed'); return; }
     setTitleLog('Device connected.');
     ScannerReader('reader-container','idle');
 
     setTitleLog('Loading fingerprint templates...');
     await sleep(500);
-    const fetchData = await callAPI('http://localhost/capstone/fingerprint/api/fingerprint/fingerprint_fetch_templates.php', { base_url: baseUrl });
+    const fetchData = await callAPI('http://mabinihub.org/doel/fingerprint/api/fingerprint/fingerprint_fetch_templates.php', { base_url: baseUrl });
     if (!fetchData.success){ setTitleLog('Failed to load fingerprints'); return; }
     setTitleLog('Fingerprints loaded.');
     ScannerReader('reader-container','idle');

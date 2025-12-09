@@ -12,6 +12,7 @@ try {
     // ---------------------------
     $connectDataRaw = @file_get_contents("$baseURL/api/device/connect");
     $connectData = json_decode($connectDataRaw, true);
+    //echo "$connectData";
 
     if (!isset($connectData["status"]) || $connectData["status"] !== "success") {
         echo json_encode([

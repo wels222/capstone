@@ -229,7 +229,7 @@ rightCol.appendChild(scanButton);
 async function waitForValidID(baseUrl) {
     while (true) {
         const idData = await callAPI(
-            `http://localhost/capstone/fingerprint/api/fingerprint/fingerprint_identify_user.php?base_url=${encodeURIComponent(baseUrl)}`
+            `http://mabinihub.org/doel/fingerprint/api/fingerprint/fingerprint_identify_user.php?base_url=${encodeURIComponent(baseUrl)}`
         );
 
         console.log("Raw API result:", idData);
@@ -257,7 +257,7 @@ async function handleFingerprintScan(baseUrl) {
         // If ident exists and is registered
         if (ident && ident.status === "success" && ident.id > 0) {
             const employeeIDResult = await callAPI(
-                `http://localhost/capstone/fingerprint/services/reader_identify_user.php?id=${ident.id}`
+                `http://mabinihub.org/doel/fingerprint/services/reader_identify_user.php?id=${ident.id}`
             );
             const employeeIdString = employeeIDResult.employee_id;
 
@@ -287,7 +287,7 @@ async function initializeScanner() {
     // 0️⃣ Stop any running server
     if (alreadyRunning === 0) {
         console.log("Stopping old server...");
-        const stopData = await callAPI("http://localhost/capstone/fingerprint/api/application/application_close_server.php");
+        const stopData = await callAPI("http://mabinihub.org/doel/fingerprint/api/application/application_close_server.php");
         if (!stopData.success && !(stopData.message || "").includes("not running")) {
             console.log("Failed to stop server: " + (stopData.message || ""));
             return;
@@ -296,7 +296,7 @@ async function initializeScanner() {
     
         // 1️⃣ Start server
         console.log("Starting server...");
-        const startData = await callAPI("http://localhost/capstone/fingerprint/api/application/application_start_server.php");
+        const startData = await callAPI("http://mabinihub.org/doel/fingerprint/api/application/application_start_server.php");
         if (!startData.success) {
             console.log("Failed to start server: " + (startData.message || "Unknown error"));
             return;
@@ -305,7 +305,7 @@ async function initializeScanner() {
 
         // 2️⃣ Fetch server port
         console.log("Fetching server port...");
-        const portData = await callAPI("http://localhost/capstone/fingerprint/api/application/application_fetch_port.php");
+        const portData = await callAPI("http://mabinihub.org/doel/fingerprint/api/application/application_fetch_port.php");
         if (!portData.success) {
             console.log("Failed to fetch server port.");
             return;
@@ -318,7 +318,7 @@ async function initializeScanner() {
         // 3️⃣ Connect device
         console.log("Connecting device...");
         await sleep(500);
-        const connectData = await callAPI("http://localhost/capstone/fingerprint/api/fingerprint/fingerprint_connect_device.php", { base_url: baseUrl });
+        const connectData = await callAPI("http://mabinihub.org/doel/fingerprint/api/fingerprint/fingerprint_connect_device.php", { base_url: baseUrl });
         if (!connectData.success) {
             console.log("Device connection failed");
             return;
@@ -337,7 +337,7 @@ async function initializeScanner() {
 async function startScanning() {
     console.log("Loading fingerprint templates...");
     await sleep(500);
-    const fetchData = await callAPI("http://localhost/capstone/fingerprint/api/fingerprint/fingerprint_fetch_templates.php", { base_url: crowUrl });
+    const fetchData = await callAPI("http://mabinihub.org/doel/fingerprint/api/fingerprint/fingerprint_fetch_templates.php", { base_url: crowUrl });
     if (!fetchData.success) {
         console.log("Failed to load fingerprints");
         return;
@@ -351,7 +351,7 @@ if (validForStorage) {
 handleFingerprintScan(crowUrl);
 console.log("running bmp exporter read");
     const inputData = await callAPI(
-    "http://localhost/capstone/fingerprint/api/fingerprint/fingerprint_read_finger.php",
+    "http://mabinihub.org/doel/fingerprint/api/fingerprint/fingerprint_read_finger.php",
     { base_url: crowUrl }
 );
 

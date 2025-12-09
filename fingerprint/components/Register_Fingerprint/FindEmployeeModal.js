@@ -207,7 +207,7 @@ export async function FindEmployeeModal() {
         }
 
         const searchResult = await callAPI(
-            `http://localhost/capstone/fingerprint/services/register_search_user.php?search_string=${encodeURIComponent(search_string)}`
+            `http://ec2-54-153-182-130.ap-southeast-2.compute.amazonaws.com/doel/fingerprint/services/register_search_user.php?search_string=${encodeURIComponent(search_string)}`
         );
 
         if (!searchResult) return;
@@ -281,7 +281,7 @@ export async function FindEmployeeModal() {
         }
 
         const employeeDetails = await callAPI(
-            `http://localhost/capstone/fingerprint/services/reader_get_details.php?employee_id=${encodeURIComponent(searchValue)}`
+            `http://ec2-54-153-182-130.ap-southeast-2.compute.amazonaws.com/doel/fingerprint/services/reader_get_details.php?employee_id=${encodeURIComponent(searchValue)}`
         );
 
         if (employeeDetails.success) {
