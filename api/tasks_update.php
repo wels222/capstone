@@ -24,6 +24,31 @@ if ($id <= 0) {
     exit;
 }
 
+// Fetch current task to inspect existing status and ownership
+try {
+    $curStmt = $pdo->prepare('SELECT status, assigned_by_email, submission_note, completed_at FROM tasks WHERE id = ?');
+    $curStmt->execute([$id]);
+    $current = $curStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$current) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Task not found']);
+        exit;
+    }
+    // Ensure only the original assigner can update
+    if (($current['assigned_by_email'] ?? '') !== $byEmail) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Not allowed']);
+        exit;
+    }
+    $currentStatus = $current['status'] ?? 'pending';
+    $currentSubmissionNote = $current['submission_note'] ?? null;
+    $currentCompletedAt = $current['completed_at'] ?? null;
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Failed to load task']);
+    exit;
+}
+
 // Normalize due_date
 if ($due_date) {
     $due_date = str_replace('T', ' ', $due_date);
@@ -41,6 +66,10 @@ if (!empty($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_E
     $ext = pathinfo($origName, PATHINFO_EXTENSION);
     $safeExt = preg_replace('/[^a-zA-Z0-9]/', '', $ext);
     $targetDir = __DIR__ . '/../uploads/tasks/';
+    // Ensure target directory exists and is writable
+    if (!is_dir($targetDir)) {
+        @mkdir($targetDir, 0777, true);
+    }
     $fileName = uniqid('task_') . ($safeExt ? ('.' . $safeExt) : '');
     $dest = $targetDir . $fileName;
     if (@is_dir($targetDir) && @is_writable($targetDir) && @move_uploaded_file($tmpPath, $dest)) {
@@ -65,13 +94,27 @@ try {
         $fields[] = 'due_date = ?';
         $params[] = $due_date ?: null;
 
-        // If due_date provided and in the past, set missed
+        // If due_date provided: set status based on comparison
         if ($due_date) {
             try {
                 $checkDt = new DateTime($due_date);
                 $now = new DateTime();
                 if ($checkDt < $now) {
-                    $statusToSet = 'missed';
+                    // Past: mark as missed ONLY if not already completed
+                    if ($currentStatus !== 'completed') {
+                        $statusToSet = 'missed';
+                    }
+                } else {
+                    // Future: if currently missed, revert to last meaningful status
+                    if ($currentStatus === 'missed') {
+                        if (!empty($currentCompletedAt)) {
+                            $statusToSet = 'completed';
+                        } else if (!empty($currentSubmissionNote)) {
+                            $statusToSet = 'in_progress';
+                        } else {
+                            $statusToSet = 'pending';
+                        }
+                    }
                 }
             } catch (Exception $e) {}
         }

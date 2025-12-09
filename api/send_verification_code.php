@@ -7,6 +7,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../config_smtp.php';
+require_once __DIR__ . '/../email_templates.php';
 
 // Optional: load PHPMailer if available; else simulate send in dev.
 $autoload = __DIR__ . '/../vendor/autoload.php';
@@ -81,10 +82,11 @@ if ($mailerAvailable && class_exists('\\PHPMailer\\PHPMailer\\PHPMailer')) {
         $fromName = APP_NAME;
         $mail->setFrom($fromEmail, $fromName);
         $mail->addAddress($email);
-        $mail->Subject = 'Your Verification Code';
+        $mail->Subject = 'Email Verification - ' . APP_NAME;
         $mail->isHTML(true);
-        $mail->Body = '<p>Your verification code is:</p><h2 style="letter-spacing:3px;">'.$code.'</h2><p>It expires in 10 minutes.</p>';
-        $mail->AltBody = "Your verification code: $code (expires in 10 minutes).";
+        $mail->Body = getVerificationEmailTemplate($code, $email);
+        $mail->AltBody = getPlainTextVerificationEmail($code, $email);
+        $mail->CharSet = 'UTF-8';
         
         // Check if SMTP credentials are configured
         if ($smtpUser === 'your-system-email@gmail.com' || $smtpPass === 'your-app-password-here') {

@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../config_smtp.php';
+require_once __DIR__ . '/../email_templates.php';
 
 $autoload = __DIR__ . '/../vendor/autoload.php';
 $mailerAvailable = file_exists($autoload);
@@ -92,10 +93,11 @@ if ($mailerAvailable && class_exists('\\PHPMailer\\PHPMailer\\PHPMailer')) {
         $fromName = APP_NAME;
         $mail->setFrom($fromEmail, $fromName);
         $mail->addAddress($email);
-        $mail->Subject = 'Password Reset Code';
+        $mail->Subject = 'Password Reset Code - ' . APP_NAME;
         $mail->isHTML(true);
-        $mail->Body = '<p>Your password reset code is:</p><h2 style="letter-spacing:3px;">'.$code.'</h2><p>It expires in 10 minutes.</p><p>If you did not request this, please ignore this email.</p>';
-        $mail->AltBody = "Your password reset code: $code (expires in 10 minutes). If you did not request this, please ignore this email.";
+        $mail->Body = getPasswordResetEmailTemplate($code, $email);
+        $mail->AltBody = getPlainTextPasswordResetEmail($code, $email);
+        $mail->CharSet = 'UTF-8';
         
         if ($smtpUser === 'your-system-email@gmail.com' || $smtpPass === 'your-app-password-here') {
             $_SESSION['reset_simulated'] = true;

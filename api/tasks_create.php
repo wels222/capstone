@@ -96,9 +96,12 @@ if (!empty($_FILES['attachment']) && $_FILES['attachment']['error'] === UPLOAD_E
 	$ext = pathinfo($origName, PATHINFO_EXTENSION);
 	$safeExt = preg_replace('/[^a-zA-Z0-9]/', '', $ext);
 	$targetDir = __DIR__ . '/../uploads/tasks/';
+	// Ensure target directory exists and is writable
+	if (!is_dir($targetDir)) {
+		@mkdir($targetDir, 0777, true);
+	}
 	$fileName = uniqid('task_') . ($safeExt ? ('.' . $safeExt) : '');
 	$dest = $targetDir . $fileName;
-	// Try to move file if folder exists; if not, keep null path silently
 	if (@is_dir($targetDir) && @is_writable($targetDir) && @move_uploaded_file($tmpPath, $dest)) {
 		$attachment_path = 'uploads/tasks/' . $fileName;
 	}
