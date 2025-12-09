@@ -1227,7 +1227,7 @@ require_role('hr');
               span.className = `inline-block w-2.5 h-2.5 rounded-full ${personClass} ring-2 ${
                 isHR ? "ring-green-600" : "ring-blue-500"
               } ring-offset-1 ring-offset-gray-50`;
-              const dept = lr.department ? String(lr.department) : "";
+              const dept = lr.department && String(lr.department).trim() ? String(lr.department) : "";
               const pos = lr.position ? String(lr.position) : "";
               const meta = [dept, pos].filter(Boolean).join(" • ");
               const range = parseStartEnd(lr.dates);

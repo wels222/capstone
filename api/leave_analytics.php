@@ -76,18 +76,20 @@ try {
         }
         $analytics['by_type'][$type]++;
         
-        // Count by department
-        $dept = $leave['department'] ?? 'Unknown';
-        if (!isset($analytics['by_department'][$dept])) {
-            $analytics['by_department'][$dept] = [
-                'total' => 0,
-                'approved' => 0,
-                'pending' => 0,
-                'declined' => 0
-            ];
+        // Count by department (skip if department is not set)
+        $dept = $leave['department'] ?? null;
+        if ($dept && trim($dept) !== '') {
+            if (!isset($analytics['by_department'][$dept])) {
+                $analytics['by_department'][$dept] = [
+                    'total' => 0,
+                    'approved' => 0,
+                    'pending' => 0,
+                    'declined' => 0
+                ];
+            }
+            $analytics['by_department'][$dept]['total']++;
+            $analytics['by_department'][$dept][$status]++;
         }
-        $analytics['by_department'][$dept]['total']++;
-        $analytics['by_department'][$dept][$status]++;
         
         // Count by employee category (position)
         $cat = $leave['position'] ?? 'Unknown';
