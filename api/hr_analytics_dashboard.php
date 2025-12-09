@@ -32,6 +32,8 @@ try {
     // Get filter parameters
     $timeRange = $_GET['timeRange'] ?? 'month';
     $departmentFilter = $_GET['departmentFilter'] ?? 'all';
+    $selectedMonth = $_GET['month'] ?? null;
+    $selectedYear = $_GET['year'] ?? date('Y');
     
     // Calculate EXACT date ranges based on timeRange
     // This ensures accurate filtering - only data within the selected period is shown
@@ -49,8 +51,15 @@ try {
             $endDate = date('Y-m-d', strtotime('sunday this week'));
             break;
         case 'month':
-            $startDate = date('Y-m-01');
-            $endDate = date('Y-m-t');
+            // Use selected month if provided, otherwise use current month
+            if ($selectedMonth !== null && $selectedYear !== null) {
+                $monthStr = str_pad($selectedMonth, 2, '0', STR_PAD_LEFT);
+                $startDate = $selectedYear . '-' . $monthStr . '-01';
+                $endDate = date('Y-m-t', strtotime($startDate));
+            } else {
+                $startDate = date('Y-m-01');
+                $endDate = date('Y-m-t');
+            }
             break;
         case 'quarter':
             $currentMonth = (int)date('n');
@@ -84,23 +93,45 @@ try {
         $totalEmployees = (int)$pdo->query($totalEmployeesSql)->fetchColumn();
     }
     
-    // Active today (Present + Late)
-    $activeTodaySql = 'SELECT COUNT(DISTINCT a.employee_id) 
+    // Active in selected period (Present + Late)
+    // For "today", use today's date. For other periods, calculate average or use most recent data
+    $activePeriodSql = 'SELECT COUNT(DISTINCT a.employee_id) 
                        FROM attendance a 
                        JOIN users u ON a.employee_id = u.employee_id 
-                       WHERE a.date = ? 
+                       WHERE a.date >= ? AND a.date <= ?
                        AND a.time_in_status IN ("Present", "Late")
                        AND u.status = "approved"' . $deptWhereClause;
-    $activeStmt = $pdo->prepare($activeTodaySql);
-    $activeParams = [$today];
+    $activeStmt = $pdo->prepare($activePeriodSql);
+    $activeParams = [$startDate, $endDate];
     if ($departmentFilter !== 'all') {
         $activeParams[] = $departmentFilter;
     }
     $activeStmt->execute($activeParams);
-    $activeToday = (int)$activeStmt->fetchColumn();
+    $activePeriod = (int)$activeStmt->fetchColumn();
     
-    // Attendance rate
-    $attendanceRate = $totalEmployees > 0 ? ($activeToday / $totalEmployees) * 100 : 0;
+    // Calculate attendance rate for the period
+    // Get total attendance records in period
+    $totalAttendanceSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
+                          FROM attendance a 
+                          JOIN users u ON a.employee_id = u.employee_id 
+                          WHERE a.date >= ? AND a.date <= ?
+                          AND u.status = "approved"' . $deptWhereClause;
+    $totalAttendanceStmt = $pdo->prepare($totalAttendanceSql);
+    $totalAttendanceParams = [$startDate, $endDate];
+    if ($departmentFilter !== 'all') {
+        $totalAttendanceParams[] = $departmentFilter;
+    }
+    $totalAttendanceStmt->execute($totalAttendanceParams);
+    $totalAttendanceRecords = (int)$totalAttendanceStmt->fetchColumn();
+    
+    // Calculate expected attendance (employees * working days in range)
+    $workingDaysSql = 'SELECT COUNT(DISTINCT date) FROM attendance WHERE date >= ? AND date <= ?';
+    $workingDaysStmt = $pdo->prepare($workingDaysSql);
+    $workingDaysStmt->execute([$startDate, $endDate]);
+    $workingDays = (int)$workingDaysStmt->fetchColumn();
+    
+    $expectedAttendance = $totalEmployees * max($workingDays, 1);
+    $attendanceRate = $expectedAttendance > 0 ? ($totalAttendanceRecords / $expectedAttendance) * 100 : 0;
     
     // Pending leave requests within time range
     $pendingLeavesSql = 'SELECT COUNT(*) FROM leave_requests lr
@@ -166,20 +197,31 @@ try {
         $empStmt->execute([$deptName]);
         $empCount = (int)$empStmt->fetchColumn();
         
-        // Active today in department
+        // Active in period in department
         $deptActiveSql = 'SELECT COUNT(DISTINCT a.employee_id) 
                           FROM attendance a 
                           JOIN users u ON a.employee_id = u.employee_id 
-                          WHERE a.date = ? 
+                          WHERE a.date >= ? AND a.date <= ?
                           AND a.time_in_status IN ("Present", "Late")
                           AND u.department = ?
                           AND u.status = "approved"';
         $deptActiveStmt = $pdo->prepare($deptActiveSql);
-        $deptActiveStmt->execute([$today, $deptName]);
+        $deptActiveStmt->execute([$startDate, $endDate, $deptName]);
         $deptActive = (int)$deptActiveStmt->fetchColumn();
         
-        // Department attendance rate
-        $deptAttendanceRate = $empCount > 0 ? ($deptActive / $empCount) * 100 : 0;
+        // Department attendance rate (based on actual attendance records in period)
+        $deptTotalAttendanceSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
+                                   FROM attendance a 
+                                   JOIN users u ON a.employee_id = u.employee_id 
+                                   WHERE a.date >= ? AND a.date <= ?
+                                   AND u.department = ?
+                                   AND u.status = "approved"';
+        $deptTotalAttendanceStmt = $pdo->prepare($deptTotalAttendanceSql);
+        $deptTotalAttendanceStmt->execute([$startDate, $endDate, $deptName]);
+        $deptTotalAttendanceRecords = (int)$deptTotalAttendanceStmt->fetchColumn();
+        
+        $deptExpectedAttendance = $empCount * max($workingDays, 1);
+        $deptAttendanceRate = $deptExpectedAttendance > 0 ? ($deptTotalAttendanceRecords / $deptExpectedAttendance) * 100 : 0;
         
         // Pending leaves in department within time range
         $deptLeavesSql = 'SELECT COUNT(*) FROM leave_requests lr
@@ -300,75 +342,183 @@ try {
     
     
     // ===== ATTENDANCE TREND =====
-    // Calculate appropriate days to show based on time range
-    $daysToShow = 7; // default for week/month
-    if ($timeRange === 'today') {
-        $daysToShow = 1;
-    } elseif ($timeRange === 'quarter') {
-        $daysToShow = 14;
-    } elseif ($timeRange === 'year') {
-        $daysToShow = 30;
-    }
-    
     $attendanceTrend = [];
     
-    // Generate dates within the selected range
-    $currentDate = new DateTime($startDate);
-    $endDateTime = new DateTime($endDate);
-    $interval = new DateInterval('P1D');
-    $dateRange = new DatePeriod($currentDate, $interval, $endDateTime->modify('+1 day'));
-    
-    $allDates = [];
-    foreach ($dateRange as $date) {
-        $allDates[] = $date->format('Y-m-d');
-    }
-    
-    // Limit to last N days if range is too large
-    if (count($allDates) > $daysToShow) {
-        $allDates = array_slice($allDates, -$daysToShow);
-    }
-    
-    foreach ($allDates as $date) {
-        
-        // Present count
-        $presentSql = 'SELECT COUNT(DISTINCT a.employee_id) 
-                       FROM attendance a 
-                       JOIN users u ON a.employee_id = u.employee_id 
-                       WHERE a.date = ? 
-                       AND a.time_in_status = "Present"
-                       AND u.status = "approved"' . $deptWhereClause;
-        $presentStmt = $pdo->prepare($presentSql);
-        $presentParams = [$date];
-        if ($departmentFilter !== 'all') {
-            $presentParams[] = $departmentFilter;
+    if ($timeRange === 'year') {
+        // For year view, show all 12 months
+        $year = $selectedYear ?? date('Y');
+        for ($month = 1; $month <= 12; $month++) {
+            $monthStart = $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT) . '-01';
+            $monthEnd = date('Y-m-t', strtotime($monthStart));
+            
+            // Present count for the month
+            $presentSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
+                           FROM attendance a 
+                           JOIN users u ON a.employee_id = u.employee_id 
+                           WHERE a.date >= ? AND a.date <= ?
+                           AND a.time_in_status = "Present"
+                           AND u.status = "approved"' . $deptWhereClause;
+            $presentStmt = $pdo->prepare($presentSql);
+            $presentParams = [$monthStart, $monthEnd];
+            if ($departmentFilter !== 'all') {
+                $presentParams[] = $departmentFilter;
+            }
+            $presentStmt->execute($presentParams);
+            $present = (int)$presentStmt->fetchColumn();
+            
+            // Late count for the month
+            $lateSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
+                        FROM attendance a 
+                        JOIN users u ON a.employee_id = u.employee_id 
+                        WHERE a.date >= ? AND a.date <= ?
+                        AND a.time_in_status = "Late"
+                        AND u.status = "approved"' . $deptWhereClause;
+            $lateStmt = $pdo->prepare($lateSql);
+            $lateParams = [$monthStart, $monthEnd];
+            if ($departmentFilter !== 'all') {
+                $lateParams[] = $departmentFilter;
+            }
+            $lateStmt->execute($lateParams);
+            $late = (int)$lateStmt->fetchColumn();
+            
+            // Count working days in this month
+            $workingDaysInMonth = 0;
+            $checkDate = new DateTime($monthStart);
+            $endCheck = new DateTime($monthEnd);
+            while ($checkDate <= $endCheck) {
+                $dayOfWeek = $checkDate->format('N');
+                if ($dayOfWeek < 6) { // Monday = 1, Sunday = 7
+                    $workingDaysInMonth++;
+                }
+                $checkDate->modify('+1 day');
+            }
+            
+            $expectedAttendanceMonth = $totalEmployees * $workingDaysInMonth;
+            $absent = max(0, $expectedAttendanceMonth - ($present + $late));
+            
+            $attendanceTrend[] = [
+                'date' => date('M', strtotime($monthStart)),
+                'present' => $present,
+                'late' => $late,
+                'absent' => $absent
+            ];
         }
-        $presentStmt->execute($presentParams);
-        $present = (int)$presentStmt->fetchColumn();
+    } elseif ($timeRange === 'quarter') {
+        // For quarter view, show each month in the quarter (3 months)
+        $currentDate = new DateTime($startDate);
+        $endDateTime = new DateTime($endDate);
         
-        // Late count
-        $lateSql = 'SELECT COUNT(DISTINCT a.employee_id) 
-                    FROM attendance a 
-                    JOIN users u ON a.employee_id = u.employee_id 
-                    WHERE a.date = ? 
-                    AND a.time_in_status = "Late"
-                    AND u.status = "approved"' . $deptWhereClause;
-        $lateStmt = $pdo->prepare($lateSql);
-        $lateParams = [$date];
-        if ($departmentFilter !== 'all') {
-            $lateParams[] = $departmentFilter;
+        while ($currentDate <= $endDateTime) {
+            $monthStart = $currentDate->format('Y-m-01');
+            $monthEnd = $currentDate->format('Y-m-t');
+            
+            // Present count for the month
+            $presentSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
+                           FROM attendance a 
+                           JOIN users u ON a.employee_id = u.employee_id 
+                           WHERE a.date >= ? AND a.date <= ?
+                           AND a.time_in_status = "Present"
+                           AND u.status = "approved"' . $deptWhereClause;
+            $presentStmt = $pdo->prepare($presentSql);
+            $presentParams = [$monthStart, $monthEnd];
+            if ($departmentFilter !== 'all') {
+                $presentParams[] = $departmentFilter;
+            }
+            $presentStmt->execute($presentParams);
+            $present = (int)$presentStmt->fetchColumn();
+            
+            // Late count for the month
+            $lateSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
+                        FROM attendance a 
+                        JOIN users u ON a.employee_id = u.employee_id 
+                        WHERE a.date >= ? AND a.date <= ?
+                        AND a.time_in_status = "Late"
+                        AND u.status = "approved"' . $deptWhereClause;
+            $lateStmt = $pdo->prepare($lateSql);
+            $lateParams = [$monthStart, $monthEnd];
+            if ($departmentFilter !== 'all') {
+                $lateParams[] = $departmentFilter;
+            }
+            $lateStmt->execute($lateParams);
+            $late = (int)$lateStmt->fetchColumn();
+            
+            // Count working days
+            $workingDaysInMonth = 0;
+            $checkDate = new DateTime($monthStart);
+            $endCheck = new DateTime($monthEnd);
+            while ($checkDate <= $endCheck) {
+                $dayOfWeek = $checkDate->format('N');
+                if ($dayOfWeek < 6) {
+                    $workingDaysInMonth++;
+                }
+                $checkDate->modify('+1 day');
+            }
+            
+            $expectedAttendanceMonth = $totalEmployees * $workingDaysInMonth;
+            $absent = max(0, $expectedAttendanceMonth - ($present + $late));
+            
+            $attendanceTrend[] = [
+                'date' => date('M Y', strtotime($monthStart)),
+                'present' => $present,
+                'late' => $late,
+                'absent' => $absent
+            ];
+            
+            $currentDate->modify('first day of next month');
         }
-        $lateStmt->execute($lateParams);
-        $late = (int)$lateStmt->fetchColumn();
+    } else {
+        // For today, week, and month - show all days in the range
+        $currentDate = new DateTime($startDate);
+        $endDateTime = new DateTime($endDate);
+        $interval = new DateInterval('P1D');
+        $dateRange = new DatePeriod($currentDate, $interval, $endDateTime->modify('+1 day'));
         
-        // Absent count
-        $absent = $totalEmployees - ($present + $late);
+        $allDates = [];
+        foreach ($dateRange as $date) {
+            $allDates[] = $date->format('Y-m-d');
+        }
         
-        $attendanceTrend[] = [
-            'date' => date('M d', strtotime($date)),
-            'present' => $present,
-            'late' => $late,
-            'absent' => max(0, $absent)
-        ];
+        foreach ($allDates as $date) {
+            // Present count
+            $presentSql = 'SELECT COUNT(DISTINCT a.employee_id) 
+                           FROM attendance a 
+                           JOIN users u ON a.employee_id = u.employee_id 
+                           WHERE a.date = ? 
+                           AND a.time_in_status = "Present"
+                           AND u.status = "approved"' . $deptWhereClause;
+            $presentStmt = $pdo->prepare($presentSql);
+            $presentParams = [$date];
+            if ($departmentFilter !== 'all') {
+                $presentParams[] = $departmentFilter;
+            }
+            $presentStmt->execute($presentParams);
+            $present = (int)$presentStmt->fetchColumn();
+            
+            // Late count
+            $lateSql = 'SELECT COUNT(DISTINCT a.employee_id) 
+                        FROM attendance a 
+                        JOIN users u ON a.employee_id = u.employee_id 
+                        WHERE a.date = ? 
+                        AND a.time_in_status = "Late"
+                        AND u.status = "approved"' . $deptWhereClause;
+            $lateStmt = $pdo->prepare($lateSql);
+            $lateParams = [$date];
+            if ($departmentFilter !== 'all') {
+                $lateParams[] = $departmentFilter;
+            }
+            $lateStmt->execute($lateParams);
+            $late = (int)$lateStmt->fetchColumn();
+            
+            // Absent count
+            $absent = $totalEmployees - ($present + $late);
+            
+            $attendanceTrend[] = [
+                'date' => date('M d', strtotime($date)),
+                'present' => $present,
+                'late' => $late,
+                'absent' => max(0, $absent)
+            ];
+        }
     }
     
     
@@ -414,15 +564,22 @@ try {
         'timestamp' => date('Y-m-d H:i:s'),
         'filters' => [
             'timeRange' => $timeRange,
-            'departmentFilter' => $departmentFilter
+            'departmentFilter' => $departmentFilter,
+            'selectedMonth' => $selectedMonth,
+            'selectedYear' => $selectedYear,
+            'dateRange' => [
+                'start' => $startDate,
+                'end' => $endDate
+            ]
         ],
         'overview' => [
             'total_employees' => $totalEmployees,
-            'active_today' => $activeToday,
+            'active_today' => $activePeriod,
             'attendance_rate' => round($attendanceRate, 2),
             'pending_leaves' => $pendingLeaves,
             'high_risk_departments' => $highRiskDepts,
-            'avg_leave_days_per_employee' => round($avgLeaveDays, 2)
+            'avg_leave_days_per_employee' => round($avgLeaveDays, 2),
+            'working_days' => $workingDays
         ],
         'departments' => $departments,
         'risk_alerts' => $riskAlerts,

@@ -643,12 +643,35 @@ require_role('hr');
             <div class="filter-grid">
               <div class="filter-item">
                 <label for="timeRange">Time Range</label>
-                <select id="timeRange" onchange="refreshAnalytics()">
+                <select id="timeRange" onchange="handleTimeRangeChange()">
                   <option value="today">Today</option>
                   <option value="week">This Week</option>
                   <option value="month" selected>This Month</option>
                   <option value="quarter">This Quarter</option>
                   <option value="year">This Year</option>
+                </select>
+              </div>
+              <div class="filter-item" id="monthFilterContainer" style="display: block;">
+                <label for="monthFilter">Select Month</label>
+                <select id="monthFilter" onchange="refreshAnalytics()">
+                  <option value="1">January</option>
+                  <option value="2">February</option>
+                  <option value="3">March</option>
+                  <option value="4">April</option>
+                  <option value="5">May</option>
+                  <option value="6">June</option>
+                  <option value="7">July</option>
+                  <option value="8">August</option>
+                  <option value="9">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+              </div>
+              <div class="filter-item" id="yearFilterContainer" style="display: block;">
+                <label for="yearFilter">Select Year</label>
+                <select id="yearFilter" onchange="refreshAnalytics()">
+                  <!-- Years will be populated by JavaScript -->
                 </select>
               </div>
               <div class="filter-item">
@@ -752,11 +775,48 @@ require_role('hr');
 
       // Initialize on page load
       document.addEventListener("DOMContentLoaded", function () {
+        // Set current month and year
+        const currentMonth = new Date().getMonth() + 1;
+        const currentYear = new Date().getFullYear();
+        document.getElementById("monthFilter").value = currentMonth;
+        
+        // Populate year selector (last 5 years and next 2 years)
+        const yearFilter = document.getElementById("yearFilter");
+        for (let year = currentYear - 5; year <= currentYear + 2; year++) {
+          const option = document.createElement("option");
+          option.value = year;
+          option.textContent = year;
+          if (year === currentYear) {
+            option.selected = true;
+          }
+          yearFilter.appendChild(option);
+        }
+        
         loadDepartmentList();
         loadAnalytics();
         // Refresh data every 30 seconds
         setInterval(loadAnalytics, 30000);
       });
+
+      // Handle time range change to show/hide month selector
+      function handleTimeRangeChange() {
+        const timeRange = document.getElementById("timeRange").value;
+        const monthFilterContainer = document.getElementById("monthFilterContainer");
+        const yearFilterContainer = document.getElementById("yearFilterContainer");
+        
+        if (timeRange === "month") {
+          monthFilterContainer.style.display = "block";
+          yearFilterContainer.style.display = "none";
+        } else if (timeRange === "year") {
+          monthFilterContainer.style.display = "none";
+          yearFilterContainer.style.display = "block";
+        } else {
+          monthFilterContainer.style.display = "none";
+          yearFilterContainer.style.display = "none";
+        }
+        
+        refreshAnalytics();
+      }
 
       // Load department list for filter
       async function loadDepartmentList() {
@@ -785,12 +845,25 @@ require_role('hr');
           const timeRange = document.getElementById("timeRange").value;
           const departmentFilter =
             document.getElementById("departmentFilter").value;
+          const monthFilter = document.getElementById("monthFilter").value;
+          const yearFilter = document.getElementById("yearFilter").value;
 
           // Build query string
           const params = new URLSearchParams({
             timeRange: timeRange,
             departmentFilter: departmentFilter,
           });
+          
+          // Add month and year parameters if month range is selected
+          if (timeRange === "month") {
+            params.append("month", monthFilter);
+            params.append("year", yearFilter);
+          }
+          
+          // Add year parameter if year range is selected
+          if (timeRange === "year") {
+            params.append("year", yearFilter);
+          }
 
           const response = await fetch(
             "../api/hr_analytics_dashboard.php?" + params.toString()
@@ -843,6 +916,26 @@ require_role('hr');
         const currentPeriod = data.filters.timeRange || "month";
         document.getElementById("avgLeaveDaysPeriod").textContent =
           periodLabels[currentPeriod];
+        
+        // Update "Active Today" card label dynamically
+        const activeTodayCard = document.querySelector('.stat-card.green .label');
+        const activeTodaySubValue = document.querySelector('.stat-card.green .sub-value');
+        
+        if (currentPeriod === "today") {
+          activeTodayCard.textContent = "Active Today";
+          activeTodaySubValue.innerHTML = '<span id="attendanceRate">' + 
+            data.overview.attendance_rate.toFixed(1) + '</span>% Attendance Rate';
+        } else {
+          const activeLabels = {
+            week: "Active This Week",
+            month: "Active This Month",
+            quarter: "Active This Quarter",
+            year: "Active This Year",
+          };
+          activeTodayCard.textContent = activeLabels[currentPeriod] || "Active in Period";
+          activeTodaySubValue.innerHTML = '<span id="attendanceRate">' + 
+            data.overview.attendance_rate.toFixed(1) + '</span>% Attendance Rate';
+        }
 
         // Update attendance trend chart title
         const trendTitles = {
@@ -877,13 +970,24 @@ require_role('hr');
         const periodLabels = {
           today: "Today",
           week: "This Week",
-          month: "This Month",
+          month: "Month",
           quarter: "This Quarter",
           year: "This Year",
         };
+        
+        const monthNames = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ];
 
         let statusText = '<i class="fas fa-filter"></i> Active Filters: ';
-        statusText += periodLabels[filters.timeRange] || "This Month";
+        
+        if (filters.timeRange === "month" && filters.selectedMonth) {
+          const monthIndex = parseInt(filters.selectedMonth) - 1;
+          statusText += monthNames[monthIndex] + " " + filters.selectedYear;
+        } else {
+          statusText += periodLabels[filters.timeRange] || "This Month";
+        }
 
         if (filters.departmentFilter !== "all") {
           statusText +=
@@ -1200,10 +1304,18 @@ require_role('hr');
         }
 
         const labels = departments.map((d) => d.department);
+        
+        // Attendance Risk: 100 - attendance_rate (higher = worse)
         const attendanceRisk = departments.map((d) => 100 - d.attendance_rate);
-        const leaveRisk = departments.map(
-          (d) => (d.pending_leaves / d.employee_count) * 100
-        );
+        
+        // Leave Risk: Calculate based on pending leaves percentage and avg leave days
+        // Formula: (pending_leaves / employee_count * 100) + (avg_leave_days * 10)
+        // This gives a weighted score where both pending leaves and leave usage matter
+        const leaveRisk = departments.map((d) => {
+          const pendingRisk = d.employee_count > 0 ? (d.pending_leaves / d.employee_count) * 100 : 0;
+          const avgLeaveRisk = d.avg_leave_days * 10; // Scale up avg leave days
+          return Math.min(100, pendingRisk + avgLeaveRisk); // Cap at 100
+        });
 
         charts.riskHeatmap = new Chart(ctx, {
           type: "bar",
@@ -1211,14 +1323,14 @@ require_role('hr');
             labels: labels,
             datasets: [
               {
-                label: "Attendance Risk",
+                label: "Attendance Risk (%)",
                 data: attendanceRisk,
                 backgroundColor: "rgba(239, 68, 68, 0.6)",
                 borderColor: "rgba(239, 68, 68, 1)",
                 borderWidth: 1,
               },
               {
-                label: "Leave Request Risk",
+                label: "Leave Risk (%)",
                 data: leaveRisk,
                 backgroundColor: "rgba(245, 158, 11, 0.6)",
                 borderColor: "rgba(245, 158, 11, 1)",
@@ -1233,6 +1345,22 @@ require_role('hr');
               legend: {
                 position: "top",
               },
+              tooltip: {
+                callbacks: {
+                  afterLabel: function(context) {
+                    const index = context.dataIndex;
+                    const dept = departments[index];
+                    if (context.dataset.label === "Leave Risk (%)") {
+                      return [
+                        `Pending Leaves: ${dept.pending_leaves}`,
+                        `Avg Leave Days: ${dept.avg_leave_days.toFixed(1)}`
+                      ];
+                    } else if (context.dataset.label === "Attendance Risk (%)") {
+                      return `Attendance Rate: ${dept.attendance_rate.toFixed(1)}%`;
+                    }
+                  }
+                }
+              }
             },
             scales: {
               x: {
