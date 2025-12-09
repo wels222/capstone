@@ -657,15 +657,6 @@ require_role('hr');
                   <option value="all">All Departments</option>
                 </select>
               </div>
-              <div class="filter-item">
-                <label for="metricType">Metric Type</label>
-                <select id="metricType" onchange="refreshAnalytics()">
-                  <option value="all">All Metrics</option>
-                  <option value="attendance">Attendance</option>
-                  <option value="leave">Leave Management</option>
-                  <option value="performance">Performance</option>
-                </select>
-              </div>
             </div>
           </div>
 
@@ -683,9 +674,8 @@ require_role('hr');
 
             <!-- Attendance Trend Chart -->
             <div class="chart-container">
-              <h3>
-                <i class="fas fa-chart-area"></i> Attendance Trends (Last 7
-                Days)
+              <h3 id="attendanceTrendTitle">
+                <i class="fas fa-chart-area"></i> Attendance Trends
               </h3>
               <div class="chart-wrapper">
                 <canvas id="attendanceTrendChart"></canvas>
@@ -795,13 +785,11 @@ require_role('hr');
           const timeRange = document.getElementById("timeRange").value;
           const departmentFilter =
             document.getElementById("departmentFilter").value;
-          const metricType = document.getElementById("metricType").value;
 
           // Build query string
           const params = new URLSearchParams({
             timeRange: timeRange,
             departmentFilter: departmentFilter,
-            metricType: metricType,
           });
 
           const response = await fetch(
@@ -856,6 +844,17 @@ require_role('hr');
         document.getElementById("avgLeaveDaysPeriod").textContent =
           periodLabels[currentPeriod];
 
+        // Update attendance trend chart title
+        const trendTitles = {
+          today: "Attendance Trends (Today)",
+          week: "Attendance Trends (This Week)",
+          month: "Attendance Trends (This Month)",
+          quarter: "Attendance Trends (This Quarter)",
+          year: "Attendance Trends (This Year)",
+        };
+        document.getElementById("attendanceTrendTitle").innerHTML =
+          '<i class="fas fa-chart-area"></i> ' + (trendTitles[currentPeriod] || "Attendance Trends");
+
         // Update filter status
         updateFilterStatus(data.filters);
 
@@ -883,13 +882,6 @@ require_role('hr');
           year: "This Year",
         };
 
-        const metricLabels = {
-          all: "All Metrics",
-          attendance: "Attendance Only",
-          leave: "Leave Management Only",
-          performance: "Performance Only",
-        };
-
         let statusText = '<i class="fas fa-filter"></i> Active Filters: ';
         statusText += periodLabels[filters.timeRange] || "This Month";
 
@@ -898,10 +890,6 @@ require_role('hr');
             " | Department: <strong>" + filters.departmentFilter + "</strong>";
         } else {
           statusText += " | All Departments";
-        }
-
-        if (filters.metricType !== "all") {
-          statusText += " | " + metricLabels[filters.metricType];
         }
 
         document.getElementById("filterStatus").innerHTML = statusText;

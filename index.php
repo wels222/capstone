@@ -100,22 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
     
-    // Municipal Admin bypass: direct access to municipal portal
-    if ($email === 'municipaladmin@gmail.com' && $password === 'MunicipalAdmin') {
-        $_SESSION['municipal_logged_in'] = true;
-        $_SESSION['municipal_email'] = $email;
-        header('Location: municipal/approved_leaves.php');
-        exit();
-    }
-    
-    // Super admin bypass: no DB check needed
-    if ($email === 'mabiniadmin@gmail.com' && $password === 'MabiniAdminOfficial') {
-        $_SESSION['user_id'] = 'superadmin';
-        $_SESSION['position'] = 'Super Admin';
-        $_SESSION['email'] = $email;
-        header('Location: super_admin.php');
-        exit();
-    }
+    // Removed hardcoded bypass; rely on regular DB-auth and password reset flow
     // Normal user login
     $stmt = $pdo->prepare('SELECT id, password, role, status, position FROM users WHERE email = ?');
     $stmt->execute([$email]);
@@ -141,6 +126,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['email'] = $email;
 
             $roleNorm = strtolower($user['role'] ?? $user['position'] ?? '');
+            // Special routing for admin emails (post-DB auth only; no password hardcoding)
+            if ($email === 'mabiniadmin@gmail.com') {
+                $_SESSION['user_id'] = 'superadmin';
+                $_SESSION['position'] = 'Super Admin';
+                header('Location: super_admin.php');
+                exit();
+            }
+            if ($email === 'municipaladmin@gmail.com') {
+                $_SESSION['municipal_logged_in'] = true;
+                $_SESSION['municipal_email'] = $email;
+                header('Location: municipal/approved_leaves.php');
+                exit();
+            }
             // If login was initiated via QR, attempt to process attendance after login
             // NEW DATABASE-BASED APPROACH: Validates token against database with 60-second expiration
             if (!empty($_SESSION['qr_pending'])) {

@@ -32,27 +32,35 @@ try {
     // Get filter parameters
     $timeRange = $_GET['timeRange'] ?? 'month';
     $departmentFilter = $_GET['departmentFilter'] ?? 'all';
-    $metricType = $_GET['metricType'] ?? 'all';
     
-    // Calculate date ranges based on timeRange
+    // Calculate EXACT date ranges based on timeRange
+    // This ensures accurate filtering - only data within the selected period is shown
     $today = date('Y-m-d');
     $startDate = $today;
+    $endDate = $today;
     
     switch ($timeRange) {
         case 'today':
             $startDate = $today;
+            $endDate = $today;
             break;
         case 'week':
-            $startDate = date('Y-m-d', strtotime('-7 days'));
+            $startDate = date('Y-m-d', strtotime('monday this week'));
+            $endDate = date('Y-m-d', strtotime('sunday this week'));
             break;
         case 'month':
-            $startDate = date('Y-m-d', strtotime('-30 days'));
+            $startDate = date('Y-m-01');
+            $endDate = date('Y-m-t');
             break;
         case 'quarter':
-            $startDate = date('Y-m-d', strtotime('-90 days'));
+            $currentMonth = (int)date('n');
+            $quarterStartMonth = (floor(($currentMonth - 1) / 3) * 3) + 1;
+            $startDate = date('Y-' . str_pad($quarterStartMonth, 2, '0', STR_PAD_LEFT) . '-01');
+            $endDate = date('Y-m-t', strtotime($startDate . ' +2 months'));
             break;
         case 'year':
-            $startDate = date('Y-m-d', strtotime('-365 days'));
+            $startDate = date('Y-01-01');
+            $endDate = date('Y-12-31');
             break;
     }
     
@@ -94,19 +102,20 @@ try {
     // Attendance rate
     $attendanceRate = $totalEmployees > 0 ? ($activeToday / $totalEmployees) * 100 : 0;
     
-    // Pending leave requests
+    // Pending leave requests within time range
     $pendingLeavesSql = 'SELECT COUNT(*) FROM leave_requests lr
                          JOIN users u ON lr.employee_email = u.email
-                         WHERE lr.status = "pending"' . $deptWhereClause;
+                         WHERE lr.status = "pending"
+                         AND DATE(lr.applied_at) >= ? AND DATE(lr.applied_at) <= ?' . $deptWhereClause;
+    $stmt = $pdo->prepare($pendingLeavesSql);
+    $pendingParams = [$startDate, $endDate];
     if ($departmentFilter !== 'all') {
-        $stmt = $pdo->prepare($pendingLeavesSql);
-        $stmt->execute($deptWhereParams);
-        $pendingLeaves = (int)$stmt->fetchColumn();
-    } else {
-        $pendingLeaves = (int)$pdo->query($pendingLeavesSql)->fetchColumn();
+        $pendingParams[] = $departmentFilter;
     }
+    $stmt->execute($pendingParams);
+    $pendingLeaves = (int)$stmt->fetchColumn();
     
-    // Average leave days per employee this month
+    // Average leave days per employee in selected time range
     $avgLeaveDaysSql = 'SELECT COALESCE(AVG(days_count), 0) as avg_days
                         FROM (
                             SELECT lr.employee_email, 
@@ -116,12 +125,12 @@ try {
                                    ) + 1) as days_count
                             FROM leave_requests lr
                             JOIN users u ON lr.employee_email = u.email
-                            WHERE lr.applied_at >= ?
+                            WHERE DATE(lr.applied_at) >= ? AND DATE(lr.applied_at) <= ?
                             AND lr.status = "approved"' . $deptWhereClause . '
                             GROUP BY lr.employee_email
                         ) as leave_stats';
     $stmt = $pdo->prepare($avgLeaveDaysSql);
-    $avgParams = [$startDate];
+    $avgParams = [$startDate, $endDate];
     if ($departmentFilter !== 'all') {
         $avgParams[] = $departmentFilter;
     }
@@ -172,12 +181,14 @@ try {
         // Department attendance rate
         $deptAttendanceRate = $empCount > 0 ? ($deptActive / $empCount) * 100 : 0;
         
-        // Pending leaves in department
+        // Pending leaves in department within time range
         $deptLeavesSql = 'SELECT COUNT(*) FROM leave_requests lr
                           JOIN users u ON lr.employee_email = u.email
-                          WHERE u.department = ? AND lr.status = "pending"';
+                          WHERE u.department = ? 
+                          AND lr.status = "pending"
+                          AND DATE(lr.applied_at) >= ? AND DATE(lr.applied_at) <= ?';
         $deptLeavesStmt = $pdo->prepare($deptLeavesSql);
-        $deptLeavesStmt->execute([$deptName]);
+        $deptLeavesStmt->execute([$deptName, $startDate, $endDate]);
         $deptPendingLeaves = (int)$deptLeavesStmt->fetchColumn();
         
         // Average leave days in department (using time range filter)
@@ -191,12 +202,12 @@ try {
                                  FROM leave_requests lr
                                  JOIN users u ON lr.employee_email = u.email
                                  WHERE u.department = ?
-                                 AND lr.applied_at >= ?
+                                 AND DATE(lr.applied_at) >= ? AND DATE(lr.applied_at) <= ?
                                  AND lr.status = "approved"
                                  GROUP BY lr.employee_email
                              ) as dept_leave_stats';
         $deptAvgLeavesStmt = $pdo->prepare($deptAvgLeavesSql);
-        $deptAvgLeavesStmt->execute([$deptName, $startDate]);
+        $deptAvgLeavesStmt->execute([$deptName, $startDate, $endDate]);
         $deptAvgLeaves = (float)$deptAvgLeavesStmt->fetchColumn();
         
         // Calculate risk level
@@ -288,11 +299,36 @@ try {
     }
     
     
-    // ===== ATTENDANCE TREND (Last 7 days) =====
+    // ===== ATTENDANCE TREND =====
+    // Calculate appropriate days to show based on time range
+    $daysToShow = 7; // default for week/month
+    if ($timeRange === 'today') {
+        $daysToShow = 1;
+    } elseif ($timeRange === 'quarter') {
+        $daysToShow = 14;
+    } elseif ($timeRange === 'year') {
+        $daysToShow = 30;
+    }
     
     $attendanceTrend = [];
-    for ($i = 6; $i >= 0; $i--) {
-        $date = date('Y-m-d', strtotime("-$i days"));
+    
+    // Generate dates within the selected range
+    $currentDate = new DateTime($startDate);
+    $endDateTime = new DateTime($endDate);
+    $interval = new DateInterval('P1D');
+    $dateRange = new DatePeriod($currentDate, $interval, $endDateTime->modify('+1 day'));
+    
+    $allDates = [];
+    foreach ($dateRange as $date) {
+        $allDates[] = $date->format('Y-m-d');
+    }
+    
+    // Limit to last N days if range is too large
+    if (count($allDates) > $daysToShow) {
+        $allDates = array_slice($allDates, -$daysToShow);
+    }
+    
+    foreach ($allDates as $date) {
         
         // Present count
         $presentSql = 'SELECT COUNT(DISTINCT a.employee_id) 
@@ -341,12 +377,12 @@ try {
     $leaveTypesSql = 'SELECT lr.leave_type, COUNT(*) as count
                       FROM leave_requests lr
                       JOIN users u ON lr.employee_email = u.email
-                      WHERE lr.applied_at >= ?' . $deptWhereClause . '
+                      WHERE DATE(lr.applied_at) >= ? AND DATE(lr.applied_at) <= ?' . $deptWhereClause . '
                       GROUP BY lr.leave_type
                       ORDER BY count DESC
                       LIMIT 6';
     $leaveTypesStmt = $pdo->prepare($leaveTypesSql);
-    $leaveTypesParams = [$startDate];
+    $leaveTypesParams = [$startDate, $endDate];
     if ($departmentFilter !== 'all') {
         $leaveTypesParams[] = $departmentFilter;
     }
@@ -378,8 +414,7 @@ try {
         'timestamp' => date('Y-m-d H:i:s'),
         'filters' => [
             'timeRange' => $timeRange,
-            'departmentFilter' => $departmentFilter,
-            'metricType' => $metricType
+            'departmentFilter' => $departmentFilter
         ],
         'overview' => [
             'total_employees' => $totalEmployees,
