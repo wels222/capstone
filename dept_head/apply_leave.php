@@ -200,6 +200,7 @@ require_role('department_head');
           <a
             href="leave_form.php?type=Maternity Leave"
             data-leavetype="Maternity Leave"
+            data-gender-required="F"
             class="block flex-shrink-0 bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-lg transform hover:-translate-y-1 transition"
             style="min-width: calc((100% - 3rem) / 3); max-width: 380px"
           >
@@ -233,6 +234,7 @@ require_role('department_head');
           <a
             href="leave_form.php?type=Paternity Leave"
             data-leavetype="Paternity Leave"
+            data-gender-required="M"
             class="block flex-shrink-0 bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-lg transform hover:-translate-y-1 transition"
             style="min-width: calc((100% - 3rem) / 3); max-width: 380px"
           >
@@ -330,6 +332,7 @@ require_role('department_head');
           <a
             href="leave_form.php?type=10-Day VAWC Leave"
             data-leavetype="10-Day VAWC Leave"
+            data-gender-required="F"
             class="block flex-shrink-0 bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-lg transform hover:-translate-y-1 transition"
             style="min-width: calc((100% - 3rem) / 3); max-width: 380px"
           >
@@ -363,6 +366,7 @@ require_role('department_head');
           <a
             href="leave_form.php?type=Special Leave for Women"
             data-leavetype="Special Leave Benefits for Women"
+            data-gender-required="F"
             class="block flex-shrink-0 bg-white rounded-xl shadow-sm p-6 text-center hover:shadow-lg transform hover:-translate-y-1 transition"
             style="min-width: calc((100% - 3rem) / 3); max-width: 380px"
           >
@@ -814,6 +818,30 @@ require_role('department_head');
         (async function loadCredits() {
           const email = await resolveUserEmail();
           if (!email) return;
+
+          // Fetch current user info to get gender
+          let userGender = null;
+          try {
+            const userResp = await fetch("/capstone/api/current_user.php");
+            const userData = await userResp.json();
+            if (userData && userData.logged_in) {
+              userGender = userData.gender; // 'M' or 'F'
+            }
+          } catch (e) {
+            console.error("Failed to fetch user info", e);
+          }
+
+          // Filter leave cards by gender before showing them
+          document
+            .querySelectorAll("#leave-cards a[data-leavetype]")
+            .forEach((card) => {
+              const requiredGender = card.dataset.genderRequired;
+              // Hide cards that require a specific gender that doesn't match
+              if (requiredGender && userGender && requiredGender !== userGender) {
+                card.style.display = "none";
+                return; // Skip processing this card
+              }
+            });
 
           const API = "/capstone/api/employee_leave_credits.php";
 

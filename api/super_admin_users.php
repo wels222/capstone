@@ -18,6 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$position = trim($data['position'] ?? '');
 		$role = trim($data['role'] ?? 'employee');
 		$contact_no = preg_replace('/\s+/', '', $data['contact_no'] ?? '');
+		$gender = trim($data['gender'] ?? '');
+		$employee_id = trim($data['employee_id'] ?? '');
 		$email = trim($data['email'] ?? '');
 		$password = $data['password'] ?? '';
 		$status = trim($data['status'] ?? 'pending');
@@ -46,6 +48,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		if (!in_array($role, $allowedRoles)) {
 			http_response_code(400); echo json_encode(['error' => 'Invalid role selected.']); exit;
 		}
+		// Position-based role validation: OJT and JO can only be Employee
+		if (($position === 'OJT' || $position === 'JO') && $role !== 'employee') {
+			http_response_code(400); echo json_encode(['error' => 'OJT and JO positions can only have Employee role.']); exit;
+		}
+		// Department Head and HR must be Permanent or Casual
+		if (($role === 'department_head' || $role === 'hr') && !in_array($position, ['Permanent', 'Casual'])) {
+			http_response_code(400); echo json_encode(['error' => 'Department Head and HR roles require Permanent or Casual position.']); exit;
+		}
+		if (empty($gender) || !in_array($gender, ['M', 'F'])) {
+			http_response_code(400); echo json_encode(['error' => 'Please select a valid gender (M=Male, F=Female).']); exit;
+		}
+		if (empty($employee_id)) {
+			http_response_code(400); echo json_encode(['error' => 'Employee ID is required.']); exit;
+		}
 		if (strlen($password) < 6) {
 			http_response_code(400); echo json_encode(['error' => 'Password must be at least 6 characters.']); exit;
 		}
@@ -62,26 +78,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$chk = $pdo->prepare('SELECT id FROM users WHERE email = ?');
 		$chk->execute([$email]);
 		if ($chk->fetch()) { http_response_code(400); echo json_encode(['error' => 'Email already registered.']); exit; }
+		
+		// Check duplicate employee_id
+		$chkEmp = $pdo->prepare('SELECT id FROM users WHERE employee_id = ?');
+		$chkEmp->execute([$employee_id]);
+		if ($chkEmp->fetch()) { http_response_code(400); echo json_encode(['error' => 'Employee ID already exists. Please use a unique ID.']); exit; }
 
-		$stmt = $pdo->prepare('INSERT INTO users (lastname, firstname, mi, department, position, role, contact_no, status, email, password, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())');
+		$stmt = $pdo->prepare('INSERT INTO users (lastname, firstname, mi, department, position, role, contact_no, gender, employee_id, status, email, password, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())');
 		$hash = password_hash($password, PASSWORD_DEFAULT);
 		$stmt->execute([
-			$lastname, $firstname, $mi, $department, $position, $role, ($contact_no ?: null), $status, $email, $hash
+			$lastname, $firstname, $mi, $department, $position, $role, ($contact_no ?: null), $gender, $employee_id, $status, $email, $hash
 		]);
-		// Generate employee_id via centralized helper (EMPYYYY-####)
-		try {
-			$insertId = (int)$pdo->lastInsertId();
-			if ($insertId > 0) {
-				$employeeId = getNextEmployeeId($pdo);
-				$up = $pdo->prepare('UPDATE users SET employee_id = ? WHERE id = ?');
-				$up->execute([$employeeId, $insertId]);
-				echo json_encode(['success' => true, 'id' => $insertId, 'employee_id' => $employeeId]);
-				exit;
-			}
-		} catch (Throwable $e) {
-			// Fall through to generic success if employee_id generation fails
-		}
-		echo json_encode(['success' => true]);
+		$insertId = (int)$pdo->lastInsertId();
+		echo json_encode(['success' => true, 'id' => $insertId, 'employee_id' => $employee_id]);
 		exit;
 	} elseif ($action === 'edit') {
 		// Validate editable fields
@@ -92,6 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		$position = trim($data['position'] ?? '');
 		$role = trim($data['role'] ?? 'employee');
 		$contact_no = preg_replace('/\s+/', '', $data['contact_no'] ?? '');
+		$gender = trim($data['gender'] ?? '');
+		$employee_id = trim($data['employee_id'] ?? '');
 		$email = trim($data['email'] ?? '');
 		// Status (missing previously) so edits defaulted incorrectly
 		$status = trim($data['status'] ?? '');
@@ -108,6 +119,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) { http_response_code(400); echo json_encode(['error' => 'Invalid email address.']); exit; }
 		if (!in_array($position, $allowedPositions)) { http_response_code(400); echo json_encode(['error' => 'Invalid position selected.']); exit; }
 		if (!in_array($role, $allowedRoles)) { http_response_code(400); echo json_encode(['error' => 'Invalid role selected.']); exit; }
+		// Position-based role validation: OJT and JO can only be Employee
+		if (($position === 'OJT' || $position === 'JO') && $role !== 'employee') {
+			http_response_code(400); echo json_encode(['error' => 'OJT and JO positions can only have Employee role.']); exit;
+		}
+		// Department Head and HR must be Permanent or Casual
+		if (($role === 'department_head' || $role === 'hr') && !in_array($position, ['Permanent', 'Casual'])) {
+			http_response_code(400); echo json_encode(['error' => 'Department Head and HR roles require Permanent or Casual position.']); exit;
+		}
+		if (!empty($gender) && !in_array($gender, ['M', 'F'])) { http_response_code(400); echo json_encode(['error' => 'Please select a valid gender (M=Male, F=Female).']); exit; }
 		// Enforce only one Department Head per department on edit (exclude the same user)
 		if ($role === 'department_head' && !empty($data['id'])) {
 			$chkHead = $pdo->prepare("SELECT id FROM users WHERE role = 'department_head' AND department = ? AND id <> ? LIMIT 1");
@@ -120,8 +140,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			$chk = $pdo->prepare('SELECT id FROM users WHERE email = ? AND id <> ?');
 			$chk->execute([$email, (int)$data['id']]);
 			if ($chk->fetch()) { http_response_code(400); echo json_encode(['error' => 'Email already in use by another account.']); exit; }
+			
+			// If employee_id provided and changed, ensure uniqueness
+			if (!empty($employee_id)) {
+				$chkEmp = $pdo->prepare('SELECT id FROM users WHERE employee_id = ? AND id <> ?');
+				$chkEmp->execute([$employee_id, (int)$data['id']]);
+				if ($chkEmp->fetch()) { http_response_code(400); echo json_encode(['error' => 'Employee ID already exists. Please use a unique ID.']); exit; }
+			}
 		}
-		$fields = ['lastname', 'firstname', 'mi', 'department', 'position', 'role', 'contact_no', 'status', 'email'];
+		$fields = ['lastname', 'firstname', 'mi', 'department', 'position', 'role', 'contact_no', 'gender', 'employee_id', 'status', 'email'];
 		$set = [];
 		$params = [];
 		foreach ($fields as $f) {

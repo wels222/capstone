@@ -642,37 +642,28 @@ require_role('hr');
             <h3><i class="fas fa-filter"></i> Filters & Analysis Options</h3>
             <div class="filter-grid">
               <div class="filter-item">
-                <label for="timeRange">Time Range</label>
-                <select id="timeRange" onchange="handleTimeRangeChange()">
-                  <option value="today">Today</option>
-                  <option value="week">This Week</option>
-                  <option value="month" selected>This Month</option>
-                  <option value="quarter">This Quarter</option>
-                  <option value="year">This Year</option>
+                <label for="viewMode">View By</label>
+                <select id="viewMode" onchange="handleViewModeChange()" 
+                        style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;">
+                  <option value="date" selected>Specific Date</option>
+                  <option value="month">Whole Month</option>
+                  <option value="year">Whole Year</option>
                 </select>
               </div>
-              <div class="filter-item" id="monthFilterContainer" style="display: block;">
+              <div class="filter-item" id="dateFilterContainer" style="display: block;">
+                <label for="dateFilter">Select Date</label>
+                <input type="date" id="dateFilter" onchange="refreshAnalytics()" 
+                       style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;" />
+              </div>
+              <div class="filter-item" id="monthFilterContainer" style="display: none;">
                 <label for="monthFilter">Select Month</label>
-                <select id="monthFilter" onchange="refreshAnalytics()">
-                  <option value="1">January</option>
-                  <option value="2">February</option>
-                  <option value="3">March</option>
-                  <option value="4">April</option>
-                  <option value="5">May</option>
-                  <option value="6">June</option>
-                  <option value="7">July</option>
-                  <option value="8">August</option>
-                  <option value="9">September</option>
-                  <option value="10">October</option>
-                  <option value="11">November</option>
-                  <option value="12">December</option>
-                </select>
+                <input type="month" id="monthFilter" onchange="refreshAnalytics()" 
+                       style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;" />
               </div>
-              <div class="filter-item" id="yearFilterContainer" style="display: block;">
+              <div class="filter-item" id="yearFilterContainer" style="display: none;">
                 <label for="yearFilter">Select Year</label>
-                <select id="yearFilter" onchange="refreshAnalytics()">
-                  <!-- Years will be populated by JavaScript -->
-                </select>
+                <input type="number" id="yearFilter" min="2020" max="2030" onchange="refreshAnalytics()" 
+                       style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.5rem; font-size: 0.875rem;" />
               </div>
               <div class="filter-item">
                 <label for="departmentFilter">Department</label>
@@ -775,22 +766,15 @@ require_role('hr');
 
       // Initialize on page load
       document.addEventListener("DOMContentLoaded", function () {
-        // Set current month and year
-        const currentMonth = new Date().getMonth() + 1;
-        const currentYear = new Date().getFullYear();
-        document.getElementById("monthFilter").value = currentMonth;
+        // Set date to today
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
         
-        // Populate year selector (last 5 years and next 2 years)
-        const yearFilter = document.getElementById("yearFilter");
-        for (let year = currentYear - 5; year <= currentYear + 2; year++) {
-          const option = document.createElement("option");
-          option.value = year;
-          option.textContent = year;
-          if (year === currentYear) {
-            option.selected = true;
-          }
-          yearFilter.appendChild(option);
-        }
+        document.getElementById("dateFilter").value = `${year}-${month}-${day}`;
+        document.getElementById("monthFilter").value = `${year}-${month}`;
+        document.getElementById("yearFilter").value = year;
         
         loadDepartmentList();
         loadAnalytics();
@@ -798,21 +782,25 @@ require_role('hr');
         setInterval(loadAnalytics, 30000);
       });
 
-      // Handle time range change to show/hide month selector
-      function handleTimeRangeChange() {
-        const timeRange = document.getElementById("timeRange").value;
-        const monthFilterContainer = document.getElementById("monthFilterContainer");
-        const yearFilterContainer = document.getElementById("yearFilterContainer");
+      // Handle view mode change to show appropriate picker
+      function handleViewModeChange() {
+        const viewMode = document.getElementById("viewMode").value;
+        const dateContainer = document.getElementById("dateFilterContainer");
+        const monthContainer = document.getElementById("monthFilterContainer");
+        const yearContainer = document.getElementById("yearFilterContainer");
         
-        if (timeRange === "month") {
-          monthFilterContainer.style.display = "block";
-          yearFilterContainer.style.display = "none";
-        } else if (timeRange === "year") {
-          monthFilterContainer.style.display = "none";
-          yearFilterContainer.style.display = "block";
-        } else {
-          monthFilterContainer.style.display = "none";
-          yearFilterContainer.style.display = "none";
+        // Hide all
+        dateContainer.style.display = "none";
+        monthContainer.style.display = "none";
+        yearContainer.style.display = "none";
+        
+        // Show the selected one
+        if (viewMode === "date") {
+          dateContainer.style.display = "block";
+        } else if (viewMode === "month") {
+          monthContainer.style.display = "block";
+        } else if (viewMode === "year") {
+          yearContainer.style.display = "block";
         }
         
         refreshAnalytics();
@@ -842,28 +830,33 @@ require_role('hr');
       async function loadAnalytics() {
         try {
           // Get filter values
-          const timeRange = document.getElementById("timeRange").value;
-          const departmentFilter =
-            document.getElementById("departmentFilter").value;
-          const monthFilter = document.getElementById("monthFilter").value;
-          const yearFilter = document.getElementById("yearFilter").value;
+          const viewMode = document.getElementById("viewMode").value;
+          const departmentFilter = document.getElementById("departmentFilter").value;
+          
+          let dateParam, monthParam, yearParam;
+          
+          if (viewMode === "date") {
+            dateParam = document.getElementById("dateFilter").value;
+          } else if (viewMode === "month") {
+            const monthValue = document.getElementById("monthFilter").value;
+            if (monthValue) {
+              const [year, month] = monthValue.split('-');
+              monthParam = month;
+              yearParam = year;
+            }
+          } else if (viewMode === "year") {
+            yearParam = document.getElementById("yearFilter").value;
+          }
 
           // Build query string
           const params = new URLSearchParams({
-            timeRange: timeRange,
+            viewMode: viewMode,
             departmentFilter: departmentFilter,
           });
           
-          // Add month and year parameters if month range is selected
-          if (timeRange === "month") {
-            params.append("month", monthFilter);
-            params.append("year", yearFilter);
-          }
-          
-          // Add year parameter if year range is selected
-          if (timeRange === "year") {
-            params.append("year", yearFilter);
-          }
+          if (dateParam) params.append("date", dateParam);
+          if (monthParam) params.append("month", monthParam);
+          if (yearParam) params.append("year", yearParam);
 
           const response = await fetch(
             "../api/hr_analytics_dashboard.php?" + params.toString()
@@ -967,31 +960,22 @@ require_role('hr');
       }
 
       function updateFilterStatus(filters) {
-        const periodLabels = {
-          today: "Today",
-          week: "This Week",
-          month: "Month",
-          quarter: "This Quarter",
-          year: "This Year",
-        };
-        
-        const monthNames = [
-          "January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"
-        ];
-
         let statusText = '<i class="fas fa-filter"></i> Active Filters: ';
         
-        if (filters.timeRange === "month" && filters.selectedMonth) {
-          const monthIndex = parseInt(filters.selectedMonth) - 1;
-          statusText += monthNames[monthIndex] + " " + filters.selectedYear;
-        } else {
-          statusText += periodLabels[filters.timeRange] || "This Month";
+        if (filters.viewMode === "date" && filters.date) {
+          const date = new Date(filters.date);
+          const options = { year: 'numeric', month: 'long', day: 'numeric' };
+          statusText += date.toLocaleDateString('en-US', options);
+        } else if (filters.viewMode === "month" && filters.month && filters.year) {
+          const monthNames = ["January", "February", "March", "April", "May", "June",
+                             "July", "August", "September", "October", "November", "December"];
+          statusText += monthNames[parseInt(filters.month) - 1] + " " + filters.year;
+        } else if (filters.viewMode === "year" && filters.year) {
+          statusText += "Year " + filters.year;
         }
 
         if (filters.departmentFilter !== "all") {
-          statusText +=
-            " | Department: <strong>" + filters.departmentFilter + "</strong>";
+          statusText += " | Department: <strong>" + filters.departmentFilter + "</strong>";
         } else {
           statusText += " | All Departments";
         }
@@ -1306,7 +1290,11 @@ require_role('hr');
         const labels = departments.map((d) => d.department);
         
         // Attendance Risk: 100 - attendance_rate (higher = worse)
-        const attendanceRisk = departments.map((d) => 100 - d.attendance_rate);
+        // Only show if there's actual risk (attendance < 100%)
+        const attendanceRisk = departments.map((d) => {
+          const risk = 100 - d.attendance_rate;
+          return risk > 0 ? risk : 0; // Don't show negative risk
+        });
         
         // Leave Risk: Calculate based on pending leaves percentage and avg leave days
         // Formula: (pending_leaves / employee_count * 100) + (avg_leave_days * 10)

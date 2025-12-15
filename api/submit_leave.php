@@ -104,12 +104,56 @@ if ($isMunicipalRoute && empty($dept_head_email)) {
 // Determine submitter role/department to auto-route based on business rules
 try {
   if (!empty($employee_email)) {
-    $usr = $pdo->prepare('SELECT role, department FROM users WHERE email = ? LIMIT 1');
+    $usr = $pdo->prepare('SELECT role, department, gender FROM users WHERE email = ? LIMIT 1');
     $usr->execute([$employee_email]);
     $submitter = $usr->fetch(PDO::FETCH_ASSOC);
     if ($submitter) {
       $submitterRole = strtolower((string)$submitter['role']);
       $submitterDept = (string)$submitter['department'];
+      $submitterGender = strtoupper((string)$submitter['gender']);
+
+      // GENDER-BASED LEAVE TYPE VALIDATION
+      // Define gender-restricted leave types
+      $femaleOnlyLeaves = [
+        'Maternity Leave',
+        'maternity leave',
+        'Special Leave for Women',
+        'special leave for women',
+        'Special Leave Benefits for Women',
+        'special leave benefits for women',
+        '10-Day VAWC Leave',
+        '10-day vawc leave',
+        'vawc leave'
+      ];
+      $maleOnlyLeaves = [
+        'Paternity Leave',
+        'paternity leave'
+      ];
+
+      // Normalize leave type for comparison
+      $normalizedLeaveType = strtolower(trim($leave_type));
+      
+      // Check if male is trying to apply for female-only leave
+      if ($submitterGender === 'M') {
+        foreach ($femaleOnlyLeaves as $femaleLeave) {
+          if (stripos($normalizedLeaveType, strtolower($femaleLeave)) !== false) {
+            http_response_code(403);
+            echo json_encode(['error' => 'This leave type is only available for female employees.']);
+            exit;
+          }
+        }
+      }
+      
+      // Check if female is trying to apply for male-only leave
+      if ($submitterGender === 'F') {
+        foreach ($maleOnlyLeaves as $maleLeave) {
+          if (stripos($normalizedLeaveType, strtolower($maleLeave)) !== false) {
+            http_response_code(403);
+            echo json_encode(['error' => 'This leave type is only available for male employees.']);
+            exit;
+          }
+        }
+      }
 
       if ($submitterRole === 'employee') {
         // Employee -> route to their Department Head if none provided

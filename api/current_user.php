@@ -12,7 +12,7 @@ if (!$email) {
 }
 
 try {
-    $stmt = $pdo->prepare('SELECT firstname, lastname, mi, department, position, email FROM users WHERE email = ?');
+    $stmt = $pdo->prepare('SELECT firstname, lastname, mi, department, position, email, gender FROM users WHERE email = ?');
     $stmt->execute([$email]);
     $u = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($u) {

@@ -220,6 +220,9 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === 'superadmin') {
     .chart-container-small { position: relative; height: 180px; }
     .card-hover { transition: all 0.2s ease; }
     .card-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .filter-btn { color: #6b7280; }
+    .filter-btn.active { background-color: #3b82f6; color: white; }
+    .filter-btn:hover:not(.active) { background-color: #f3f4f6; }
 </style>
 </head>
 <body class="min-h-screen flex flex-col bg-gray-100 p-4 lg:p-10" data-user-id="<?= htmlspecialchars($userId, ENT_QUOTES) ?>">
@@ -278,69 +281,6 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === 'superadmin') {
         </div>
     </section>
 
-    <!-- Summary Cards - 5 Cards: Green, Red, Yellow, Orange, Blue -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" aria-label="Attendance summary">
-        <!-- Days Present - GREEN -->
-        <div class="card-hover bg-white rounded-xl p-5 border border-green-200 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-check-circle text-xl text-green-600"></i>
-                </div>
-                <span class="text-xs font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">Active</span>
-            </div>
-            <p class="text-xs font-semibold text-green-700 uppercase tracking-wide">Present</p>
-            <p class="text-3xl font-bold text-green-900 mt-1"><?= $payload['summary']['daysPresent'] ?></p>
-        </div>
-        
-        <!-- Days Absent - RED -->
-        <div class="card-hover bg-white rounded-xl p-5 border border-red-200 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-times-circle text-xl text-red-600"></i>
-                </div>
-                <span class="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full">Tracked</span>
-            </div>
-            <p class="text-xs font-semibold text-red-700 uppercase tracking-wide">Absent</p>
-            <p class="text-3xl font-bold text-red-900 mt-1"><?= $payload['summary']['daysAbsent'] ?></p>
-        </div>
-        
-        <!-- Late/Tardy - YELLOW -->
-        <div class="card-hover bg-white rounded-xl p-5 border border-yellow-200 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-12 h-12 bg-yellow-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-clock text-xl text-yellow-600"></i>
-                </div>
-                <span class="text-xs font-semibold text-yellow-600 bg-yellow-50 px-2.5 py-1 rounded-full">Late</span>
-            </div>
-            <p class="text-xs font-semibold text-yellow-700 uppercase tracking-wide">Late</p>
-            <p class="text-3xl font-bold text-yellow-900 mt-1"><?= $payload['summary']['daysLate'] ?></p>
-        </div>
-        
-        <!-- Undertime - ORANGE -->
-        <div class="card-hover bg-white rounded-xl p-5 border border-orange-200 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-12 h-12 bg-orange-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-user-clock text-xl text-orange-600"></i>
-                </div>
-                <span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-full">Early</span>
-            </div>
-            <p class="text-xs font-semibold text-orange-700 uppercase tracking-wide">Undertime</p>
-            <p class="text-3xl font-bold text-orange-900 mt-1"><?= $payload['summary']['totalUndertime'] ?></p>
-        </div>
-
-        <!-- Overtime - BLUE -->
-        <div class="card-hover bg-white rounded-xl p-5 border border-blue-200 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
-                <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-business-time text-xl text-blue-600"></i>
-                </div>
-                <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">Extra</span>
-            </div>
-            <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Overtime</p>
-            <p class="text-3xl font-bold text-blue-900 mt-1"><?= $payload['summary']['totalOvertime'] ?></p>
-        </div>
-    </section>
-
     <!-- Comprehensive Analytics Section -->
     <section class="space-y-4" aria-label="Attendance analytics">
         <!-- Row 1: All Categories Doughnut + Trend Line Chart -->
@@ -388,53 +328,35 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_id'] === 'superadmin') {
                 </div>
             </div>
         </div>
-
-        <!-- Row 3: Statistics Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold text-blue-700 uppercase">Total Days</span>
-                    <i class="fas fa-calendar text-blue-600"></i>
-                </div>
-                <p class="text-2xl font-bold text-blue-900"><?= $total ?></p>
-                <p class="text-xs text-blue-600 mt-1">Recorded attendance</p>
-            </div>
-
-            <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold text-green-700 uppercase">On-Time Days</span>
-                    <i class="fas fa-check-double text-green-600"></i>
-                </div>
-                <p class="text-2xl font-bold text-green-900"><?= max(0, $payload['summary']['daysPresent'] - $payload['summary']['totalTardy']) ?></p>
-                <p class="text-xs text-green-600 mt-1">Perfect attendance</p>
-            </div>
-
-            <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold text-amber-700 uppercase">Punctuality Rate</span>
-                    <i class="fas fa-star text-amber-600"></i>
-                </div>
-                <p class="text-2xl font-bold text-amber-900">
-                    <?= $payload['summary']['daysPresent'] > 0 ? round((($payload['summary']['daysPresent'] - $payload['summary']['totalTardy']) / $payload['summary']['daysPresent']) * 100) : 0 ?>%
-                </p>
-                <p class="text-xs text-amber-600 mt-1">On-time arrivals</p>
-            </div>
-
-            <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-semibold text-purple-700 uppercase">Avg. Work Hours</span>
-                    <i class="fas fa-clock text-purple-600"></i>
-                </div>
-                <p class="text-2xl font-bold text-purple-900">8.0h</p>
-                <p class="text-xs text-purple-600 mt-1">Daily average</p>
-            </div>
-        </div>
     </section>
 
     <!-- Daily Records Table -->
     <section class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden card-hover" aria-label="Daily attendance records">
         <div class="px-5 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-800">Daily Records</h3>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <h3 class="text-lg font-semibold text-gray-800">Daily Records</h3>
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- Filter Type Buttons -->
+                    <div class="inline-flex rounded-lg border border-gray-300 bg-white p-1">
+                        <button id="filterDay" class="filter-btn px-3 py-1.5 text-xs font-medium rounded-md transition-all active" data-filter="day">
+                            <i class="fas fa-calendar-day mr-1"></i>Day
+                        </button>
+                        <button id="filterMonth" class="filter-btn px-3 py-1.5 text-xs font-medium rounded-md transition-all" data-filter="month">
+                            <i class="fas fa-calendar-alt mr-1"></i>Month
+                        </button>
+                        <button id="filterYear" class="filter-btn px-3 py-1.5 text-xs font-medium rounded-md transition-all" data-filter="year">
+                            <i class="fas fa-calendar mr-1"></i>Year
+                        </button>
+                    </div>
+                    <!-- Date Input -->
+                    <input type="date" id="dateFilter" class="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <input type="month" id="monthFilter" class="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent hidden">
+                    <input type="number" id="yearFilter" placeholder="YYYY" min="2000" max="2099" class="px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24 hidden">
+                    <button id="resetFilter" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all">
+                        <i class="fas fa-redo mr-1"></i>Reset
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -560,16 +482,90 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = window.SERVER_ATTENDANCE || { user: {}, attendance: [], summary: {} };
     const attendanceRecords = data.attendance || [];
     const summary = data.summary || {};
+    
+    // Filter state
+    let currentFilterType = 'day';
+    let filteredRecords = [...attendanceRecords];
+
+    // Filter functions
+    function filterByDay(dateStr) {
+        if (!dateStr) return attendanceRecords;
+        return attendanceRecords.filter(rec => rec.date === dateStr);
+    }
+
+    function filterByMonth(monthStr) {
+        if (!monthStr) return attendanceRecords;
+        return attendanceRecords.filter(rec => rec.date.substring(0, 7) === monthStr);
+    }
+
+    function filterByYear(yearStr) {
+        if (!yearStr) return attendanceRecords;
+        return attendanceRecords.filter(rec => rec.date.substring(0, 4) === yearStr);
+    }
+
+    function applyFilter() {
+        const dateFilter = document.getElementById('dateFilter');
+        const monthFilter = document.getElementById('monthFilter');
+        const yearFilter = document.getElementById('yearFilter');
+
+        if (currentFilterType === 'day' && dateFilter.value) {
+            filteredRecords = filterByDay(dateFilter.value);
+        } else if (currentFilterType === 'month' && monthFilter.value) {
+            filteredRecords = filterByMonth(monthFilter.value);
+        } else if (currentFilterType === 'year' && yearFilter.value) {
+            filteredRecords = filterByYear(yearFilter.value);
+        } else {
+            filteredRecords = [...attendanceRecords];
+        }
+        renderDailyRecords();
+    }
+
+    // Filter button handlers
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilterType = btn.dataset.filter;
+
+            // Show/hide appropriate filter input
+            document.getElementById('dateFilter').classList.toggle('hidden', currentFilterType !== 'day');
+            document.getElementById('monthFilter').classList.toggle('hidden', currentFilterType !== 'month');
+            document.getElementById('yearFilter').classList.toggle('hidden', currentFilterType !== 'year');
+            
+            // Reset filter values
+            document.getElementById('dateFilter').value = '';
+            document.getElementById('monthFilter').value = '';
+            document.getElementById('yearFilter').value = '';
+            filteredRecords = [...attendanceRecords];
+            renderDailyRecords();
+        });
+    });
+
+    // Filter input handlers
+    document.getElementById('dateFilter').addEventListener('change', applyFilter);
+    document.getElementById('monthFilter').addEventListener('change', applyFilter);
+    document.getElementById('yearFilter').addEventListener('input', (e) => {
+        if (e.target.value.length === 4) applyFilter();
+    });
+
+    // Reset filter
+    document.getElementById('resetFilter').addEventListener('click', () => {
+        document.getElementById('dateFilter').value = '';
+        document.getElementById('monthFilter').value = '';
+        document.getElementById('yearFilter').value = '';
+        filteredRecords = [...attendanceRecords];
+        renderDailyRecords();
+    });
 
     // Render daily records table
     function renderDailyRecords() {
         const tbody = document.getElementById('attendance-table-body');
         tbody.innerHTML = '';
-        if (attendanceRecords.length === 0) {
+        if (filteredRecords.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">No attendance records found.</td></tr>';
             return;
         }
-        attendanceRecords.slice().reverse().forEach(rec => {
+        filteredRecords.slice().reverse().forEach(rec => {
             // Time In Status Badge
             let timeInStatusBadge = '';
             if (rec.timeIn) {

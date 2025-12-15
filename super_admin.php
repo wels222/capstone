@@ -661,14 +661,19 @@ require_role('super_admin');
       let users = [],
         events = [];
       async function fetchData() {
-        const [usersData, eventsData] = await Promise.all([
-          fetch("api/super_admin_users.php").then((r) => r.json()),
-          fetch("api/super_admin_events.php").then((r) => r.json()),
-        ]);
-        users = usersData;
-        events = eventsData;
-        renderAccounts(users);
-        renderEvents(events);
+        try {
+          const [usersData, eventsData] = await Promise.all([
+            fetch("api/super_admin_users.php").then((r) => r.json()),
+            fetch("api/super_admin_events.php").then((r) => r.json()),
+          ]);
+          users = usersData;
+          events = eventsData;
+          renderAccounts(users);
+          renderEvents(events);
+        } catch (err) {
+          console.error("Error fetching data:", err);
+          // Don't block the UI, just log the error
+        }
       }
       function renderAccounts(users) {
         const tbody = document.getElementById("accounts-table-body");
@@ -766,7 +771,7 @@ require_role('super_admin');
               </select>
             </div>
             <div><label class='block text-sm font-medium'>Position</label>
-              <select name='position' class='w-full border rounded px-3 py-2' required>
+              <select name='position' id='add-position' class='w-full border rounded px-3 py-2' required>
                 <option value=''>Select Position</option>
                 <option value='Permanent'>Permanent</option>
                 <option value='Casual'>Casual</option>
@@ -775,13 +780,21 @@ require_role('super_admin');
               </select>
             </div>
             <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' placeholder='0917xxxxxxx' inputmode='numeric' pattern='09[0-9]{9}' maxlength='11' title='Must start with 09 and be 11 digits' oninput="this.value=this.value.replace(/[^0-9]/g,'')" /></div>
+            <div><label class='block text-sm font-medium'>Gender</label>
+              <select name='gender' class='w-full border rounded px-3 py-2' required>
+                <option value=''>Select Gender</option>
+                <option value='M'>Male</option>
+                <option value='F'>Female</option>
+              </select>
+            </div>
           </div>
           <div class='wizard-step' data-step='3'>
+            <div><label class='block text-sm font-medium'>Employee ID</label><input name='employee_id' class='w-full border rounded px-3 py-2' placeholder='e.g., EMP2025-0001' required pattern='[A-Za-z0-9\-]+' title='Enter unique Employee ID'></div>
             <div><label class='block text-sm font-medium'>Role</label>
-              <select name='role' class='w-full border rounded px-3 py-2' required>
+              <select name='role' id='add-role' class='w-full border rounded px-3 py-2' required>
                 <option value='employee'>Employee</option>
-                <option value='department_head'>Department Head</option>
-                <option value='hr'>HR</option>
+                <option value='department_head' data-requires='Permanent,Casual'>Department Head</option>
+                <option value='hr' data-requires='Permanent,Casual'>HR</option>
               </select>
             </div>
             <div><label class='block text-sm font-medium'>Status</label><select name='status' class='w-full border rounded px-3 py-2'><option value='pending'>Pending</option><option value='approved'>Approved</option><option value='declined'>Declined</option></select></div>
@@ -825,6 +838,55 @@ require_role('super_admin');
         };
         // attach handlers (use setTimeout to ensure DOM inside modal exists)
         setTimeout(() => {
+          // Position-based role filtering for add form
+          const addPositionSelect = document.getElementById('add-position');
+          const addRoleSelect = document.getElementById('add-role');
+          
+          function filterAddRoles() {
+            const position = addPositionSelect.value;
+            const roleOptions = addRoleSelect.querySelectorAll('option');
+            
+            if (position === 'OJT' || position === 'JO') {
+              roleOptions.forEach(opt => {
+                if (opt.value === 'employee') {
+                  opt.style.display = '';
+                  opt.disabled = false;
+                } else {
+                  opt.style.display = 'none';
+                  opt.disabled = true;
+                }
+              });
+              addRoleSelect.value = 'employee';
+              addRoleSelect.disabled = true;
+            } else if (position === 'Casual') {
+              // For Casual: only allow Department Head or Employee, NO HR
+              roleOptions.forEach(opt => {
+                if (opt.value === 'employee' || opt.value === 'department_head') {
+                  opt.style.display = '';
+                  opt.disabled = false;
+                } else if (opt.value === 'hr') {
+                  opt.style.display = 'none';
+                  opt.disabled = true;
+                }
+              });
+              // Reset to employee if currently selected role is hr
+              if (addRoleSelect.value === 'hr') {
+                addRoleSelect.value = 'employee';
+              }
+              addRoleSelect.disabled = false;
+            } else if (position === 'Permanent') {
+              // For Permanent: allow all roles
+              roleOptions.forEach(opt => {
+                opt.style.display = '';
+                opt.disabled = false;
+              });
+              addRoleSelect.disabled = false;
+            }
+          }
+          
+          addPositionSelect.addEventListener('change', filterAddRoles);
+          filterAddRoles();
+          
           document
             .getElementById("wizard-next")
             .addEventListener("click", (e) => {
@@ -954,20 +1016,22 @@ require_role('super_admin');
                     // Show the generated Employee ID when available
                     if (res && (res.employee_id || res.emp_id)) {
                       const empId = res.employee_id || res.emp_id;
-                      alert("Account added. Employee ID: " + empId);
+                      alert("Account added successfully! Employee ID: " + empId);
                     } else if (
                       res &&
                       (res.id || res.user_id || res.insert_id)
                     ) {
                       // Fallback to numeric id display if API doesn’t return employee_id
                       const newId = res.id || res.user_id || res.insert_id;
-                      alert("Account added. ID: " + newId);
+                      alert("Account added successfully! ID: " + newId);
+                    } else if (res && res.success) {
+                      alert("Account added successfully!");
                     }
                     closeCrudModal();
                     fetchData();
                   })
-                  .catch(() => {
-                    /* handled above */
+                  .catch((err) => {
+                    console.error("Error:", err);
                   });
               });
             });
@@ -981,19 +1045,32 @@ require_role('super_admin');
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "add", ...data }),
         })
-          .then((r) => r.json().catch(() => null))
+          .then((r) => {
+            if (!r.ok) {
+              return r.json().catch(() => null).then(err => {
+                throw new Error(err?.error || "Failed to add account");
+              });
+            }
+            return r.json().catch(() => null);
+          })
           .then((res) => {
-            if (res && (res.employee_id || res.emp_id)) {
-              const empId = res.employee_id || res.emp_id;
-              alert("Account added. Employee ID: " + empId);
-            } else if (res && (res.id || res.user_id || res.insert_id)) {
-              const newId = res.id || res.user_id || res.insert_id;
-              alert("Account added. ID: " + newId);
+            if (res && res.success) {
+              if (res.employee_id || res.emp_id) {
+                const empId = res.employee_id || res.emp_id;
+                alert("Account added successfully! Employee ID: " + empId);
+              } else if (res.id || res.user_id || res.insert_id) {
+                const newId = res.id || res.user_id || res.insert_id;
+                alert("Account added successfully! ID: " + newId);
+              } else {
+                alert("Account added successfully!");
+              }
             }
             closeCrudModal();
-            fetchData();
+            return fetchData();
           })
-          .catch(() => {
+          .catch((err) => {
+            console.error("Error adding account:", err);
+            // Close modal and refresh data even on error
             closeCrudModal();
             fetchData();
           });
@@ -1110,7 +1187,7 @@ require_role('super_admin');
                 </select>
               </div>
               <div><label class='block text-sm font-medium'>Position</label>
-                <select name='position' class='w-full border rounded px-3 py-2' required>
+                <select name='position' id='edit-position' class='w-full border rounded px-3 py-2' required>
                   <option value=''>Select Position</option>
                   <option value='Permanent' ${
                     user.position === "Permanent" ? "selected" : ""
@@ -1129,17 +1206,31 @@ require_role('super_admin');
               <div><label class='block text-sm font-medium'>Contact No.</label><input name='contact_no' class='w-full border rounded px-3 py-2' value='${
                 user.contact_no || ""
               }' inputmode='numeric' pattern='09[0-9]{9}' maxlength='11' title='Must start with 09 and be 11 digits' oninput="this.value=this.value.replace(/[^0-9]/g,'')" /></div>
+              <div><label class='block text-sm font-medium'>Gender</label>
+                <select name='gender' class='w-full border rounded px-3 py-2' required>
+                  <option value=''>Select Gender</option>
+                  <option value='M' ${
+                    user.gender === 'M' ? 'selected' : ''
+                  }>Male</option>
+                  <option value='F' ${
+                    user.gender === 'F' ? 'selected' : ''
+                  }>Female</option>
+                </select>
+              </div>
             </div>
             <div class='wizard-step' data-step='3'>
+              <div><label class='block text-sm font-medium'>Employee ID</label><input name='employee_id' class='w-full border rounded px-3 py-2' value='${
+                user.employee_id || ""
+              }' placeholder='e.g., EMP2025-0001' pattern='[A-Za-z0-9\-]+' title='Enter unique Employee ID'></div>
               <div><label class='block text-sm font-medium'>Role</label>
-                <select name='role' class='w-full border rounded px-3 py-2' required>
+                <select name='role' id='edit-role' class='w-full border rounded px-3 py-2' required>
                   <option value='employee' ${
                     user.role === "employee" ? "selected" : ""
                   }>Employee</option>
-                  <option value='department_head' ${
+                  <option value='department_head' data-requires='Permanent,Casual' ${
                     user.role === "department_head" ? "selected" : ""
                   }>Department Head</option>
-                  <option value='hr' ${
+                  <option value='hr' data-requires='Permanent,Casual' ${
                     user.role === "hr" ? "selected" : ""
                   }>HR</option>
                 </select>
@@ -1175,6 +1266,60 @@ require_role('super_admin');
         // wizard logic
         let curStep = 1;
         const total = 3;
+        
+        // Position-based role filtering for edit form
+        setTimeout(() => {
+          const editPositionSelect = document.getElementById('edit-position');
+          const editRoleSelect = document.getElementById('edit-role');
+          
+          function filterEditRoles() {
+            const position = editPositionSelect.value;
+            const roleOptions = editRoleSelect.querySelectorAll('option');
+            
+            if (position === 'OJT' || position === 'JO') {
+              roleOptions.forEach(opt => {
+                if (opt.value === 'employee') {
+                  opt.style.display = '';
+                  opt.disabled = false;
+                } else {
+                  opt.style.display = 'none';
+                  opt.disabled = true;
+                }
+              });
+              if (editRoleSelect.value !== 'employee') {
+                editRoleSelect.value = 'employee';
+              }
+              editRoleSelect.disabled = true;
+            } else if (position === 'Casual') {
+              // For Casual: only allow Department Head or Employee, NO HR
+              roleOptions.forEach(opt => {
+                if (opt.value === 'employee' || opt.value === 'department_head') {
+                  opt.style.display = '';
+                  opt.disabled = false;
+                } else if (opt.value === 'hr') {
+                  opt.style.display = 'none';
+                  opt.disabled = true;
+                }
+              });
+              // Reset to employee if currently selected role is hr
+              if (editRoleSelect.value === 'hr') {
+                editRoleSelect.value = 'employee';
+              }
+              editRoleSelect.disabled = false;
+            } else if (position === 'Permanent') {
+              // For Permanent: allow all roles
+              roleOptions.forEach(opt => {
+                opt.style.display = '';
+                opt.disabled = false;
+              });
+              editRoleSelect.disabled = false;
+            }
+          }
+          
+          editPositionSelect.addEventListener('change', filterEditRoles);
+          filterEditRoles();
+        }, 100);
+        
         const setStep = (n) => {
           curStep = n;
           document

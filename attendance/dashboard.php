@@ -162,6 +162,14 @@ require_role(['hr', 'department_head', 'employee']);
             <option value="Office of the Municipal Legal Officer">Office of the Municipal Legal Officer</option>
             <option value="Office of the Municipal General Services Officer">Office of the Municipal General Services Officer</option>
         </select>
+        
+        <label for="date-range-type" style="margin-left: 16px;"><i class="fas fa-calendar-alt"></i> View by:</label>
+        <select id="date-range-type">
+            <option value="day">Day</option>
+            <option value="month">Month</option>
+            <option value="year">Year</option>
+            <option value="custom">Custom Range</option>
+        </select>
     </div>
 
     <div class="grid">
@@ -224,7 +232,16 @@ require_role(['hr', 'department_head', 'employee']);
     <!-- Attendance Records Section -->
     <div style="margin-top: 30px;">
         <div class="controls" style="margin-bottom: 16px;">
-            <input type="date" id="date-filter" value="<?= date('Y-m-d') ?>" style="padding: 10px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 14px;">
+            <div id="date-inputs" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <input type="date" id="date-filter" value="<?= date('Y-m-d') ?>" style="padding: 10px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 14px;">
+                <input type="month" id="month-filter" value="<?= date('Y-m') ?>" style="padding: 10px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 14px; display: none;">
+                <input type="number" id="year-filter" value="<?= date('Y') ?>" min="2020" max="2100" style="padding: 10px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 14px; display: none;">
+                <div id="custom-range" style="display: none; gap: 8px; align-items: center;">
+                    <input type="date" id="start-date" value="<?= date('Y-m-01') ?>" style="padding: 10px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 14px;">
+                    <span style="font-weight: 600; color: #374151;">to</span>
+                    <input type="date" id="end-date" value="<?= date('Y-m-d') ?>" style="padding: 10px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 14px;">
+                </div>
+            </div>
             <input type="text" id="search" placeholder="Search by name or ID" style="padding: 10px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 14px;">
             <button id="refresh-btn" style="padding: 10px 16px; background: #667eea; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif;">
                 <i class="fas fa-sync-alt"></i> Refresh
@@ -235,11 +252,15 @@ require_role(['hr', 'department_head', 'employee']);
             <button id="export-excel" style="padding: 10px 16px; background: #10b981; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif;">
                 <i class="fas fa-file-excel"></i> Export Excel
             </button>
+            <button id="expand-all-btn" style="padding: 10px 16px; background: #8b5cf6; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; display: none;">
+                <i class="fas fa-expand-alt"></i> Expand All
+            </button>
         </div>
 
         <div style="background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 16px 24px;">
-                <h2 style="font-size: 20px; margin: 0;"><i class="fas fa-table"></i> Attendance Records</h2>
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;\">
+                <h2 style=\"font-size: 20px; margin: 0;\"><i class=\"fas fa-table\"></i> Attendance Records</h2>
+                <div id="filter-info" style="font-size: 13px; opacity: 0.9;"></div>
             </div>
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse;">
@@ -256,7 +277,6 @@ require_role(['hr', 'department_head', 'employee']);
                         </tr>
                     </thead>
                     <tbody id="records-tbody">
-                        <tr><td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;"><i class="fas fa-spinner fa-spin"></i> Loading records...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -266,6 +286,51 @@ require_role(['hr', 'department_head', 'employee']);
     <script>
         let currentRecords = [];
         let statusFilter = 'all';
+        let dateRangeType = 'day';
+        let expandedEmployees = new Set(); // Track which employees are expanded
+
+        // Update date input visibility based on selected range type
+        function updateDateInputs(){
+            const type = document.getElementById('date-range-type').value;
+            dateRangeType = type;
+            
+            document.getElementById('date-filter').style.display = type === 'day' ? 'block' : 'none';
+            document.getElementById('month-filter').style.display = type === 'month' ? 'block' : 'none';
+            document.getElementById('year-filter').style.display = type === 'year' ? 'block' : 'none';
+            document.getElementById('custom-range').style.display = type === 'custom' ? 'flex' : 'none';
+            
+            loadRecords();
+        }
+        
+        // Update filter information display
+        function updateFilterInfo(search, dept){
+            const filterInfo = document.getElementById('filter-info');
+            let info = [];
+            
+            if(search){
+                info.push('<i class="fas fa-search"></i> Searching: "' + search + '"');
+            }
+            if(dept){
+                info.push('<i class="fas fa-building"></i> ' + dept);
+            }
+            if(statusFilter !== 'all'){
+                info.push('<i class="fas fa-filter"></i> Status: ' + statusFilter);
+            }
+            
+            let dateInfo = '';
+            if(dateRangeType === 'day'){
+                dateInfo = document.getElementById('date-filter').value;
+            } else if(dateRangeType === 'month'){
+                dateInfo = document.getElementById('month-filter').value;
+            } else if(dateRangeType === 'year'){
+                dateInfo = 'Year ' + document.getElementById('year-filter').value;
+            } else if(dateRangeType === 'custom'){
+                dateInfo = document.getElementById('start-date').value + ' to ' + document.getElementById('end-date').value;
+            }
+            if(dateInfo) info.unshift('<i class="fas fa-calendar"></i> ' + dateInfo);
+            
+            filterInfo.innerHTML = info.join(' <span style="margin: 0 8px;">|</span> ');
+        }
 
         async function fetchDashboard(){
             const dept = document.getElementById('dept-filter').value;
@@ -289,11 +354,30 @@ require_role(['hr', 'department_head', 'employee']);
         }
 
         async function loadRecords(){
-            const date = document.getElementById('date-filter').value;
             const dept = document.getElementById('dept-filter').value;
             const search = document.getElementById('search').value;
             
-            let url = 'get_attendance.php?date=' + encodeURIComponent(date);
+            // Update filter info display
+            updateFilterInfo(search, dept);
+            
+            let url = 'get_attendance.php?';
+            
+            // Build URL based on date range type
+            if(dateRangeType === 'day'){
+                const date = document.getElementById('date-filter').value;
+                url += 'date=' + encodeURIComponent(date);
+            } else if(dateRangeType === 'month'){
+                const month = document.getElementById('month-filter').value;
+                url += 'month=' + encodeURIComponent(month);
+            } else if(dateRangeType === 'year'){
+                const year = document.getElementById('year-filter').value;
+                url += 'year=' + encodeURIComponent(year);
+            } else if(dateRangeType === 'custom'){
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                url += 'start_date=' + encodeURIComponent(startDate) + '&end_date=' + encodeURIComponent(endDate);
+            }
+            
             if(dept) url += '&department=' + encodeURIComponent(dept);
             if(search) url += '&search=' + encodeURIComponent(search);
             if(statusFilter !== 'all') url += '&status=' + encodeURIComponent(statusFilter);
@@ -316,52 +400,205 @@ require_role(['hr', 'department_head', 'employee']);
 
         function renderRecords(records){
             const tbody = document.getElementById('records-tbody');
+            const expandBtn = document.getElementById('expand-all-btn');
+            
             if(records.length === 0){
                 let msg = 'No attendance records found';
                 if(statusFilter !== 'all') msg += ' for status: ' + statusFilter;
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #6b7280;"><i class="fas fa-info-circle"></i> ' + msg + '</td></tr>';
+                expandBtn.style.display = 'none';
                 return;
             }
             
             tbody.innerHTML = '';
-            records.forEach(rec=>{
-                const tr = document.createElement('tr');
-                tr.style.borderBottom = '1px solid #e5e7eb';
-                tr.style.transition = 'background 0.2s';
-                tr.onmouseover = function(){ this.style.background = '#f9fafb'; };
-                tr.onmouseout = function(){ this.style.background = ''; };
-                
-                const timeIn = rec.time_in ? new Date(rec.time_in).toLocaleTimeString() : '-';
-                const timeOut = rec.time_out ? new Date(rec.time_out).toLocaleTimeString() : '-';
-                
-                // Time In Status
-                const timeInStatus = rec.time_in_status || 'Absent';
-                let timeInBg = '#fee2e2';
-                let timeInColor = '#dc2626';
-                if(timeInStatus === 'Present') { timeInBg = '#dcfce7'; timeInColor = '#16a34a'; }
-                else if(timeInStatus === 'Late') { timeInBg = '#fef3c7'; timeInColor = '#d97706'; }
-                else if(timeInStatus === 'Undertime') { timeInBg = '#fde68a'; timeInColor = '#b45309'; }
-                
-                // Time Out Status
-                const timeOutStatus = rec.time_out_status || '-';
-                let timeOutBg = '#f3f4f6';
-                let timeOutColor = '#6b7280';
-                if(timeOutStatus === 'On-time' || timeOutStatus === 'Out') { timeOutBg = '#d1fae5'; timeOutColor = '#059669'; }
-                else if(timeOutStatus === 'Undertime') { timeOutBg = '#fed7aa'; timeOutColor = '#ea580c'; }
-                else if(timeOutStatus === 'Overtime') { timeOutBg = '#dbeafe'; timeOutColor = '#2563eb'; }
-                
-                tr.innerHTML = `
-                    <td style="padding: 16px;"><strong>${rec.employee_id || ''}</strong></td>
-                    <td style="padding: 16px;">${rec.name || ''}</td>
-                    <td style="padding: 16px;">${rec.department || ''}</td>
-                    <td style="padding: 16px;">${rec.date || ''}</td>
-                    <td style="padding: 16px;">${timeIn}</td>
-                    <td style="padding: 16px;"><span style="padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; background: ${timeInBg}; color: ${timeInColor};">${timeInStatus}</span></td>
-                    <td style="padding: 16px;">${timeOut}</td>
-                    <td style="padding: 16px;"><span style="padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; background: ${timeOutBg}; color: ${timeOutColor};">${timeOutStatus}</span></td>
+            
+            // If viewing by month/year/custom range, show grouped by employee with summary
+            if(dateRangeType !== 'day' && records.length > 0){
+                expandBtn.style.display = 'inline-block';
+                // Add info message for grouped view
+                const infoRow = document.createElement('tr');
+                infoRow.innerHTML = `
+                    <td colspan="8" style="padding: 16px; background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; font-size: 13px;">
+                        <i class="fas fa-info-circle"></i> <strong>Grouped View:</strong> Records are grouped by employee. Click on any employee row to expand and see their detailed daily attendance.
+                    </td>
                 `;
-                tbody.appendChild(tr);
-            });
+                tbody.appendChild(infoRow);
+                
+                const employeeMap = new Map();
+                
+                // Group records by employee
+                records.forEach(rec => {
+                    const empId = rec.employee_id;
+                    if(!employeeMap.has(empId)){
+                        employeeMap.set(empId, {
+                            employee_id: empId,
+                            name: rec.name,
+                            department: rec.department,
+                            records: [],
+                            present: 0,
+                            late: 0,
+                            absent: 0,
+                            undertime: 0,
+                            overtime: 0
+                        });
+                    }
+                    const emp = employeeMap.get(empId);
+                    emp.records.push(rec);
+                    
+                    // Count statuses
+                    const timeInStatus = rec.time_in_status || 'Absent';
+                    if(timeInStatus === 'Present') emp.present++;
+                    else if(timeInStatus === 'Late') emp.late++;
+                    else if(timeInStatus === 'Absent') emp.absent++;
+                    
+                    if(rec.time_out_status === 'Undertime') emp.undertime++;
+                    if(rec.time_out_status === 'Overtime') emp.overtime++;
+                });
+                
+                // Render grouped records
+                employeeMap.forEach(emp => {
+                    // Employee summary row
+                    const summaryTr = document.createElement('tr');
+                    summaryTr.style.background = 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)';
+                    summaryTr.style.fontWeight = '700';
+                    summaryTr.style.cursor = 'pointer';
+                    summaryTr.onclick = function(){ 
+                        const detailsRow = this.nextElementSibling;
+                        const chevron = this.querySelector('.fa-chevron-down, .fa-chevron-right');
+                        const empId = emp.employee_id;
+                        
+                        if(detailsRow.style.display === 'none'){
+                            detailsRow.style.display = '';
+                            chevron.classList.remove('fa-chevron-right');
+                            chevron.classList.add('fa-chevron-down');
+                            expandedEmployees.add(empId);
+                        } else {
+                            detailsRow.style.display = 'none';
+                            chevron.classList.remove('fa-chevron-down');
+                            chevron.classList.add('fa-chevron-right');
+                            expandedEmployees.delete(empId);
+                        }
+                    };
+                    // Check if this employee was previously expanded
+                    const isExpanded = expandedEmployees.has(emp.employee_id);
+                    const chevronClass = isExpanded ? 'fa-chevron-down' : 'fa-chevron-right';
+                    
+                    summaryTr.innerHTML = `
+                        <td style="padding: 16px;"><i class="fas ${chevronClass}" style="margin-right: 8px; transition: transform 0.3s;"></i><strong>${emp.employee_id}</strong></td>
+                        <td style="padding: 16px;">${emp.name}</td>
+                        <td style="padding: 16px;">${emp.department}</td>
+                        <td colspan="5" style="padding: 16px;">
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                <span style="padding: 4px 10px; border-radius: 6px; font-size: 11px; background: #dcfce7; color: #16a34a;"><i class="fas fa-check-circle"></i> Present: ${emp.present}</span>
+                                <span style="padding: 4px 10px; border-radius: 6px; font-size: 11px; background: #fef3c7; color: #d97706;"><i class="fas fa-clock"></i> Late: ${emp.late}</span>
+                                <span style="padding: 4px 10px; border-radius: 6px; font-size: 11px; background: #fee2e2; color: #dc2626;"><i class="fas fa-times-circle"></i> Absent: ${emp.absent}</span>
+                                <span style="padding: 4px 10px; border-radius: 6px; font-size: 11px; background: #fed7aa; color: #ea580c;"><i class="fas fa-hourglass-half"></i> Undertime: ${emp.undertime}</span>
+                                <span style="padding: 4px 10px; border-radius: 6px; font-size: 11px; background: #dbeafe; color: #2563eb;"><i class="fas fa-clock"></i> Overtime: ${emp.overtime}</span>
+                                <span style="padding: 4px 10px; border-radius: 6px; font-size: 11px; background: #e0e7ff; color: #4338ca;">Total Days: ${emp.records.length}</span>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(summaryTr);
+                    
+                    // Details row (preserve expanded state)
+                    const detailsTr = document.createElement('tr');
+                    detailsTr.style.display = isExpanded ? '' : 'none';
+                    detailsTr.innerHTML = `
+                        <td colspan="8" style="padding: 0;">
+                            <table style="width: 100%; margin: 0;">
+                                <tbody>
+                                    ${emp.records.map(rec => {
+                                        const timeIn = rec.time_in ? new Date(rec.time_in).toLocaleTimeString() : '-';
+                                        const timeOut = rec.time_out ? new Date(rec.time_out).toLocaleTimeString() : '-';
+                                        
+                                        const timeInStatus = rec.time_in_status || 'Absent';
+                                        let timeInBg = '#fee2e2';
+                                        let timeInColor = '#dc2626';
+                                        if(timeInStatus === 'Present') { timeInBg = '#dcfce7'; timeInColor = '#16a34a'; }
+                                        else if(timeInStatus === 'Late') { timeInBg = '#fef3c7'; timeInColor = '#d97706'; }
+                                        else if(timeInStatus === 'Undertime') { timeInBg = '#fde68a'; timeInColor = '#b45309'; }
+                                        
+                                        const timeOutStatus = rec.time_out_status || '-';
+                                        let timeOutBg = '#f3f4f6';
+                                        let timeOutColor = '#6b7280';
+                                        if(timeOutStatus === 'On-time' || timeOutStatus === 'Out') { timeOutBg = '#d1fae5'; timeOutColor = '#059669'; }
+                                        else if(timeOutStatus === 'Undertime') { timeOutBg = '#fed7aa'; timeOutColor = '#ea580c'; }
+                                        else if(timeOutStatus === 'Overtime') { timeOutBg = '#dbeafe'; timeOutColor = '#2563eb'; }
+                                        
+                                        return `
+                                            <tr style="background: #fafafa; border-bottom: 1px solid #e5e7eb;">
+                                                <td style="padding: 12px 16px; padding-left: 48px; width: 12.5%;"></td>
+                                                <td style="padding: 12px 16px; width: 12.5%;"></td>
+                                                <td style="padding: 12px 16px; width: 12.5%;"></td>
+                                                <td style="padding: 12px 16px; width: 12.5%;"><strong>${rec.date || ''}</strong></td>
+                                                <td style="padding: 12px 16px; width: 12.5%;">${timeIn}</td>
+                                                <td style="padding: 12px 16px; width: 12.5%;"><span style="padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: ${timeInBg}; color: ${timeInColor};">${timeInStatus}</span></td>
+                                                <td style="padding: 12px 16px; width: 12.5%;">${timeOut}</td>
+                                                <td style="padding: 12px 16px; width: 12.5%;"><span style="padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: ${timeOutBg}; color: ${timeOutColor};">${timeOutStatus}</span></td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </td>
+                    `;
+                    tbody.appendChild(detailsTr);
+                });
+            } else {
+                // Day view - show all records as before
+                expandBtn.style.display = 'none';
+                records.forEach(rec=>{
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid #e5e7eb';
+                    tr.style.transition = 'background 0.2s';
+                    tr.onmouseover = function(){ this.style.background = '#f9fafb'; };
+                    tr.onmouseout = function(){ this.style.background = ''; };
+                    
+                    const timeIn = rec.time_in ? new Date(rec.time_in).toLocaleTimeString() : '-';
+                    const timeOut = rec.time_out ? new Date(rec.time_out).toLocaleTimeString() : '-';
+                    
+                    // Time In Status
+                    const timeInStatus = rec.time_in_status || 'Absent';
+                    let timeInBg = '#fee2e2';
+                    let timeInColor = '#dc2626';
+                    if(timeInStatus === 'Present') { timeInBg = '#dcfce7'; timeInColor = '#16a34a'; }
+                    else if(timeInStatus === 'Late') { timeInBg = '#fef3c7'; timeInColor = '#d97706'; }
+                    else if(timeInStatus === 'Undertime') { timeInBg = '#fde68a'; timeInColor = '#b45309'; }
+                    
+                    // Time Out Status
+                    const timeOutStatus = rec.time_out_status || '-';
+                    let timeOutBg = '#f3f4f6';
+                    let timeOutColor = '#6b7280';
+                    if(timeOutStatus === 'On-time' || timeOutStatus === 'Out') { timeOutBg = '#d1fae5'; timeOutColor = '#059669'; }
+                    else if(timeOutStatus === 'Undertime') { timeOutBg = '#fed7aa'; timeOutColor = '#ea580c'; }
+                    else if(timeOutStatus === 'Overtime') { timeOutBg = '#dbeafe'; timeOutColor = '#2563eb'; }
+                    
+                    tr.innerHTML = `
+                        <td style="padding: 16px;"><strong>${rec.employee_id || ''}</strong></td>
+                        <td style="padding: 16px;">${rec.name || ''}</td>
+                        <td style="padding: 16px;">${rec.department || ''}</td>
+                        <td style="padding: 16px;">${rec.date || ''}</td>
+                        <td style="padding: 16px;">${timeIn}</td>
+                        <td style="padding: 16px;"><span style="padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; background: ${timeInBg}; color: ${timeInColor};">${timeInStatus}</span></td>
+                        <td style="padding: 16px;">${timeOut}</td>
+                        <td style="padding: 16px;"><span style="padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; background: ${timeOutBg}; color: ${timeOutColor};">${timeOutStatus}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function getDateRangeLabel(){
+            if(dateRangeType === 'day'){
+                return document.getElementById('date-filter').value;
+            } else if(dateRangeType === 'month'){
+                return document.getElementById('month-filter').value;
+            } else if(dateRangeType === 'year'){
+                return document.getElementById('year-filter').value;
+            } else if(dateRangeType === 'custom'){
+                return document.getElementById('start-date').value + '_to_' + document.getElementById('end-date').value;
+            }
+            return 'report';
         }
 
         function exportCSV(){
@@ -370,7 +607,7 @@ require_role(['hr', 'department_head', 'employee']);
             currentRecords.forEach(rec=>{
                 csv += `"${rec.employee_id || ''}","${rec.name || ''}","${rec.department || ''}","${rec.date || ''}","${rec.time_in || ''}","${rec.time_in_status || 'Absent'}","${rec.time_out || ''}","${rec.time_out_status || ''}"\n`;
             });
-            downloadFile(csv, 'attendance_' + document.getElementById('date-filter').value + '.csv', 'text/csv');
+            downloadFile(csv, 'attendance_' + getDateRangeLabel() + '.csv', 'text/csv');
         }
 
         function exportExcel(){
@@ -381,7 +618,7 @@ require_role(['hr', 'department_head', 'employee']);
                 html += `<tr><td>${rec.employee_id || ''}</td><td>${rec.name || ''}</td><td>${rec.department || ''}</td><td>${rec.date || ''}</td><td>${rec.time_in || ''}</td><td>${rec.time_in_status || 'Absent'}</td><td>${rec.time_out || ''}</td><td>${rec.time_out_status || ''}</td></tr>`;
             });
             html += '</table></body></html>';
-            downloadFile(html, 'attendance_' + document.getElementById('date-filter').value + '.xls', 'application/vnd.ms-excel');
+            downloadFile(html, 'attendance_' + getDateRangeLabel() + '.xls', 'application/vnd.ms-excel');
         }
 
         function downloadFile(content, filename, mimeType){
@@ -395,11 +632,16 @@ require_role(['hr', 'department_head', 'employee']);
         }
 
         // Event listeners
+        document.getElementById('date-range-type').addEventListener('change', updateDateInputs);
         document.getElementById('dept-filter').addEventListener('change', function(){
             fetchDashboard();
             loadRecords();
         });
         document.getElementById('date-filter').addEventListener('change', loadRecords);
+        document.getElementById('month-filter').addEventListener('change', loadRecords);
+        document.getElementById('year-filter').addEventListener('change', loadRecords);
+        document.getElementById('start-date').addEventListener('change', loadRecords);
+        document.getElementById('end-date').addEventListener('change', loadRecords);
         document.getElementById('search').addEventListener('input', loadRecords);
         document.getElementById('refresh-btn').addEventListener('click', function(){
             fetchDashboard();
@@ -407,6 +649,48 @@ require_role(['hr', 'department_head', 'employee']);
         });
         document.getElementById('export-csv').addEventListener('click', exportCSV);
         document.getElementById('export-excel').addEventListener('click', exportExcel);
+        
+        // Expand/Collapse all button
+        let allExpanded = false;
+        document.getElementById('expand-all-btn').addEventListener('click', function(){
+            const tbody = document.getElementById('records-tbody');
+            const summaryRows = tbody.querySelectorAll('tr[style*="cursor: pointer"]');
+            
+            allExpanded = !allExpanded;
+            
+            // Clear or populate the expanded employees set
+            if(allExpanded){
+                expandedEmployees.clear();
+                summaryRows.forEach(row => {
+                    const empId = row.querySelector('strong').textContent;
+                    expandedEmployees.add(empId);
+                    const detailsRow = row.nextElementSibling;
+                    const chevron = row.querySelector('.fa-chevron-down, .fa-chevron-right');
+                    if(detailsRow){
+                        detailsRow.style.display = '';
+                    }
+                    if(chevron){
+                        chevron.classList.remove('fa-chevron-right');
+                        chevron.classList.add('fa-chevron-down');
+                    }
+                });
+            } else {
+                expandedEmployees.clear();
+                summaryRows.forEach(row => {
+                    const detailsRow = row.nextElementSibling;
+                    const chevron = row.querySelector('.fa-chevron-down, .fa-chevron-right');
+                    if(detailsRow){
+                        detailsRow.style.display = 'none';
+                    }
+                    if(chevron){
+                        chevron.classList.remove('fa-chevron-down');
+                        chevron.classList.add('fa-chevron-right');
+                    }
+                });
+            }
+            
+            this.innerHTML = allExpanded ? '<i class="fas fa-compress-alt"></i> Collapse All' : '<i class="fas fa-expand-alt"></i> Expand All';
+        });
 
         // Status filter buttons
         document.querySelectorAll('.status-btn').forEach(btn => {

@@ -30,47 +30,38 @@ try {
     }
     
     // Get filter parameters
-    $timeRange = $_GET['timeRange'] ?? 'month';
+    $viewMode = $_GET['viewMode'] ?? 'date';
     $departmentFilter = $_GET['departmentFilter'] ?? 'all';
-    $selectedMonth = $_GET['month'] ?? null;
-    $selectedYear = $_GET['year'] ?? date('Y');
+    $date = $_GET['date'] ?? null;
+    $month = $_GET['month'] ?? null;
+    $year = $_GET['year'] ?? null;
     
-    // Calculate EXACT date ranges based on timeRange
-    // This ensures accurate filtering - only data within the selected period is shown
+    // Calculate date range based on view mode
     $today = date('Y-m-d');
     $startDate = $today;
     $endDate = $today;
     
-    switch ($timeRange) {
-        case 'today':
-            $startDate = $today;
+    if ($viewMode === 'date' && $date) {
+        // Specific date
+        $startDate = $date;
+        $endDate = $date;
+    } elseif ($viewMode === 'month' && $month && $year) {
+        // Whole month
+        $monthStr = str_pad($month, 2, '0', STR_PAD_LEFT);
+        $startDate = $year . '-' . $monthStr . '-01';
+        $endDate = date('Y-m-t', strtotime($startDate));
+        // Don't go beyond today
+        if ($endDate > $today) {
             $endDate = $today;
-            break;
-        case 'week':
-            $startDate = date('Y-m-d', strtotime('monday this week'));
-            $endDate = date('Y-m-d', strtotime('sunday this week'));
-            break;
-        case 'month':
-            // Use selected month if provided, otherwise use current month
-            if ($selectedMonth !== null && $selectedYear !== null) {
-                $monthStr = str_pad($selectedMonth, 2, '0', STR_PAD_LEFT);
-                $startDate = $selectedYear . '-' . $monthStr . '-01';
-                $endDate = date('Y-m-t', strtotime($startDate));
-            } else {
-                $startDate = date('Y-m-01');
-                $endDate = date('Y-m-t');
-            }
-            break;
-        case 'quarter':
-            $currentMonth = (int)date('n');
-            $quarterStartMonth = (floor(($currentMonth - 1) / 3) * 3) + 1;
-            $startDate = date('Y-' . str_pad($quarterStartMonth, 2, '0', STR_PAD_LEFT) . '-01');
-            $endDate = date('Y-m-t', strtotime($startDate . ' +2 months'));
-            break;
-        case 'year':
-            $startDate = date('Y-01-01');
-            $endDate = date('Y-12-31');
-            break;
+        }
+    } elseif ($viewMode === 'year' && $year) {
+        // Whole year
+        $startDate = $year . '-01-01';
+        $endDate = $year . '-12-31';
+        // Don't go beyond today
+        if ($endDate > $today) {
+            $endDate = $today;
+        }
     }
     
     // ===== OVERVIEW METRICS =====
@@ -110,11 +101,12 @@ try {
     $activePeriod = (int)$activeStmt->fetchColumn();
     
     // Calculate attendance rate for the period
-    // Get total attendance records in period
+    // Get total Present + Late attendance records in period (NOT including Absent)
     $totalAttendanceSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
                           FROM attendance a 
                           JOIN users u ON a.employee_id = u.employee_id 
                           WHERE a.date >= ? AND a.date <= ?
+                          AND a.time_in_status IN ("Present", "Late")
                           AND u.status = "approved"' . $deptWhereClause;
     $totalAttendanceStmt = $pdo->prepare($totalAttendanceSql);
     $totalAttendanceParams = [$startDate, $endDate];
@@ -125,10 +117,25 @@ try {
     $totalAttendanceRecords = (int)$totalAttendanceStmt->fetchColumn();
     
     // Calculate expected attendance (employees * working days in range)
-    $workingDaysSql = 'SELECT COUNT(DISTINCT date) FROM attendance WHERE date >= ? AND date <= ?';
-    $workingDaysStmt = $pdo->prepare($workingDaysSql);
-    $workingDaysStmt->execute([$startDate, $endDate]);
-    $workingDays = (int)$workingDaysStmt->fetchColumn();
+    // Only count weekdays (Monday-Friday), exclude weekends
+    // Only count up to today - don't include future dates
+    $workingDays = 0;
+    $currentDate = new DateTime($startDate);
+    $endDateTime = new DateTime($endDate);
+    $todayDateTime = new DateTime($today);
+    
+    // Make sure we don't count beyond today
+    if ($endDateTime > $todayDateTime) {
+        $endDateTime = $todayDateTime;
+    }
+    
+    while ($currentDate <= $endDateTime) {
+        $dayOfWeek = $currentDate->format('N'); // 1 (Monday) to 7 (Sunday)
+        if ($dayOfWeek >= 1 && $dayOfWeek <= 5) { // Monday to Friday only
+            $workingDays++;
+        }
+        $currentDate->modify('+1 day');
+    }
     
     $expectedAttendance = $totalEmployees * max($workingDays, 1);
     $attendanceRate = $expectedAttendance > 0 ? ($totalAttendanceRecords / $expectedAttendance) * 100 : 0;
@@ -209,11 +216,12 @@ try {
         $deptActiveStmt->execute([$startDate, $endDate, $deptName]);
         $deptActive = (int)$deptActiveStmt->fetchColumn();
         
-        // Department attendance rate (based on actual attendance records in period)
+        // Department attendance rate (based on Present + Late records in period)
         $deptTotalAttendanceSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
                                    FROM attendance a 
                                    JOIN users u ON a.employee_id = u.employee_id 
                                    WHERE a.date >= ? AND a.date <= ?
+                                   AND a.time_in_status IN ("Present", "Late")
                                    AND u.department = ?
                                    AND u.status = "approved"';
         $deptTotalAttendanceStmt = $pdo->prepare($deptTotalAttendanceSql);
@@ -344,12 +352,36 @@ try {
     // ===== ATTENDANCE TREND =====
     $attendanceTrend = [];
     
-    if ($timeRange === 'year') {
-        // For year view, show all 12 months
+    if ($viewMode === 'year') {
+        // For year view, show all 12 months but limit to current date
         $year = $selectedYear ?? date('Y');
+        $currentMonth = (int)date('n');
+        $currentYear = (int)date('Y');
+        
         for ($month = 1; $month <= 12; $month++) {
             $monthStart = $year . '-' . str_pad($month, 2, '0', STR_PAD_LEFT) . '-01';
             $monthEnd = date('Y-m-t', strtotime($monthStart));
+            
+            // Skip future months
+            if ($year == $currentYear && $month > $currentMonth) {
+                break;
+            }
+            
+            // Limit to today if current month
+            if ($year == $currentYear && $month == $currentMonth) {
+                $monthEnd = date('Y-m-d');
+            }
+            
+            // Check if this month has any attendance data
+            $hasDataSql = 'SELECT COUNT(*) FROM attendance WHERE date >= ? AND date <= ?';
+            $hasDataStmt = $pdo->prepare($hasDataSql);
+            $hasDataStmt->execute([$monthStart, $monthEnd]);
+            $hasData = (int)$hasDataStmt->fetchColumn();
+            
+            // Skip months with no data
+            if ($hasData == 0) {
+                continue;
+            }
             
             // Present count for the month
             $presentSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
@@ -381,13 +413,13 @@ try {
             $lateStmt->execute($lateParams);
             $late = (int)$lateStmt->fetchColumn();
             
-            // Count working days in this month
+            // Count working days in this month (exclude weekends)
             $workingDaysInMonth = 0;
             $checkDate = new DateTime($monthStart);
             $endCheck = new DateTime($monthEnd);
             while ($checkDate <= $endCheck) {
                 $dayOfWeek = $checkDate->format('N');
-                if ($dayOfWeek < 6) { // Monday = 1, Sunday = 7
+                if ($dayOfWeek >= 1 && $dayOfWeek <= 5) { // Monday to Friday only
                     $workingDaysInMonth++;
                 }
                 $checkDate->modify('+1 day');
@@ -403,7 +435,7 @@ try {
                 'absent' => $absent
             ];
         }
-    } elseif ($timeRange === 'quarter') {
+    } elseif ($viewMode === 'quarter') {
         // For quarter view, show each month in the quarter (3 months)
         $currentDate = new DateTime($startDate);
         $endDateTime = new DateTime($endDate);
@@ -411,6 +443,18 @@ try {
         while ($currentDate <= $endDateTime) {
             $monthStart = $currentDate->format('Y-m-01');
             $monthEnd = $currentDate->format('Y-m-t');
+            
+            // Check if this month has any attendance data
+            $hasMonthDataSql = 'SELECT COUNT(*) FROM attendance WHERE date >= ? AND date <= ?';
+            $hasMonthDataStmt = $pdo->prepare($hasMonthDataSql);
+            $hasMonthDataStmt->execute([$monthStart, $monthEnd]);
+            $hasMonthData = (int)$hasMonthDataStmt->fetchColumn();
+            
+            // Skip months with no data
+            if ($hasMonthData == 0) {
+                $currentDate->modify('first day of next month');
+                continue;
+            }
             
             // Present count for the month
             $presentSql = 'SELECT COUNT(DISTINCT CONCAT(a.employee_id, "-", a.date)) 
@@ -442,13 +486,13 @@ try {
             $lateStmt->execute($lateParams);
             $late = (int)$lateStmt->fetchColumn();
             
-            // Count working days
+            // Count working days (exclude weekends)
             $workingDaysInMonth = 0;
             $checkDate = new DateTime($monthStart);
             $endCheck = new DateTime($monthEnd);
             while ($checkDate <= $endCheck) {
                 $dayOfWeek = $checkDate->format('N');
-                if ($dayOfWeek < 6) {
+                if ($dayOfWeek >= 1 && $dayOfWeek <= 5) { // Monday to Friday only
                     $workingDaysInMonth++;
                 }
                 $checkDate->modify('+1 day');
@@ -470,15 +514,36 @@ try {
         // For today, week, and month - show all days in the range
         $currentDate = new DateTime($startDate);
         $endDateTime = new DateTime($endDate);
+        $todayDateTime = new DateTime(date('Y-m-d'));
+        
+        // Don't go beyond today
+        if ($endDateTime > $todayDateTime) {
+            $endDateTime = $todayDateTime;
+        }
+        
         $interval = new DateInterval('P1D');
         $dateRange = new DatePeriod($currentDate, $interval, $endDateTime->modify('+1 day'));
         
         $allDates = [];
         foreach ($dateRange as $date) {
-            $allDates[] = $date->format('Y-m-d');
+            $dayOfWeek = $date->format('N');
+            // Only include weekdays (Monday to Friday)
+            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) {
+                $allDates[] = $date->format('Y-m-d');
+            }
         }
         
         foreach ($allDates as $date) {
+            // Check if this date has any attendance data
+            $hasDataSql = 'SELECT COUNT(*) FROM attendance WHERE date = ?';
+            $hasDataStmt = $pdo->prepare($hasDataSql);
+            $hasDataStmt->execute([$date]);
+            $hasData = (int)$hasDataStmt->fetchColumn();
+            
+            // Skip dates with no data
+            if ($hasData == 0) {
+                continue;
+            }
             // Present count
             $presentSql = 'SELECT COUNT(DISTINCT a.employee_id) 
                            FROM attendance a 
@@ -563,10 +628,11 @@ try {
         'success' => true,
         'timestamp' => date('Y-m-d H:i:s'),
         'filters' => [
-            'timeRange' => $timeRange,
+            'viewMode' => $viewMode,
+            'date' => $date,
+            'month' => $month,
+            'year' => $year,
             'departmentFilter' => $departmentFilter,
-            'selectedMonth' => $selectedMonth,
-            'selectedYear' => $selectedYear,
             'dateRange' => [
                 'start' => $startDate,
                 'end' => $endDate
